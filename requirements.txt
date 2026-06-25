@@ -1,4 +1,5 @@
 # IRON CHAT - LUNA (CPU sin AVX)
+# pygame solo se necesita en Linux (instalado via apt/sistema)
+# En Windows se usa winsound + pyttsx3 (vienen con Python/systema)
 llama-cpp-python
-pygame
 Pillow

@@ -3,8 +3,8 @@ import threading
 import subprocess
 import platform
 import tempfile
-import pygame
 import re
+from audio import Audio
 
 class TTS:
     def __init__(self):
@@ -12,7 +12,6 @@ class TTS:
         self.speaking = False
         self.on_finish_callback = None
         self.volume = 0.7
-        self._mixer_init = False
         self.sistema = platform.system()
         self.mode = "offline"
         
@@ -20,14 +19,6 @@ class TTS:
             self._init_windows()
         else:
             self._init_linux()
-    
-    def _init_mixer(self):
-        if not self._mixer_init:
-            try:
-                pygame.mixer.init(frequency=44100)
-                self._mixer_init = True
-            except:
-                pass
     
     def _init_windows(self):
         """Windows: usa pyttsx3 con voces SAPI5"""
@@ -151,13 +142,9 @@ class TTS:
             
             # Reproducir el WAV
             if os.path.exists(wav_path) and os.path.getsize(wav_path) > 1000:
-                self._init_mixer()
-                pygame.mixer.music.load(wav_path)
-                pygame.mixer.music.set_volume(self.volume)
-                pygame.mixer.music.play()
-                while pygame.mixer.music.get_busy():
-                    pygame.time.Clock().tick(10)
-                pygame.mixer.music.unload()
+                Audio.play_wav(wav_path)
+                import time
+                time.sleep(0.5)
             
             # Limpiar
             try:
@@ -170,6 +157,5 @@ class TTS:
             print(f"Error en Piper TTS: {e}")
     
     def stop(self):
-        self._init_mixer()
-        pygame.mixer.music.stop()
+        Audio.stop_all()
         self.speaking = False

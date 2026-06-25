@@ -4,7 +4,7 @@ import os
 import re
 
 project_dir = os.path.dirname(os.path.abspath(__file__))
-archivos = ["main.py", "ai_module.py", "tts_module.py", "face_animation.py", "ascii_art.py", "sounds.py", "requirements.txt"]
+archivos = ["main.py", "ai_module.py", "tts_module.py", "face_animation.py", "ascii_art.py", "sounds.py", "audio.py", "requirements.txt"]
 
 hash_total = hashlib.sha256()
 for archivo in archivos:

@@ -7,7 +7,7 @@ import glob
 import json
 import re
 import logging
-import pygame
+from audio import Audio
 from PIL import Image, ImageTk
 from ai_module import GPT4AllAI
 from tts_module import TTS
@@ -477,8 +477,7 @@ class ChatbotApp:
                     os.makedirs(music_path)
                 mp3s = glob.glob(os.path.join(music_path, "*.mp3")) + glob.glob(os.path.join(music_path, "*.wav"))
                 if mp3s:
-                    pygame.mixer.music.load(mp3s[0])
-                    pygame.mixer.music.play(-1)
+                    Audio.play_music(mp3s[0])
                     self.btn_music.config(text="🎵 MÚSICA ON", bg="#27AE60")
                     self.add_message("system", f"🎵 REPRODUCIENDO: {os.path.basename(mp3s[0])}")
                 else:
@@ -490,7 +489,7 @@ class ChatbotApp:
                 self.add_message("system", f"❌ ERROR: {e}")
                 self.btn_music.config(text="🎵 MÚSICA OFF", bg="#2C3E50")
         else:
-            pygame.mixer.music.stop()
+            Audio.stop_music()
             self.btn_music.config(text="🎵 MÚSICA OFF", bg="#2C3E50")
             self.add_message("system", "🎵 MUSICA DESACTIVADA")
 
