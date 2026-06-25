@@ -122,32 +122,15 @@ def main():
     # === 7. ACCESO DIRECTO ===
     section("📌 Acceso directo")
     if platform.system() == "Windows":
-        try:
-            import winshell
-            desktop = winshell.desktop()
-        except:
-            desktop = os.path.join(os.path.expanduser("~"), "Desktop")
-        shortcut_path = os.path.join(desktop, "IRON CHAT - LUNA.lnk")
-        try:
-            import pythoncom
-            from win32com.client import Dispatch
-            pythoncom.CoInitialize()
-            shell = Dispatch("WScript.Shell")
-            shortcut = shell.CreateShortCut(shortcut_path)
-            python_path = os.path.join(venv_dir, "Scripts", "python.exe")
-            shortcut.Targetpath = python_path
-            shortcut.Arguments = f'"{SCRIPT_DIR}\\main.py"'
-            shortcut.WorkingDirectory = SCRIPT_DIR
-            shortcut.Description = "Chatbot Inteligente con LUNA - Entrenadora Personal"
-            icon_path = os.path.join(SCRIPT_DIR, "robot-icon.ico")
-            if os.path.exists(icon_path):
-                shortcut.IconLocation = icon_path
-            shortcut.save()
-            log("Acceso directo creado en el escritorio")
-        except:
+        vbs_path = os.path.join(SCRIPT_DIR, "crear_acceso_windows.vbs")
+        if os.path.exists(vbs_path):
+            try:
+                subprocess.run(["cscript", vbs_path], capture_output=True)
+                log("Acceso directo creado en el escritorio")
+            except:
+                log("No se pudo crear acceso directo", False)
+        else:
             log("No se pudo crear acceso directo", False)
-            print("     ⚠️ Puedes ejecutar manualmente:")
-            print(f"        {os.path.join(venv_dir, 'Scripts', 'python.exe')} {os.path.join(SCRIPT_DIR, 'main.py')}")
     else:
         desktop = os.path.join(os.path.expanduser("~"), "Desktop")
         desktop_file = os.path.join(desktop, "IRON-CHAT-LUNA.desktop")
