@@ -1,0 +1,11 @@
+venv/
+__pycache__/
+*.pyc
+*.log
+historial.json
+notas_entreno.txt
+progreso.db
+musica/
+*.gguf
+*.onnx
+*.onnx.json

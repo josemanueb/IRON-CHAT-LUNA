@@ -1,0 +1,4 @@
+# IRON CHAT - LUNA (CPU sin AVX)
+llama-cpp-python
+pygame
+Pillow
