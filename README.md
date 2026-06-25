@@ -156,6 +156,97 @@ Dibujos disponibles: `mancuerna`, `pesa`, `musculo`, `trofeo`, `fuego`, `corazon
 
 ---
 
+## 🎨 Galería ASCII
+
+```
+  __   __
+ |__| |__|
+  (_)_(_)
+ ==o=o==
+  (_)_(_)
+ |__| |__|
+```
+*Mancuerna*
+
+```
+ .----.
+ |💪|
+ '----'
+ .--. .--.
+ |  | |  |
+ '--' '--'
+```
+*Músculo*
+
+```
+  ______
+ / GYM \
+ | 💪 |
+ | 🏋️ |
+ \______/
+```
+*Gym*
+
+```
+ .------.
+ |PROTEIN|
+ | SHAKE |
+ '------'
+    ||
+    ||
+```
+*Proteína*
+
+```
+ .--. .--.
+ |🏋️| |🏋️|
+ '--' '--'
+  ===O
+ .--.|.--.
+ |🏋️||🏋️|
+ '--''--'
+```
+*Pesas*
+
+```
+  (@)
+ (@@)
+(@@@)
+ (@@)
+  (@)
+```
+*Fuego*
+
+```
+ .---.
+ |🏆|
+ '---'
+   |
+  / \
+```
+*Trofeo*
+
+```
+ .---.
+ | O |
+ '---'
+  / \
+ /   \
+```
+*Sentadilla*
+
+```
+ .----.
+ |\\ //|
+ | \/ |
+ | /\ |
+ |// \\|
+ '----'
+```
+*Abdominal*
+
+---
+
 ## 🧠 Modelo de IA
 
 Descarga el modelo desde Hugging Face y colócalo en `models/`:
