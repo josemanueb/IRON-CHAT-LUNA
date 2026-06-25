@@ -78,6 +78,16 @@ def main():
         print("  Puedes intentar instalarlas manualmente con:")
         print(f"    {pip} install llama-cpp-python pygame Pillow pyttsx3")
 
+    # Verificar que pygame se instaló
+    python_exe = os.path.join(venv_dir, "Scripts", "python.exe") if platform.system() == "Windows" else os.path.join(venv_dir, "bin", "python")
+    result = subprocess.run([python_exe, "-c", "import pygame; print(pygame.ver)"], capture_output=True, text=True)
+    if result.returncode == 0:
+        log(f"pygame {result.stdout.strip()} verificado")
+    else:
+        log("pygame NO se instaló correctamente", False)
+        print("     ⚠️ Reinstalando pygame...")
+        pip_install(pip, "pygame")
+
     # === 4. MODELO DE IA ===
     section("🤖 Modelo de IA")
     model_dir = os.path.join(SCRIPT_DIR, "models")
