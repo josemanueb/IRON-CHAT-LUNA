@@ -8,21 +8,29 @@ echo ║   PARA WINDOWS                       ║
 echo ╚══════════════════════════════════════╝
 echo.
 
-REM Verificar Python
-where python >nul 2>nul
-if %errorlevel% neq 0 (
-    echo ❌ Python no encontrado.
-    echo ⬇️ Descárgalo desde: https://www.python.org/downloads/
-    echo ⚠️ MARCA "Add Python to PATH" durante la instalación.
-    echo.
-    pause
-    exit /b 1
+REM Intentar con py (Windows Launcher) o python
+where py >nul 2>nul
+if %errorlevel% equ 0 (
+    set PYTHON=py
+) else (
+    where python >nul 2>nul
+    if %errorlevel% neq 0 (
+        echo ❌ Python no encontrado.
+        echo ⬇️ Descárgalo desde: https://www.python.org/downloads/
+        echo ⚠️ MARCA "Add Python to PATH" durante la instalación.
+        echo.
+        pause
+        exit /b 1
+    )
+    set PYTHON=python
 )
 
-python --version
+%PYTHON% --version
+echo.
+echo Instalando IRON CHAT - LUNA...
 echo.
 
-python install.py
+%PYTHON% install.py
 
 if %errorlevel% neq 0 (
     echo.

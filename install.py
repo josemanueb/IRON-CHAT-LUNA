@@ -75,18 +75,25 @@ def main():
 
     if not todo_ok:
         print("\n  ⚠️ Hubo errores instalando dependencias. Revisa arriba.")
-        print("  Puedes intentar instalarlas manualmente con:")
+        print("  Puedes intentar instalarlas manualmente abriendo PowerShell y pegando:")
         print(f"    {pip} install llama-cpp-python pygame Pillow pyttsx3")
+        print()
 
     # Verificar que pygame se instaló
     python_exe = os.path.join(venv_dir, "Scripts", "python.exe") if platform.system() == "Windows" else os.path.join(venv_dir, "bin", "python")
-    result = subprocess.run([python_exe, "-c", "import pygame; print(pygame.ver)"], capture_output=True, text=True)
-    if result.returncode == 0:
-        log(f"pygame {result.stdout.strip()} verificado")
+    for intento in range(3):
+        result = subprocess.run([python_exe, "-c", "import pygame; print(pygame.ver)"], capture_output=True, text=True)
+        if result.returncode == 0:
+            log(f"pygame {result.stdout.strip()} verificado")
+            break
+        log("pygame no encontrado, reintentando...", False)
+        subprocess.run([pip, "install", "pygame", "--no-cache-dir"])
     else:
-        log("pygame NO se instaló correctamente", False)
-        print("     ⚠️ Reinstalando pygame...")
-        pip_install(pip, "pygame")
+        log("No se pudo instalar pygame.", False)
+        print("\n  ⚠️ Instálalo manualmente:")
+        print(f"    1. Abre PowerShell en la carpeta {SCRIPT_DIR}")
+        print(f"    2. Pega: {pip} install pygame")
+        print(f"    3. Luego ejecuta iron-chat.bat")
 
     # === 4. MODELO DE IA ===
     section("🤖 Modelo de IA")
