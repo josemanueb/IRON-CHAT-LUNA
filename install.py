@@ -152,7 +152,7 @@ def main():
         desktop = os.path.join(os.path.expanduser("~"), "Desktop")
         desktop_file = os.path.join(desktop, "IRON-CHAT-LUNA.desktop")
         python_path = os.path.join(venv_dir, "bin", "python3")
-        icon_path = os.path.join(SCRIPT_DIR, "robot-icon.png")
+        icon_path = os.path.join(SCRIPT_DIR, "robot.jpeg")
         content = f"""[Desktop Entry]
 Name=IRON CHAT - LUNA
 Comment=Chatbot con IA - Entrenadora personal
