@@ -4,8 +4,8 @@ DesktopPath = WshShell.SpecialFolders("Desktop")
 ScriptPath = FSO.GetAbsolutePathName(".")
 LinkPath = DesktopPath & "\IRON CHAT - LUNA.lnk"
 Set Shortcut = WshShell.CreateShortcut(LinkPath)
-Shortcut.TargetPath = ScriptPath & "\venv\Scripts\python.exe"
-Shortcut.Arguments = """" & ScriptPath & "\main.py"""
+Shortcut.TargetPath = ScriptPath & "\iron-chat.bat"
+Shortcut.Arguments = ""
 Shortcut.WorkingDirectory = ScriptPath
 Shortcut.Description = "Chatbot Inteligente con LUNA - Entrenadora Personal"
 If FSO.FileExists(ScriptPath & "\robot-icon.ico") Then
