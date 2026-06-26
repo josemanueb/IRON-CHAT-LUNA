@@ -137,22 +137,54 @@ def main():
     else:
         model_url = "https://huggingface.co/bartowski/Llama-3.2-3B-Instruct-GGUF/resolve/main/Llama-3.2-3B-Instruct-Q4_0.gguf"
         print("  ⏳ Descargando modelo (2 GB, puede tomar varios minutos)...")
-        print("     No cierres esta ventana!")
+        print("     ⚠️  NO CIERRES ESTA VENTANA hasta que termine!")
+        print("     Si la descarga falla, te daré instrucciones.")
+        print()
         try:
+            from urllib.request import urlretrieve
+            import socket
+            socket.setdefaulttimeout(1800)  # 30 minutos
             def report(block, block_size, total):
                 if total > 0:
                     downloaded = block * block_size / (1024**3)
                     total_gb = total / (1024**3)
-                    print(f"     {downloaded:.1f}/{total_gb:.1f} GB", end="\r")
-            urllib.request.urlretrieve(model_url, model_path + ".tmp", reporthook=report)
+                    pct = min(100, int(downloaded / total_gb * 100))
+                    bar = "█" * (pct // 2) + "░" * (50 - pct // 2)
+                    print(f"     [{bar}] {downloaded:.1f}/{total_gb:.1f} GB ({pct}%)", end="\r")
+            urlretrieve(model_url, model_path + ".tmp", reporthook=report)
             os.replace(model_path + ".tmp", model_path)
             size = os.path.getsize(model_path) / (1024**3)
-            print(f"\r     ✅ Modelo descargado: {size:.2f} GB".ljust(40))
+            print(f"\r     ✅ Modelo descargado: {size:.2f} GB".ljust(70))
         except Exception as e:
-            print(f"\r     ❌ Error: {e}".ljust(40))
-            print("     ⚠️ Descárgalo manualmente desde:")
-            print(f"        {model_url}")
-            print(f"     ⚠️ Y colócalo en: {model_dir}")
+            print(f"\r     ❌ Error descargando modelo: {e}".ljust(70))
+            print()
+            print("  ╔══════════════════════════════════════════════╗")
+            print("  ║   DESCARGA MANUAL REQUERIDA                ║")
+            print("  ╚══════════════════════════════════════════════╝")
+            print()
+            print("  1. Abre este enlace en tu navegador:")
+            print(f"     {model_url}")
+            print()
+            print("  2. Espera a que descargue (~2 GB)")
+            print()
+            print(f"  3. Copia el archivo descargado AQUÍ:")
+            print(f"     {model_dir}")
+            print(f"     El nombre debe ser: Llama-3.2-3B-Instruct-Q4_0.gguf")
+            print()
+            print("  4. Una vez colocado, ejecuta install.bat otra vez")
+            print()
+            input("     Presiona Enter cuando hayas colocado el modelo...")
+            # Re-verificar
+            if os.path.exists(model_path):
+                size = os.path.getsize(model_path) / (1024**3)
+                if size > 1.0:
+                    log(f"Modelo encontrado: {size:.2f} GB")
+                else:
+                    log("El archivo parece corrupto (muy pequeño)", False)
+                    input("Presiona Enter para continuar...")
+            else:
+                log("Modelo no encontrado. Puedes continuar sin IA", False)
+                input("Presiona Enter para continuar...")
 
     # === 5. VOZ PIPER ===
     section("🎤 Voz Piper")
