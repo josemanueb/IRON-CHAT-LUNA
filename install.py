@@ -215,16 +215,22 @@ def main():
     # === 7. ACCESO DIRECTO ===
     section("📌 Acceso directo")
     if platform.system() == "Windows":
-        vbs_path = os.path.join(SCRIPT_DIR, "crear_acceso_windows.vbs")
-        if os.path.exists(vbs_path):
-            try:
-                result = subprocess.run(["cscript", vbs_path])
-                if result.returncode == 0:
-                    log("Acceso directo creado en el escritorio")
-                else:
-                    log("Error creando acceso directo", False)
-            except:
-                log("No se pudo crear acceso directo", False)
+        try:
+            import win32com.client
+            ws = win32com.client.Dispatch("WScript.Shell")
+            desktop = ws.SpecialFolders("Desktop")
+            link_path = os.path.join(desktop, "IRON CHAT - LUNA.lnk")
+            shortcut = ws.CreateShortcut(link_path)
+            shortcut.TargetPath = os.path.join(SCRIPT_DIR, "iron-chat.bat")
+            shortcut.WorkingDirectory = SCRIPT_DIR
+            shortcut.Description = "Chatbot Inteligente con LUNA - Entrenadora Personal"
+            icon_path = os.path.join(SCRIPT_DIR, "robot-icon.ico")
+            if os.path.exists(icon_path):
+                shortcut.IconLocation = icon_path
+            shortcut.Save()
+            log("Acceso directo creado en el escritorio")
+        except Exception as e:
+            log(f"No se pudo crear acceso directo: {e}", False)
     else:
         desktop = os.path.join(os.path.expanduser("~"), "Desktop")
         desktop_file = os.path.join(desktop, "IRON-CHAT-LUNA.desktop")
