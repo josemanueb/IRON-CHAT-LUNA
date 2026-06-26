@@ -2,6 +2,7 @@
 # ============================================================
 #  INSTALADOR DE IRON CHAT - LUNA v2.0 (Python)
 #  Funciona en Windows y Linux
+#  Muestra todo el output de pip para detectar errores
 #  Creado por: ⚡ JMbirner ⚡
 # ============================================================
 
@@ -33,9 +34,16 @@ def pip_install(pip, packages, label=None):
         log(f"Error instalando {label}", False)
         return False
 
+def verify_import(venv_dir, module_name):
+    python_exe = os.path.join(venv_dir, "Scripts", "python.exe") if platform.system() == "Windows" else os.path.join(venv_dir, "bin", "python")
+    result = subprocess.run([python_exe, "-c", f"import {module_name}; print('OK')"], capture_output=True, text=True)
+    return result.returncode == 0
+
 # ============================================================
 
 def main():
+    fatal_error = False
+
     print("╔══════════════════════════════════════╗")
     print("║   INSTALADOR IRON CHAT - LUNA v2.0   ║")
     if platform.system() == "Windows":
@@ -64,23 +72,55 @@ def main():
 
     subprocess.run([pip, "install", "--upgrade", "pip"])
 
-    todo_ok = True
-    if not pip_install(pip, "llama-cpp-python"):
-        todo_ok = False
+    # 3a. llama-cpp-python (CRITICO) - con reintento
+    print("  ⏳ Instalando llama-cpp-python...")
+    result = subprocess.run([pip, "install", "llama-cpp-python"])
+    if result.returncode != 0:
+        print("  ⚠️ Reintentando con --no-cache-dir...")
+        result = subprocess.run([pip, "install", "--no-cache-dir", "llama-cpp-python"])
+    if result.returncode == 0:
+        log("llama-cpp-python instalado")
+        if not verify_import(venv_dir, "llama_cpp"):
+            log("llama-cpp-python no se pudo importar. Reintentando...", False)
+            result = subprocess.run([pip, "install", "--force-reinstall", "--no-cache-dir", "llama-cpp-python"])
+    else:
+        log("Error CRITICO: no se pudo instalar llama-cpp-python", False)
+        fatal_error = True
+
+    # 3b. Otras dependencias
     deps = ["Pillow"]
     if platform.system() == "Windows":
         deps.append("pyttsx3")
     else:
         deps.append("pygame")
     if not pip_install(pip, deps, ", ".join(deps)):
-        todo_ok = False
+        print("  ⚠️ Error instalando dependencias secundarias.")
+        print("     Puedes instalarlas manualmente después.")
 
-    if not todo_ok:
-        print("\n  ⚠️ Hubo errores instalando dependencias. Revisa arriba.")
-        print("  Puedes intentar instalarlas manualmente:")
-        pip_names = "llama-cpp-python Pillow pyttsx3" if platform.system() == "Windows" else "llama-cpp-python Pillow pygame"
-        print(f"    {pip} install {pip_names}")
+    # 3c. Verificar que lo crítico se pueda importar
+    if not fatal_error:
+        python_exe = os.path.join(venv_dir, "Scripts", "python.exe") if platform.system() == "Windows" else os.path.join(venv_dir, "bin", "python")
+        test = subprocess.run([python_exe, "-c", "import llama_cpp; print('✅ llama_cpp importado OK')"], capture_output=True, text=True)
+        if test.returncode == 0:
+            print(f"     {test.stdout.strip()}")
+        else:
+            txt = (test.stderr or "").split("\n")[-1].strip()
+            log(f"Error importando llama_cpp: {txt}", False)
+            fatal_error = True
+
+    # 3d. Resumen de dependencias
+    if fatal_error:
+        print("\n  ❌ FALLO CRÍTICO: llama-cpp-python no se instaló correctamente.")
+        print("  🔧 Posibles soluciones:")
+        print("     1. Asegúrate de tener Microsoft Visual C++ Redistributable:")
+        print("        https://aka.ms/vs/17/release/vc_redist.x64.exe")
+        print("     2. Prueba instalarlo manualmente:")
+        print(f"        {pip} install llama-cpp-python")
+        print("     3. Si sigue fallando, descarga el .whl desde:")
+        print("        https://github.com/abetlen/llama-cpp-python/releases")
         print()
+        input("\nPresiona Enter para salir...")
+        sys.exit(1)
 
     # === 4. MODELO DE IA ===
     section("🤖 Modelo de IA")

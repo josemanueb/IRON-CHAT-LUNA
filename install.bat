@@ -32,9 +32,19 @@ echo.
 
 %PYTHON% install.py
 
-if %errorlevel% neq 0 (
+if %errorlevel% equ 0 (
+    echo.
+    echo ✅ Instalación completada correctamente.
+    echo.
+    echo Ejecuta iron-chat.bat para iniciar.
+) else (
     echo.
     echo ❌ Algo salió mal. Revisa los mensajes de arriba.
+    echo.
+    echo Si el error es llama-cpp-python, asegúrate de tener instalado:
+    echo   Microsoft Visual C++ Redistributable
+    echo   https://aka.ms/vs/17/release/vc_redist.x64.exe
 )
 
+echo.
 pause
