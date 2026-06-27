@@ -56,7 +56,7 @@ Write-Host "  ⏳ Instalando llama-cpp-python..." -ForegroundColor Yellow
 $llamaOk = $false
 
 # Paso 1: verificar VC++ Redistributable
-$vcredistOk = Test-Path "$env:SystemRoot\System32\vcruntime140.dll"
+$vcredistOk = Test-Path "$env:SystemRoot\System32\vcruntime140.dll" -or (Test-Path "$SCRIPT_DIR\vcruntime140.dll")
 if (-not $vcredistOk) {
     Write-Host "  ⚠️ Falta Microsoft Visual C++ Redistributable" -ForegroundColor Yellow
     Write-Host "     Descargando e instalando..." -ForegroundColor Yellow
@@ -65,19 +65,43 @@ if (-not $vcredistOk) {
         $vcTmp = "$SCRIPT_DIR\vc_redist.x64.exe"
         $wc = New-Object System.Net.WebClient
         $wc.DownloadFile($vcUrl, $vcTmp)
-        Write-Host "     Ejecutando instalador silencioso..." -ForegroundColor Yellow
-        Start-Process -FilePath $vcTmp -ArgumentList "/install", "/quiet", "/norestart" -Wait
-        Remove-Item $vcTmp -Force
+        # Intentar silencioso
+        Write-Host "     Ejecutando instalador..." -ForegroundColor Yellow
+        $proc = Start-Process -FilePath $vcTmp -ArgumentList "/install", "/quiet", "/norestart" -Wait -NoNewWindow -PassThru
         Start-Sleep -Seconds 2
         if (Test-Path "$env:SystemRoot\System32\vcruntime140.dll") {
+            Remove-Item $vcTmp -Force
             Write-Host "  ✅ VC++ Redistributable instalado" -ForegroundColor Green
         } else {
-            Write-Host "  ⚠️ No se pudo instalar automáticamente." -ForegroundColor Yellow
-            Write-Host "     Descárgalo de: https://aka.ms/vs/17/release/vc_redist.x64.exe" -ForegroundColor Yellow
-            pause
+            # Fallback: interfaz visible
+            Write-Host "     ⚠️ Modo silencioso falló, intentando con interfaz..." -ForegroundColor Yellow
+            $proc = Start-Process -FilePath $vcTmp -ArgumentList "/install", "/passive", "/norestart" -Wait -PassThru
+            Start-Sleep -Seconds 2
+            if (Test-Path "$env:SystemRoot\System32\vcruntime140.dll") {
+                Remove-Item $vcTmp -Force
+                Write-Host "  ✅ VC++ Redistributable instalado" -ForegroundColor Green
+            } else {
+                # Fallback: extraer DLL directo
+                Write-Host "     ⚠️ Instalación falló, extrayendo vcruntime140.dll..." -ForegroundColor Yellow
+                $extractDir = "$SCRIPT_DIR\vc_extract"
+                New-Item -ItemType Directory -Path $extractDir -Force | Out-Null
+                Start-Process -FilePath $vcTmp -ArgumentList "/extract", $extractDir -Wait -NoNewWindow -PassThru
+                $dll = Get-ChildItem -Path $extractDir -Recurse -Filter "vcruntime140.dll" | Select-Object -First 1
+                if ($dll) {
+                    Copy-Item $dll.FullName "$SCRIPT_DIR\vcruntime140.dll" -Force
+                    Write-Host "  ✅ vcruntime140.dll extraído a $SCRIPT_DIR" -ForegroundColor Green
+                    $env:PATH = "$SCRIPT_DIR;$env:PATH"
+                    Remove-Item $extractDir -Recurse -Force -ErrorAction SilentlyContinue
+                } else {
+                    Write-Host "  ⚠️ No se pudo extraer el DLL." -ForegroundColor Yellow
+                    Write-Host "     Descárgalo manualmente de: https://aka.ms/vs/17/release/vc_redist.x64.exe" -ForegroundColor Yellow
+                }
+                Remove-Item $extractDir -Recurse -Force -ErrorAction SilentlyContinue
+                Remove-Item $vcTmp -Force
+            }
         }
     } catch {
-        Write-Host "  ⚠️ Error descargando VC++: $_" -ForegroundColor Yellow
+        Write-Host "  ⚠️ Error con VC++: $_" -ForegroundColor Yellow
         Write-Host "     Descárgalo manualmente de: https://aka.ms/vs/17/release/vc_redist.x64.exe" -ForegroundColor Yellow
         pause
     }
