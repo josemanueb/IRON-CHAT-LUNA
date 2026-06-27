@@ -40,50 +40,142 @@ def verify_import(venv_dir, module_name):
     result = subprocess.run([python_exe, "-c", f"import {module_name}; print('OK')"], capture_output=True, text=True)
     return result.returncode == 0
 
-def download_with_powershell(url, dest):
-    """Descarga usando PowerShell Invoke-WebRequest (maneja SSL en Windows)"""
+def _download_chunked(url, dest, verified=True, timeout=120):
+    """Descarga por chunks con resume, timeout por chunk, y SSL configurable"""
+    import ssl
+    import urllib.request
+    import socket
+
+    tmp = dest + ".tmp"
+    ctx = ssl.create_default_context() if verified else ssl._create_unverified_context()
+    resume_bytes = 0
+
+    # Reanudar descarga parcial
+    if os.path.exists(tmp):
+        resume_bytes = os.path.getsize(tmp)
+        if resume_bytes > 0:
+            print(f"     🔄 Reanudando desde {resume_bytes/(1024**3):.2f} GB...")
+
+    CHUNK = 1024 * 1024  # 1 MB por chunk
+    max_retries = 5
+    attempt = 0
+
+    while attempt <= max_retries:
+        try:
+            req = urllib.request.Request(url)
+            if resume_bytes > 0:
+                req.add_header("Range", f"bytes={resume_bytes}-")
+
+            resp = urllib.request.urlopen(req, timeout=timeout, context=ctx)
+            total = int(resp.headers.get("Content-Length", 0)) + resume_bytes
+            total_gb = total / (1024**3)
+
+            mode = "ab" if resume_bytes > 0 else "wb"
+            with open(tmp, mode) as f:
+                while True:
+                    try:
+                        chunk = resp.read(CHUNK)
+                        if not chunk:
+                            break
+                        f.write(chunk)
+                        resume_bytes += len(chunk)
+                        downloaded_gb = resume_bytes / (1024**3)
+                        if total > 0:
+                            pct = min(100, int(resume_bytes / total * 100))
+                            bar = "█" * (pct // 2) + "░" * (50 - pct // 2)
+                            print(f"     [{bar}] {downloaded_gb:.1f}/{total_gb:.1f} GB ({pct}%)", end="\r")
+                        else:
+                            print(f"     Descargados {downloaded_gb:.1f} GB...", end="\r")
+                    except socket.timeout:
+                        print(f"\n     ⚠️  Timeout en chunk, reintentando... ({attempt+1}/{max_retries})")
+                        attempt += 1
+                        break
+                    except Exception:
+                        print(f"\n     ⚠️  Error en chunk, reintentando... ({attempt+1}/{max_retries})")
+                        attempt += 1
+                        break
+                else:
+                    # loop completed without break -> success
+                    if resume_bytes >= total or total == 0:
+                        os.replace(tmp, dest)
+                        return True
+                    continue
+        except urllib.request.HTTPError as e:
+            if e.code == 416 and resume_bytes > 0:
+                # Range not satisfiable -> file already complete
+                os.replace(tmp, dest)
+                return True
+            return False
+        except Exception as e:
+            attempt += 1
+            if attempt > max_retries:
+                return False
+    return False
+
+def _download_urllib(url, dest, verified=True):
+    """Descarga con urllib usando chunked download con resume"""
     try:
+        return _download_chunked(url, dest, verified=verified, timeout=120)
+    except Exception:
+        return False
+
+def download_with_powershell(url, dest):
+    """Descarga usando PowerShell WebClient"""
+    try:
+        tmp = dest + ".tmp"
+        resume = os.path.getsize(tmp) if os.path.exists(tmp) else 0
+        if resume > 0:
+            print(f"     🔄 Reanudando desde {resume/(1024**3):.2f} GB...")
         cmd = [
             'powershell', '-NoProfile', '-Command',
-            f'$wc = New-Object System.Net.WebClient; $wc.DownloadFile("{url}", "{dest}")'
+            f'$wc = New-Object System.Net.WebClient; '
+            f'if ({resume} -gt 0) {{ $wc.AddRange({resume}, -1) }}; '
+            f'$wc.DownloadFile("{url}", "{tmp}")'
         ]
-        result = subprocess.run(cmd, capture_output=True, text=True, timeout=3600)
-        return result.returncode == 0 and os.path.exists(dest) and os.path.getsize(dest) > 0
+        result = subprocess.run(cmd, capture_output=True, text=True, timeout=7200)
+        return result.returncode == 0 and os.path.exists(tmp) and os.path.getsize(tmp) > 0 and (os.path.rename(tmp, dest) or True)
     except:
         return False
 
 def download_with_powershell_ssl_fallback(url, dest):
     """Descarga con PowerShell ignorando errores SSL"""
     try:
+        tmp = dest + ".tmp"
         script = f'''
 [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
 [System.Net.ServicePointManager]::ServerCertificateValidationCallback = {{$true}}
 $wc = New-Object System.Net.WebClient
-$wc.DownloadFile("{url}", "{dest}")
+$wc.DownloadFile("{url}", "{tmp}")
 '''
         cmd = ['powershell', '-NoProfile', '-Command', script]
-        result = subprocess.run(cmd, capture_output=True, text=True, timeout=3600)
-        return result.returncode == 0 and os.path.exists(dest) and os.path.getsize(dest) > 0
+        result = subprocess.run(cmd, capture_output=True, text=True, timeout=7200)
+        return result.returncode == 0 and os.path.exists(tmp) and os.path.getsize(tmp) > 0 and (os.path.rename(tmp, dest) or True)
     except:
         return False
 
 def download_with_bits(url, dest):
     """Descarga usando BITS (Background Intelligent Transfer Service)"""
     try:
+        tmp = dest + ".tmp"
         cmd = [
             'powershell', '-NoProfile', '-Command',
-            f'Start-BitsTransfer -Source "{url}" -Destination "{dest}" -Priority High'
+            f'Start-BitsTransfer -Source "{url}" -Destination "{tmp}" -Priority High'
         ]
         result = subprocess.run(cmd, capture_output=True, text=True, timeout=7200)
-        return result.returncode == 0 and os.path.exists(dest) and os.path.getsize(dest) > 0
+        return result.returncode == 0 and os.path.exists(tmp) and os.path.getsize(tmp) > 0 and (os.path.rename(tmp, dest) or True)
     except:
         return False
 
 def download_model_auto(url, dest, label="Modelo"):
-    """Intenta descargar con múltiples métodos, retorna True si éxito"""
+    """Intenta descargar con múltiples métodos y resume automático"""
+    tmp = dest + ".tmp"
+    # Limpiar .tmp corrupto (menos de 1 MB) antes de empezar
+    if os.path.exists(tmp) and os.path.getsize(tmp) < 1024 * 1024:
+        os.remove(tmp)
+
     methods = [
-        ("urllib (SSL verificado)", lambda: _download_urllib(url, dest, verified=True)),
-        ("urllib (SSL no verificado)", lambda: _download_urllib(url, dest, verified=False)),
+        ("urllib (SSL verificado + resume)", lambda: _download_urllib(url, dest, verified=True)),
+        ("urllib (SSL no verificado + resume)", lambda: _download_urllib(url, dest, verified=False)),
         ("PowerShell WebClient", lambda: download_with_powershell(url, dest)),
         ("PowerShell (sin verificar SSL)", lambda: download_with_powershell_ssl_fallback(url, dest)),
         ("BITS (Background Transfer)", lambda: download_with_bits(url, dest)),
@@ -93,7 +185,7 @@ def download_model_auto(url, dest, label="Modelo"):
         print(f"     🔄 Intentando: {name}...")
         try:
             if method():
-                if os.path.exists(dest) and os.path.getsize(dest) > (1024**3):  # > 1 GB
+                if os.path.exists(dest) and os.path.getsize(dest) > (1024**3):
                     size = os.path.getsize(dest) / (1024**3)
                     print(f"\r     ✅ {label} descargado: {size:.2f} GB".ljust(70))
                     return True
@@ -101,40 +193,14 @@ def download_model_auto(url, dest, label="Modelo"):
                     log(f"{label} descargado pero parece pequeño ({os.path.getsize(dest)/(1024**3):.2f} GB)", False)
         except Exception as e:
             print(f"     ⚠️  Falló: {e}")
-    return False
 
-def _download_urllib(url, dest, verified=True):
-    """Descarga con urllib, con o sin verificación SSL"""
-    tmp = dest + ".tmp"
-    import socket
-    socket.setdefaulttimeout(1800)
-    import ssl
-    from urllib.request import urlretrieve, urlopen, build_opener, HTTPSHandler, install_opener
-
-    ctx = ssl.create_default_context() if verified else ssl._create_unverified_context()
-    try:
-        test = urlopen(url, timeout=30, context=ctx)
-        test.close()
-    except Exception:
-        if verified:
-            return False
-    opener = build_opener(HTTPSHandler(context=ctx))
-    install_opener(opener)
-
-    def report(block, block_size, total):
-        downloaded = block * block_size / (1024**3)
-        if total > 0:
-            total_gb = total / (1024**3)
-            pct = min(100, int(downloaded / total_gb * 100))
-            bar = "█" * (pct // 2) + "░" * (50 - pct // 2)
-            print(f"     [{bar}] {downloaded:.1f}/{total_gb:.1f} GB ({pct}%)", end="\r")
-        else:
-            print(f"     Descargados {downloaded:.1f} GB...", end="\r")
-
-    urlretrieve(url, tmp, reporthook=report)
-    if os.path.exists(tmp) and os.path.getsize(tmp) > 0:
-        os.replace(tmp, dest)
-        return True
+    # Si llegamos aquí y hay un .tmp, renombrar por si sirve
+    if os.path.exists(tmp) and not os.path.exists(dest):
+        os.rename(tmp, dest)
+        size = os.path.getsize(dest) / (1024**3)
+        if size > 1.0:
+            log(f"{label} recuperado desde descarga parcial: {size:.2f} GB")
+            return True
     return False
 
 def create_shortcut_windows(script_dir):
