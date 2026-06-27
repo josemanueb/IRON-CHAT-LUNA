@@ -1,4 +1,4 @@
-# 💪 IRON CHAT - LUNA 🏋️
+# 💪 IRON CHAT - LUNA v2.1 🏋️
 
 **Chatbot con IA especializado en fitness, nutrición y motivación.**
 
@@ -14,7 +14,7 @@
 |---------|-------------|
 | 🤖 **IA local** | Llama 3.2 3B (GGUF Q4_K_M) — sin internet necesaria |
 | 🧠 **Memoria** | Recuerda los últimos 5 mensajes de la conversación |
-| 🔊 **TTS real** | Piper TTS (Linux) / pyttsx3 (Windows) — voz femenina española |
+| 🔊 **TTS real** | Piper TTS (Linux) / pyttsx3 (Windows) — voz femenina española, velocidad ajustable ⚡ |
 | 🎨 **Cara animada** | Robot que se balancea al hablar |
 | 🖼️ **26 dibujos ASCII** | Mancuerna, pesa, musculo, flexión, sentadilla y más |
 | ⏱️ **Temporizador** | Cuenta atrás para descanso entre series (30s/60s/90s/120s/personalizado) |
@@ -22,7 +22,7 @@
 | 🥗 **Dietas** | Planes de volumen, definición y alimentación saludable |
 | 📊 **Progreso SQLite** | Guarda peso, medidas corporales y ve tu evolución con deltas ▲▼ |
 | 🌙 **3 Temas** | Oscuro, Claro y Naturaleza — alterna con /tema o Ctrl+T |
-| 🎵 **Música** | Reproduce MP3 motivacionales desde la carpeta `musica/` |
+| 🎵 **Música** | Reproduce MP3 motivacionales desde la carpeta `musica/` con volumen independiente |
 | ⏰ **Recordatorios** | Programa avisos con /recordatorio |
 | 📝 **Notas rápidas** | Bloc de notas para tus entrenos |
 | 📤 **Exportar chat** | Guarda el historial en tu escritorio (Ctrl+D) |
@@ -63,7 +63,7 @@ pip install llama-cpp-python pygame Pillow
 sudo apt install -y piper-tts
 
 # 5. Descargar el modelo
-# Coloca Llama-3.2-3B-Instruct-Q4_K_M.gguf en models/
+# Colocá Llama-3.2-3B-Instruct-Q4_K_M.gguf en models/
 
 # 6. Ejecutar
 python3 main.py
@@ -257,7 +257,7 @@ Dibujos disponibles: `mancuerna`, `pesa`, `musculo`, `trofeo`, `fuego`, `corazon
 
 ## 🧠 Modelo de IA
 
-Descarga el modelo desde Hugging Face y colócalo en `models/`:
+Descargá el modelo desde Hugging Face y ponelo en `models/`:
 
 ```
 https://huggingface.co/bartowski/Llama-3.2-3B-Instruct-GGUF/resolve/main/Llama-3.2-3B-Instruct-Q4_K_M.gguf
@@ -275,7 +275,7 @@ https://huggingface.co/bartowski/Llama-3.2-3B-Instruct-GGUF/resolve/main/Llama-3
 ## 🔊 Voces TTS
 
 ### Linux (Piper)
-Descarga las voces desde Hugging Face y colócalas en `voices/`:
+Descargá las voces desde Hugging Face y ponelas en `voices/`:
 
 - **Femenina (recomendada):** `es_ES-sharvard-medium.onnx`
 - **Masculina:** `es_ES-carlfm-x_low.onnx`
@@ -318,17 +318,17 @@ Probado en:
 
 ## 📸 Capturas
 
-*(Añade aquí capturas de pantalla de la interfaz)*
+*(Añadí aquí capturas de pantalla de la interfaz)*
 
 ---
 
 ## 🤝 Contribuir
 
-1. Haz fork del proyecto
-2. Crea una rama (`git checkout -b feature/nueva-funcion`)
-3. Haz commit (`git commit -m 'Añade nueva función'`)
-4. Haz push (`git push origin feature/nueva-funcion`)
-5. Abre un Pull Request
+1. Hacé fork del proyecto
+2. Creá una rama (`git checkout -b feature/nueva-funcion`)
+3. Hacé commit (`git commit -m 'Añade nueva función'`)
+4. Hacé push (`git push origin feature/nueva-funcion`)
+5. Abrí un Pull Request
 
 ---
 
