@@ -278,19 +278,33 @@ def main():
         return False
 
     def _install_vcredist():
-        """Descarga e instala el VC++ Redistributable silenciosamente"""
+        """Descarga e instala el VC++ Redistributable"""
         url = "https://aka.ms/vs/17/release/vc_redist.x64.exe"
         tmp = os.path.join(SCRIPT_DIR, "vc_redist.x64.exe")
         print("     ⬇️ Descargando Microsoft Visual C++ Redistributable...")
         try:
             urllib.request.urlretrieve(url, tmp)
-            print("     🛠️ Instalando (ventana emergente)...")
-            subprocess.run([tmp, "/install", "/quiet", "/norestart"],
-                           timeout=120, capture_output=True)
+            print("     🛠️ Instalando...")
+            # Intentar modo silencioso primero
+            result = subprocess.run([tmp, "/install", "/quiet", "/norestart"],
+                                    timeout=120, capture_output=True)
+            if result.returncode != 0:
+                print("     ⚠️ Modo silencioso falló, intentando con interfaz...")
+                subprocess.run([tmp, "/install", "/passive", "/norestart"],
+                               timeout=120)
             os.unlink(tmp)
             return _check_vcredist()
         except Exception as e:
             print(f"     ⚠️ Error instalando VC++: {e}")
+            try:
+                print("     🔄 Reintentando con interfaz visible...")
+                subprocess.run([tmp, "/install", "/passive", "/norestart"],
+                               timeout=120)
+                return _check_vcredist()
+            except Exception:
+                pass
+            if os.path.exists(tmp):
+                os.unlink(tmp)
             return False
 
     def _download_wheel_direct():
@@ -315,7 +329,7 @@ def main():
                     print(f"     ✅ Wheel {ver} descargado ({os.path.getsize(tmp)/(1024**2):.0f} MB)")
                     return tmp
                 os.unlink(tmp)
-            except:
+            except Exception:
                 if os.path.exists(tmp):
                     os.unlink(tmp)
         return None
@@ -352,7 +366,7 @@ def main():
                     return True
                 try:
                     os.unlink(whl)
-                except:
+                except Exception:
                     pass
             return False
 
@@ -433,7 +447,7 @@ def main():
     # === 4. MODELO DE IA ===
     section("🤖 Modelo de IA")
     model_dir = os.path.join(SCRIPT_DIR, "models")
-    model_path = os.path.join(model_dir, "Llama-3.2-3B-Instruct-Q4_0.gguf")
+    model_path = os.path.join(model_dir, "Llama-3.2-3B-Instruct-Q4_K_M.gguf")
     os.makedirs(model_dir, exist_ok=True)
 
     if os.path.exists(model_path):
@@ -443,7 +457,7 @@ def main():
             print("     ⚠️ El archivo parece muy pequeño, puede estar corrupto.")
             print("     Elimínalo y vuelve a ejecutar el instalador.")
     else:
-        model_url = "https://huggingface.co/bartowski/Llama-3.2-3B-Instruct-GGUF/resolve/main/Llama-3.2-3B-Instruct-Q4_0.gguf"
+        model_url = "https://huggingface.co/bartowski/Llama-3.2-3B-Instruct-GGUF/resolve/main/Llama-3.2-3B-Instruct-Q4_K_M.gguf"
         print("  ⏳ Descargando modelo (2 GB, puede tomar varios minutos)...")
         print("     ⚠️  NO CIERRES ESTA VENTANA hasta que termine!")
         print()
@@ -461,7 +475,7 @@ def main():
             print()
             print(f"  3. Copia el archivo descargado AQUÍ:")
             print(f"     {model_dir}")
-            print(f"     El nombre debe ser: Llama-3.2-3B-Instruct-Q4_0.gguf")
+            print(f"     El nombre debe ser: Llama-3.2-3B-Instruct-Q4_K_M.gguf")
             print()
             print("  4. Una vez colocado, ejecuta install.bat otra vez")
             print()
@@ -569,7 +583,7 @@ $sc.Save()
                         log("Acceso directo creado (copia .bat en escritorio)")
                         shortcut_ok = True
                         break
-                    except:
+                    except Exception:
                         pass
 
         if not shortcut_ok:

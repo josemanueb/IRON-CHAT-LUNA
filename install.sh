@@ -47,7 +47,7 @@ echo "📦 Instalando dependencias Python..."
 pip install --upgrade pip -q
 
 echo "  ⏳ Instalando llama-cpp-python (sin AVX)..."
-if pip install llama-cpp-python -q; then
+if pip install llama-cpp-python --prefer-binary -q; then
     echo "  ✅ llama-cpp-python instalado"
 else
     echo "  ❌ Error instalando llama-cpp-python"
@@ -68,8 +68,8 @@ fi
 echo ""
 echo "🤖 Descargando modelo de IA (Llama 3.2 3B, ~2 GB)..."
 MODEL_DIR="$SCRIPT_DIR/models"
-MODEL_PATH="$MODEL_DIR/Llama-3.2-3B-Instruct-Q4_0.gguf"
-MODEL_URL="https://huggingface.co/bartowski/Llama-3.2-3B-Instruct-GGUF/resolve/main/Llama-3.2-3B-Instruct-Q4_0.gguf"
+MODEL_PATH="$MODEL_DIR/Llama-3.2-3B-Instruct-Q4_K_M.gguf"
+MODEL_URL="https://huggingface.co/bartowski/Llama-3.2-3B-Instruct-GGUF/resolve/main/Llama-3.2-3B-Instruct-Q4_K_M.gguf"
 mkdir -p "$MODEL_DIR"
 
 if [ -f "$MODEL_PATH" ]; then
@@ -116,7 +116,7 @@ else
         echo ""
         echo "  3. Copia el archivo descargado AQUÍ:"
         echo "     $MODEL_DIR"
-        echo "     El nombre debe ser: Llama-3.2-3B-Instruct-Q4_0.gguf"
+        echo "     El nombre debe ser: Llama-3.2-3B-Instruct-Q4_K_M.gguf"
         echo ""
         echo "  4. Una vez colocado, ejecuta install.sh otra vez"
         echo ""

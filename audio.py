@@ -13,8 +13,6 @@ _pygame = None
 
 def _get_pygame():
     global _pygame
-    if _pygame is not None:
-        return _pygame
     if _system == "Windows":
         _pygame = False
         return None

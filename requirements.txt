@@ -12,3 +12,5 @@ Pillow
 #
 # Linux: descomentar para sonidos/musica
 # pygame
+#
+# En Linux si falta compilador: pip install --prefer-binary llama-cpp-python

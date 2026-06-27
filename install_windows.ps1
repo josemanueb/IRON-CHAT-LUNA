@@ -159,14 +159,14 @@ if ($LASTEXITCODE -eq 0) {
 # === 4. MODELO DE IA (2 GB) ===
 Write-Host "`n🤖 Descargando modelo de IA (Llama 3.2 3B, ~2 GB)..." -ForegroundColor Cyan
 $modelDir = "$SCRIPT_DIR\models"
-$modelPath = "$modelDir\Llama-3.2-3B-Instruct-Q4_0.gguf"
+$modelPath = "$modelDir\Llama-3.2-3B-Instruct-Q4_K_M.gguf"
 if (-not (Test-Path $modelDir)) { New-Item -ItemType Directory -Path $modelDir | Out-Null }
 
 if (Test-Path $modelPath) {
     $modelSize = (Get-Item $modelPath).Length / 1GB
     Write-Host "  ✅ Modelo ya existe: $([math]::Round($modelSize, 2)) GB" -ForegroundColor Green
 } else {
-    $modelUrl = "https://huggingface.co/bartowski/Llama-3.2-3B-Instruct-GGUF/resolve/main/Llama-3.2-3B-Instruct-Q4_0.gguf"
+    $modelUrl = "https://huggingface.co/bartowski/Llama-3.2-3B-Instruct-GGUF/resolve/main/Llama-3.2-3B-Instruct-Q4_K_M.gguf"
     Write-Host "  ⏳ Descargando modelo (puede tomar varios minutos)..." -ForegroundColor Yellow
 
     $downloaded = $false
@@ -200,7 +200,7 @@ if (Test-Path $modelPath) {
         Write-Host "     $modelUrl" -ForegroundColor Yellow
         Write-Host "`n  2. Copia el archivo descargado AQUÍ:" -ForegroundColor Yellow
         Write-Host "     $modelDir" -ForegroundColor Yellow
-        Write-Host "     El nombre debe ser: Llama-3.2-3B-Instruct-Q4_0.gguf" -ForegroundColor Yellow
+        Write-Host "     El nombre debe ser: Llama-3.2-3B-Instruct-Q4_K_M.gguf" -ForegroundColor Yellow
         Write-Host "`n  3. Una vez colocado, ejecuta el instalador otra vez" -ForegroundColor Yellow
         pause
     }

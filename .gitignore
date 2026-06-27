@@ -3,6 +3,7 @@ __pycache__/
 *.pyc
 *.log
 *.tmp
+*.whl
 historial.json
 notas_entreno.txt
 progreso.db
@@ -13,3 +14,5 @@ voices/
 *.onnx
 *.onnx.json
 run.bat
+vc_redist.*
+backup-*/
