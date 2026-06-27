@@ -4,7 +4,13 @@ import os
 import re
 
 project_dir = os.path.dirname(os.path.abspath(__file__))
-archivos = ["main.py", "ai_module.py", "tts_module.py", "face_animation.py", "ascii_art.py", "sounds.py", "audio.py", "requirements.txt"]
+archivos = [
+    "main.py", "ai_module.py", "tts_module.py", "face_animation.py",
+    "ascii_art.py", "sounds.py", "audio.py", "progress_tracker.py",
+    "install.py", "install_windows.ps1",
+    "uninstall.bat", "uninstall.sh", "crear_acceso_windows.vbs",
+    "iron-chat.bat", "requirements.txt"
+]
 
 hash_total = hashlib.sha256()
 for archivo in archivos:
