@@ -57,14 +57,14 @@ INSTRUCCIONES:
 - Recuerda lo que el usuario te ha dicho antes en la conversacion"""
 
             messages = [{"role": "system", "content": system_prompt}]
-            
+
             if history:
                 for role, text in history:
                     if role == "user":
                         messages.append({"role": "user", "content": text})
                     elif role == "assistant":
                         messages.append({"role": "assistant", "content": text})
-            
+
             messages.append({"role": "user", "content": user_input})
 
             response = self.model.create_chat_completion(

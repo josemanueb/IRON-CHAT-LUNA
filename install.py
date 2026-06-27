@@ -445,8 +445,6 @@ def main():
         voice_json_url = "https://huggingface.co/rhasspy/piper-voices/resolve/main/es/es_ES/sharvard/medium/es_ES-sharvard-medium.onnx.json"
         print("  ⏳ Descargando voz (77 MB)...")
 
-        voice_tmp = voice_path + ".tmp"
-        json_tmp = voice_path + ".json.tmp"
         voice_ok = False
 
         for url, dest, label in [

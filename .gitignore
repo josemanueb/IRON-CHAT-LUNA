@@ -2,10 +2,13 @@ venv/
 __pycache__/
 *.pyc
 *.log
+*.tmp
 historial.json
 notas_entreno.txt
 progreso.db
 musica/
+models/
+voices/
 *.gguf
 *.onnx
 *.onnx.json

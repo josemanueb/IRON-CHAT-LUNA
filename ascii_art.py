@@ -30,7 +30,7 @@ class ASCIIArt:
             "suplemento": " .------.\n | 💊💊 |\n | SUP  |\n '------'\n    ||\n   /  \\",
         }
         return arts.get(name.lower(), arts.get("musculo"))
-    
+
     @staticmethod
     def list_arts():
         return ["mancuerna","pesa","musculo","trofeo","fuego","corazon","hombre","mujer","flexion","sentadilla","barra","reloj","manzana","agua","pesas","runner","yoga","bicicleta","escalera","peso_muerto","gym","proteina","cuerda","remo","abdominal","suplemento"]
