@@ -90,7 +90,7 @@ def main():
     # 3b. Otras dependencias
     deps = ["Pillow"]
     if platform.system() == "Windows":
-        deps.append("pyttsx3")
+        deps.extend(["pyttsx3", "pywin32"])
     else:
         deps.extend(["pygame", "piper-tts"])
     if not pip_install(pip, deps, ", ".join(deps)):
@@ -141,9 +141,19 @@ def main():
         print("     Si la descarga falla, te daré instrucciones.")
         print()
         try:
-            from urllib.request import urlretrieve
+            import ssl
+            from urllib.request import urlretrieve, urlopen
             import socket
             socket.setdefaulttimeout(1800)  # 30 minutos
+
+            # En Windows a veces falla SSL, intentamos con contexto verificado primero
+            try:
+                ctx = ssl.create_default_context()
+                test = urlopen(model_url, timeout=30, context=ctx)
+                test.close()
+            except Exception:
+                ctx = ssl._create_unverified_context()
+
             def report(block, block_size, total):
                 downloaded = block * block_size / (1024**3)
                 if total > 0:
@@ -153,6 +163,11 @@ def main():
                     print(f"     [{bar}] {downloaded:.1f}/{total_gb:.1f} GB ({pct}%)", end="\r")
                 else:
                     print(f"     Descargados {downloaded:.1f} GB...", end="\r")
+
+            opener = urllib.request.build_opener(
+                urllib.request.HTTPSHandler(context=ctx)
+            )
+            urllib.request.install_opener(opener)
             urlretrieve(model_url, model_path + ".tmp", reporthook=report)
             os.replace(model_path + ".tmp", model_path)
             size = os.path.getsize(model_path) / (1024**3)
@@ -217,6 +232,8 @@ def main():
     # === 7. ACCESO DIRECTO ===
     section("📌 Acceso directo")
     if platform.system() == "Windows":
+        shortcut_ok = False
+        # Método 1: win32com (requiere pywin32)
         try:
             import win32com.client
             ws = win32com.client.Dispatch("WScript.Shell")
@@ -231,8 +248,25 @@ def main():
                 shortcut.IconLocation = icon_path
             shortcut.Save()
             log("Acceso directo creado en el escritorio")
+            shortcut_ok = True
         except Exception as e:
-            log(f"No se pudo crear acceso directo: {e}", False)
+            log(f"win32com falló: {e}", False)
+        # Método 2: fallback con VBS
+        if not shortcut_ok:
+            try:
+                vbs_path = os.path.join(SCRIPT_DIR, "crear_acceso_windows.vbs")
+                if os.path.exists(vbs_path):
+                    subprocess.run(["cscript", "//nologo", vbs_path],
+                                   cwd=SCRIPT_DIR,
+                                   stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                    log("Acceso directo creado (via VBS)")
+                    shortcut_ok = True
+                else:
+                    log("No se encontró crear_acceso_windows.vbs", False)
+            except Exception as e:
+                log(f"VBS falló: {e}", False)
+        if not shortcut_ok:
+            log("Crea el acceso manual: clic derecho en iron-chat.bat → Enviar a Escritorio", False)
     else:
         desktop = os.path.join(os.path.expanduser("~"), "Desktop")
         desktop_file = os.path.join(desktop, "IRON-CHAT-LUNA.desktop")
