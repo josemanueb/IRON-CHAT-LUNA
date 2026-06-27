@@ -11,6 +11,7 @@ import sys
 import subprocess
 import urllib.request
 import platform
+import shutil
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 
@@ -38,6 +39,187 @@ def verify_import(venv_dir, module_name):
     python_exe = os.path.join(venv_dir, "Scripts", "python.exe") if platform.system() == "Windows" else os.path.join(venv_dir, "bin", "python")
     result = subprocess.run([python_exe, "-c", f"import {module_name}; print('OK')"], capture_output=True, text=True)
     return result.returncode == 0
+
+def download_with_powershell(url, dest):
+    """Descarga usando PowerShell Invoke-WebRequest (maneja SSL en Windows)"""
+    try:
+        cmd = [
+            'powershell', '-NoProfile', '-Command',
+            f'$wc = New-Object System.Net.WebClient; $wc.DownloadFile("{url}", "{dest}")'
+        ]
+        result = subprocess.run(cmd, capture_output=True, text=True, timeout=3600)
+        return result.returncode == 0 and os.path.exists(dest) and os.path.getsize(dest) > 0
+    except:
+        return False
+
+def download_with_powershell_ssl_fallback(url, dest):
+    """Descarga con PowerShell ignorando errores SSL"""
+    try:
+        script = f'''
+[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
+[System.Net.ServicePointManager]::ServerCertificateValidationCallback = {{$true}}
+$wc = New-Object System.Net.WebClient
+$wc.DownloadFile("{url}", "{dest}")
+'''
+        cmd = ['powershell', '-NoProfile', '-Command', script]
+        result = subprocess.run(cmd, capture_output=True, text=True, timeout=3600)
+        return result.returncode == 0 and os.path.exists(dest) and os.path.getsize(dest) > 0
+    except:
+        return False
+
+def download_with_bits(url, dest):
+    """Descarga usando BITS (Background Intelligent Transfer Service)"""
+    try:
+        cmd = [
+            'powershell', '-NoProfile', '-Command',
+            f'Start-BitsTransfer -Source "{url}" -Destination "{dest}" -Priority High'
+        ]
+        result = subprocess.run(cmd, capture_output=True, text=True, timeout=7200)
+        return result.returncode == 0 and os.path.exists(dest) and os.path.getsize(dest) > 0
+    except:
+        return False
+
+def download_model_auto(url, dest, label="Modelo"):
+    """Intenta descargar con múltiples métodos, retorna True si éxito"""
+    methods = [
+        ("urllib (SSL verificado)", lambda: _download_urllib(url, dest, verified=True)),
+        ("urllib (SSL no verificado)", lambda: _download_urllib(url, dest, verified=False)),
+        ("PowerShell WebClient", lambda: download_with_powershell(url, dest)),
+        ("PowerShell (sin verificar SSL)", lambda: download_with_powershell_ssl_fallback(url, dest)),
+        ("BITS (Background Transfer)", lambda: download_with_bits(url, dest)),
+    ]
+
+    for name, method in methods:
+        print(f"     🔄 Intentando: {name}...")
+        try:
+            if method():
+                if os.path.exists(dest) and os.path.getsize(dest) > (1024**3):  # > 1 GB
+                    size = os.path.getsize(dest) / (1024**3)
+                    print(f"\r     ✅ {label} descargado: {size:.2f} GB".ljust(70))
+                    return True
+                elif os.path.exists(dest) and os.path.getsize(dest) > 0:
+                    log(f"{label} descargado pero parece pequeño ({os.path.getsize(dest)/(1024**3):.2f} GB)", False)
+        except Exception as e:
+            print(f"     ⚠️  Falló: {e}")
+    return False
+
+def _download_urllib(url, dest, verified=True):
+    """Descarga con urllib, con o sin verificación SSL"""
+    tmp = dest + ".tmp"
+    import socket
+    socket.setdefaulttimeout(1800)
+    import ssl
+    from urllib.request import urlretrieve, urlopen, build_opener, HTTPSHandler, install_opener
+
+    ctx = ssl.create_default_context() if verified else ssl._create_unverified_context()
+    try:
+        test = urlopen(url, timeout=30, context=ctx)
+        test.close()
+    except Exception:
+        if verified:
+            return False
+    opener = build_opener(HTTPSHandler(context=ctx))
+    install_opener(opener)
+
+    def report(block, block_size, total):
+        downloaded = block * block_size / (1024**3)
+        if total > 0:
+            total_gb = total / (1024**3)
+            pct = min(100, int(downloaded / total_gb * 100))
+            bar = "█" * (pct // 2) + "░" * (50 - pct // 2)
+            print(f"     [{bar}] {downloaded:.1f}/{total_gb:.1f} GB ({pct}%)", end="\r")
+        else:
+            print(f"     Descargados {downloaded:.1f} GB...", end="\r")
+
+    urlretrieve(url, tmp, reporthook=report)
+    if os.path.exists(tmp) and os.path.getsize(tmp) > 0:
+        os.replace(tmp, dest)
+        return True
+    return False
+
+def create_shortcut_windows(script_dir):
+    """Crea acceso directo en Windows con múltiples métodos"""
+    shortcut_ok = False
+    desktop = os.path.join(os.path.expanduser("~"), "Desktop")
+    link_path = os.path.join(desktop, "IRON CHAT - LUNA.lnk")
+    target = os.path.join(script_dir, "iron-chat.bat")
+    icon = os.path.join(script_dir, "robot-icon.ico")
+    icon = icon if os.path.exists(icon) else ""
+
+    # Método 1: win32com (requiere pywin32)
+    try:
+        import win32com.client
+        ws = win32com.client.Dispatch("WScript.Shell")
+        desktop_shell = ws.SpecialFolders("Desktop")
+        link = os.path.join(desktop_shell, "IRON CHAT - LUNA.lnk")
+        sc = ws.CreateShortcut(link)
+        sc.TargetPath = target
+        sc.WorkingDirectory = script_dir
+        sc.Description = "Chatbot Inteligente con LUNA - Entrenadora Personal"
+        if icon:
+            sc.IconLocation = icon
+        sc.Save()
+        log("Acceso directo creado (win32com)")
+        return True
+    except Exception as e:
+        log(f"win32com falló: {e}", False)
+
+    # Método 2: PowerShell COM object
+    try:
+        ps_script = f'''
+$ws = New-Object -ComObject WScript.Shell
+$desktop = [Environment]::GetFolderPath("Desktop")
+$link = "$desktop\\IRON CHAT - LUNA.lnk"
+$sc = $ws.CreateShortcut($link)
+$sc.TargetPath = "{target}"
+$sc.WorkingDirectory = "{script_dir}"
+$sc.Description = "Chatbot Inteligente con LUNA - Entrenadora Personal"
+{(f'$sc.IconLocation = "{icon}"' if icon else '')}
+$sc.Save()
+'''
+        subprocess.run(['powershell', '-NoProfile', '-Command', ps_script],
+                       check=True, capture_output=True, timeout=30)
+        if os.path.exists(link_path):
+            log("Acceso directo creado (PowerShell COM)")
+            return True
+    except Exception as e:
+        log(f"PowerShell COM falló: {e}", False)
+
+    # Método 3: VBS fallback
+    try:
+        vbs_path = os.path.join(script_dir, "crear_acceso_windows.vbs")
+        if os.path.exists(vbs_path):
+            subprocess.run(["cscript", "//nologo", vbs_path],
+                           cwd=script_dir, capture_output=True, timeout=30)
+            if os.path.exists(link_path):
+                log("Acceso directo creado (VBS)")
+                return True
+    except Exception as e:
+        log(f"VBS falló: {e}", False)
+
+    # Método 4: Copiar iron-chat.bat al escritorio
+    try:
+        bat_dest = os.path.join(desktop, "IRON CHAT - LUNA.bat")
+        shutil.copy2(target, bat_dest)
+        log("Acceso directo creado (copia de iron-chat.bat en escritorio)")
+        return True
+    except Exception as e:
+        log(f"Copia falló: {e}", False)
+
+    # Método 5: Crear un .bat en escritorio que ejecute main.py desde el venv
+    try:
+        python_exe = os.path.join(script_dir, "venv", "Scripts", "python.exe")
+        bat_dest = os.path.join(desktop, "IRON CHAT - LUNA.bat")
+        with open(bat_dest, "w") as f:
+            f.write(f'@echo off\ncd /d "{script_dir}"\n"{python_exe}" main.py\npause\n')
+        log("Acceso directo creado (.bat generado en escritorio)")
+        return True
+    except Exception as e:
+        log(f"Bat generado falló: {e}", False)
+
+    log("No se pudo crear acceso directo. Hazlo manual: clic derecho en iron-chat.bat → Enviar a Escritorio", False)
+    return False
+
 
 # ============================================================
 
@@ -138,42 +320,9 @@ def main():
         model_url = "https://huggingface.co/bartowski/Llama-3.2-3B-Instruct-GGUF/resolve/main/Llama-3.2-3B-Instruct-Q4_0.gguf"
         print("  ⏳ Descargando modelo (2 GB, puede tomar varios minutos)...")
         print("     ⚠️  NO CIERRES ESTA VENTANA hasta que termine!")
-        print("     Si la descarga falla, te daré instrucciones.")
         print()
-        try:
-            import ssl
-            from urllib.request import urlretrieve, urlopen
-            import socket
-            socket.setdefaulttimeout(1800)  # 30 minutos
 
-            # En Windows a veces falla SSL, intentamos con contexto verificado primero
-            try:
-                ctx = ssl.create_default_context()
-                test = urlopen(model_url, timeout=30, context=ctx)
-                test.close()
-            except Exception:
-                ctx = ssl._create_unverified_context()
-
-            def report(block, block_size, total):
-                downloaded = block * block_size / (1024**3)
-                if total > 0:
-                    total_gb = total / (1024**3)
-                    pct = min(100, int(downloaded / total_gb * 100))
-                    bar = "█" * (pct // 2) + "░" * (50 - pct // 2)
-                    print(f"     [{bar}] {downloaded:.1f}/{total_gb:.1f} GB ({pct}%)", end="\r")
-                else:
-                    print(f"     Descargados {downloaded:.1f} GB...", end="\r")
-
-            opener = urllib.request.build_opener(
-                urllib.request.HTTPSHandler(context=ctx)
-            )
-            urllib.request.install_opener(opener)
-            urlretrieve(model_url, model_path + ".tmp", reporthook=report)
-            os.replace(model_path + ".tmp", model_path)
-            size = os.path.getsize(model_path) / (1024**3)
-            print(f"\r     ✅ Modelo descargado: {size:.2f} GB".ljust(70))
-        except Exception as e:
-            print(f"\r     ❌ Error descargando modelo: {e}".ljust(70))
+        if not download_model_auto(model_url, model_path):
             print()
             print("  ╔══════════════════════════════════════════════╗")
             print("  ║   DESCARGA MANUAL REQUERIDA                ║")
@@ -191,7 +340,6 @@ def main():
             print("  4. Una vez colocado, ejecuta install.bat otra vez")
             print()
             input("     Presiona Enter cuando hayas colocado el modelo...")
-            # Re-verificar
             if os.path.exists(model_path):
                 size = os.path.getsize(model_path) / (1024**3)
                 if size > 1.0:
@@ -215,11 +363,34 @@ def main():
         voice_url = "https://huggingface.co/rhasspy/piper-voices/resolve/main/es/es_ES/sharvard/medium/es_ES-sharvard-medium.onnx"
         voice_json_url = "https://huggingface.co/rhasspy/piper-voices/resolve/main/es/es_ES/sharvard/medium/es_ES-sharvard-medium.onnx.json"
         print("  ⏳ Descargando voz (77 MB)...")
-        try:
-            urllib.request.urlretrieve(voice_url, voice_path)
-            urllib.request.urlretrieve(voice_json_url, voice_path + ".json")
-            log("Voz descargada: es_ES-sharvard-medium.onnx")
-        except:
+
+        voice_tmp = voice_path + ".tmp"
+        json_tmp = voice_path + ".json.tmp"
+        voice_ok = False
+
+        for url, dest, label in [
+            (voice_url, voice_path, "Voz"),
+            (voice_json_url, voice_path + ".json", "Config")
+        ]:
+            if download_with_powershell(url, dest) or \
+               download_with_powershell_ssl_fallback(url, dest) or \
+               download_with_bits(url, dest):
+                log(f"{label} descargada")
+                voice_ok = True
+            else:
+                # Fallback a urllib
+                try:
+                    import ssl
+                    ctx = ssl._create_unverified_context()
+                    opener = urllib.request.build_opener(urllib.request.HTTPSHandler(context=ctx))
+                    urllib.request.install_opener(opener)
+                    urllib.request.urlretrieve(url, dest)
+                    log(f"{label} descargada")
+                    voice_ok = True
+                except:
+                    log(f"No se pudo descargar {label}", False)
+
+        if not voice_ok:
             log("No se pudo descargar la voz", False)
             print("     ⚠️ El TTS usará la voz del sistema")
 
@@ -232,46 +403,19 @@ def main():
     # === 7. ACCESO DIRECTO ===
     section("📌 Acceso directo")
     if platform.system() == "Windows":
-        shortcut_ok = False
-        # Método 1: win32com (requiere pywin32)
-        try:
-            import win32com.client
-            ws = win32com.client.Dispatch("WScript.Shell")
-            desktop = ws.SpecialFolders("Desktop")
-            link_path = os.path.join(desktop, "IRON CHAT - LUNA.lnk")
-            shortcut = ws.CreateShortcut(link_path)
-            shortcut.TargetPath = os.path.join(SCRIPT_DIR, "iron-chat.bat")
-            shortcut.WorkingDirectory = SCRIPT_DIR
-            shortcut.Description = "Chatbot Inteligente con LUNA - Entrenadora Personal"
-            icon_path = os.path.join(SCRIPT_DIR, "robot-icon.ico")
-            if os.path.exists(icon_path):
-                shortcut.IconLocation = icon_path
-            shortcut.Save()
-            log("Acceso directo creado en el escritorio")
-            shortcut_ok = True
-        except Exception as e:
-            log(f"win32com falló: {e}", False)
-        # Método 2: fallback con VBS
-        if not shortcut_ok:
-            try:
-                vbs_path = os.path.join(SCRIPT_DIR, "crear_acceso_windows.vbs")
-                if os.path.exists(vbs_path):
-                    subprocess.run(["cscript", "//nologo", vbs_path],
-                                   cwd=SCRIPT_DIR,
-                                   stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-                    log("Acceso directo creado (via VBS)")
-                    shortcut_ok = True
-                else:
-                    log("No se encontró crear_acceso_windows.vbs", False)
-            except Exception as e:
-                log(f"VBS falló: {e}", False)
-        if not shortcut_ok:
-            log("Crea el acceso manual: clic derecho en iron-chat.bat → Enviar a Escritorio", False)
+        create_shortcut_windows(SCRIPT_DIR)
     else:
         desktop = os.path.join(os.path.expanduser("~"), "Desktop")
+        if not os.path.exists(desktop):
+            alt = os.path.join(os.path.expanduser("~"), "Escritorio")
+            if os.path.exists(alt):
+                desktop = alt
+        os.makedirs(desktop, exist_ok=True)
         desktop_file = os.path.join(desktop, "IRON-CHAT-LUNA.desktop")
         python_path = os.path.join(venv_dir, "bin", "python3")
-        icon_path = os.path.join(SCRIPT_DIR, "robot.jpeg")
+        icon_path = os.path.join(SCRIPT_DIR, "robot-icon.png")
+        if not os.path.exists(icon_path):
+            icon_path = os.path.join(SCRIPT_DIR, "robot.jpeg")
         content = f"""[Desktop Entry]
 Name=IRON CHAT - LUNA
 Comment=Chatbot con IA - Entrenadora personal
@@ -286,6 +430,10 @@ Categories=Utility;AI;
             f.write(content)
         os.chmod(desktop_file, 0o755)
         log("Acceso directo creado en el escritorio")
+        apps_dir = os.path.join(os.path.expanduser("~"), ".local", "share", "applications")
+        os.makedirs(apps_dir, exist_ok=True)
+        shutil.copy2(desktop_file, os.path.join(apps_dir, "IRON-CHAT-LUNA.desktop"))
+        log("Acceso directo registrado en aplicaciones")
 
     # === RUN.BAT ===
     if platform.system() == "Windows":
@@ -304,7 +452,8 @@ Categories=Utility;AI;
         print("     - O doble clic en 'run.bat'")
         print("     - O doble clic en 'iron-chat.bat'")
     else:
-        print("     - Doble clic en 'IRON CHAT - LUNA' del escritorio")
+        print("     - Menú de aplicaciones → IRON CHAT - LUNA")
+        print("     - O doble clic en el icono del escritorio")
         print("     - O en terminal:")
         print(f"        cd {SCRIPT_DIR}")
         print(f"        source venv/bin/activate")
@@ -312,6 +461,7 @@ Categories=Utility;AI;
     print("\n  ⚡ JMbirner ⚡\n")
 
     input("\nPresiona Enter para salir...")
+
 
 if __name__ == "__main__":
     main()
