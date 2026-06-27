@@ -1,11 +1,11 @@
 import os
 import re
 from ascii_art import ASCIIArt
-from llama_cpp import Llama
 
 class GPT4AllAI:
     def __init__(self):
         print("Inicializando LUNA - Entrenadora personal...")
+        from llama_cpp import Llama
 
         self.model_name = "Llama-3.2-3B-Instruct-Q4_0.gguf"
         self.model_path = os.path.join(os.path.dirname(__file__), "models", self.model_name)
