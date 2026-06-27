@@ -275,6 +275,9 @@ def main():
             path = os.path.join(root, "System32", "vcruntime140.dll")
             if os.path.exists(path):
                 return True
+        # También buscar en el directorio del proyecto (extracción directa)
+        if os.path.exists(os.path.join(SCRIPT_DIR, "vcruntime140.dll")):
+            return True
         return False
 
     def _install_vcredist():
@@ -284,28 +287,67 @@ def main():
         print("     ⬇️ Descargando Microsoft Visual C++ Redistributable...")
         try:
             urllib.request.urlretrieve(url, tmp)
+            # Paso 1: intentar instalación silenciosa
             print("     🛠️ Instalando...")
-            # Intentar modo silencioso primero
             result = subprocess.run([tmp, "/install", "/quiet", "/norestart"],
                                     timeout=120, capture_output=True)
-            if result.returncode != 0:
-                print("     ⚠️ Modo silencioso falló, intentando con interfaz...")
-                subprocess.run([tmp, "/install", "/passive", "/norestart"],
-                               timeout=120)
-            os.unlink(tmp)
-            return _check_vcredist()
-        except Exception as e:
-            print(f"     ⚠️ Error instalando VC++: {e}")
-            try:
-                print("     🔄 Reintentando con interfaz visible...")
-                subprocess.run([tmp, "/install", "/passive", "/norestart"],
-                               timeout=120)
+            if result.returncode == 0:
+                os.unlink(tmp)
                 return _check_vcredist()
-            except Exception:
-                pass
+            # Paso 2: fallback con interfaz
+            print("     ⚠️ Modo silencioso falló, intentando con interfaz...")
+            result = subprocess.run([tmp, "/install", "/passive", "/norestart"],
+                                    timeout=120)
+            if result.returncode == 0:
+                os.unlink(tmp)
+                return _check_vcredist()
+            # Paso 3: extraer DLL directo del instalador
+            print("     ⚠️ Instalación falló, extrayendo DLL directamente...")
+            extract_dir = os.path.join(SCRIPT_DIR, "vc_extract")
+            os.makedirs(extract_dir, exist_ok=True)
+            subprocess.run([tmp, "/extract", extract_dir], timeout=30,
+                           capture_output=True)
+            dll_path = _find_vcruntime(extract_dir)
+            if dll_path:
+                dest = os.path.join(SCRIPT_DIR, "vcruntime140.dll")
+                shutil.copy2(dll_path, dest)
+                print(f"     ✅ vcruntime140.dll extraído a: {dest}")
+                # Agregar directorio actual al PATH del proceso
+                os.environ["PATH"] = SCRIPT_DIR + os.pathsep + os.environ.get("PATH", "")
+                shutil.rmtree(extract_dir, ignore_errors=True)
+                os.unlink(tmp)
+                return True
+            shutil.rmtree(extract_dir, ignore_errors=True)
+            os.unlink(tmp)
+            return False
+        except Exception as e:
+            print(f"     ⚠️ Error con VC++: {e}")
             if os.path.exists(tmp):
                 os.unlink(tmp)
             return False
+
+    def _find_vcruntime(search_dir):
+        """Busca vcruntime140.dll recursivamente en un directorio"""
+        for root, dirs, files in os.walk(search_dir):
+            for f in files:
+                if f.lower() == "vcruntime140.dll":
+                    return os.path.join(root, f)
+            # También buscar .cab para extraer
+            for f in files:
+                if f.lower().endswith(".cab"):
+                    cab = os.path.join(root, f)
+                    cab_extract = os.path.join(search_dir, "cab_out")
+                    os.makedirs(cab_extract, exist_ok=True)
+                    try:
+                        subprocess.run(["expand", "-R", cab, cab_extract],
+                                       timeout=30, capture_output=True)
+                        for r2, d2, f2 in os.walk(cab_extract):
+                            for ff in f2:
+                                if ff.lower() == "vcruntime140.dll":
+                                    return os.path.join(r2, ff)
+                    except Exception:
+                        pass
+        return None
 
     def _download_wheel_direct():
         """Descarga el .whl directamente desde abetlen.github.io"""
