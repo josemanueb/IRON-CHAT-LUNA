@@ -130,6 +130,7 @@ class ChatbotApp:
 
         btn_bg = c["btn_bg"]
         self.btn_clear.configure(bg=btn_bg)
+        self.btn_tts.configure(bg="#27AE60" if self.tts_enabled else "#E74C3C")
         self.btn_export.configure(bg=btn_bg)
         self.btn_info.configure(bg=btn_bg)
         self.btn_notes.configure(bg=btn_bg)
@@ -137,6 +138,7 @@ class ChatbotApp:
         self.btn_progress.configure(bg=btn_bg)
         self.btn_ayuda.configure(bg=btn_bg)
         self.btn_credits.configure(bg=btn_bg)
+        self.btn_music.configure(bg="#27AE60" if self.music_playing else btn_bg)
         self.btn_music_folder.configure(bg=btn_bg)
         self.timer_frame.configure(bg=c["bg"])
         self.timer_label.configure(bg=c["bg"], fg=c["acento"])

@@ -6,8 +6,10 @@ import struct
 import math
 import io
 import wave
+import time
 
 _system = platform.system()
+_system_encoding = "utf-8"
 
 
 def _ensure_pygame():
@@ -22,8 +24,30 @@ def _ensure_pygame():
     return None
 
 
+def _get_pid_by_name(name):
+    try:
+        result = subprocess.run(
+            ['tasklist', '/FI', f'IMAGENAME eq {name}', '/NH', '/FO', 'CSV'],
+            capture_output=True, text=True, timeout=5
+        )
+        pids = []
+        for line in result.stdout.strip().split('\n'):
+            if not line:
+                continue
+            parts = line.strip('"').split('","')
+            if len(parts) >= 2:
+                try:
+                    pids.append(int(parts[1]))
+                except ValueError:
+                    pass
+        return pids
+    except:
+        return []
+
+
 class Audio:
     _music_process = None
+    _music_winsound_playing = False
 
     @staticmethod
     def play_wav(path):
@@ -66,11 +90,19 @@ class Audio:
         Audio.stop_music()
         if not os.path.exists(path):
             return
+        ext = os.path.splitext(path)[1].lower()
         if _system == "Windows":
-            Audio._music_process = subprocess.Popen(
-                ['cmd', '/c', 'start', '/min', '', path],
-                shell=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL
-            )
+            if ext == ".wav":
+                import winsound
+                flags = winsound.SND_ASYNC | winsound.SND_LOOP if loop else winsound.SND_ASYNC
+                winsound.PlaySound(path, flags)
+                Audio._music_winsound_playing = True
+            else:
+                Audio._music_process = subprocess.Popen(
+                    ['powershell', '-NoProfile', '-Command',
+                     f'Start-Process -WindowStyle Hidden -FilePath "{path}"'],
+                    stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL
+                )
         else:
             pygame = _ensure_pygame()
             if not pygame:
@@ -83,12 +115,14 @@ class Audio:
     @staticmethod
     def stop_music():
         if _system == "Windows":
+            if Audio._music_winsound_playing:
+                import winsound
+                winsound.PlaySound(None, winsound.SND_PURGE)
+                Audio._music_winsound_playing = False
             if Audio._music_process:
                 try:
-                    subprocess.run(
-                        ['taskkill', '/f', '/t', '/pid', str(Audio._music_process.pid)],
-                        stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL
-                    )
+                    Audio._music_process.kill()
+                    Audio._music_process.wait(timeout=3)
                 except:
                     pass
                 Audio._music_process = None
@@ -97,6 +131,7 @@ class Audio:
             if pygame:
                 try:
                     pygame.mixer.music.stop()
+                    pygame.mixer.music.unload()
                 except:
                     pass
 
@@ -113,7 +148,13 @@ class Audio:
 
     @staticmethod
     def load_wav(path):
-        if _system == "Linux":
+        if _system == "Windows":
+            import winsound
+            if os.path.exists(path):
+                winsound.PlaySound(path, winsound.SND_ASYNC)
+                return True
+            return None
+        else:
             pygame = _ensure_pygame()
             if pygame and os.path.exists(path):
                 sound = pygame.mixer.Sound(path)

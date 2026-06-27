@@ -130,11 +130,17 @@ class TTS:
                 for audio_chunk in voice.synthesize(texto_limpio):
                     wav.writeframes(audio_chunk.audio_int16_bytes)
             
-            # Reproducir el WAV
+            # Reproducir el WAV esperando a que termine
             if os.path.exists(wav_path) and os.path.getsize(wav_path) > 1000:
-                Audio.play_wav(wav_path)
-                import time
-                time.sleep(0.5)
+                if self.sistema == "Windows":
+                    Audio.play_wav(wav_path)
+                    import time
+                    time.sleep(1.0)
+                else:
+                    sound = Audio.load_wav(wav_path)
+                    if sound:
+                        import time
+                        time.sleep(sound.get_length())
             
             # Limpiar
             try:
