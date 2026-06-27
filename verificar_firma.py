@@ -7,9 +7,11 @@ project_dir = os.path.dirname(os.path.abspath(__file__))
 archivos = [
     "main.py", "ai_module.py", "tts_module.py", "face_animation.py",
     "ascii_art.py", "sounds.py", "audio.py", "progress_tracker.py",
-    "install.py", "install_windows.ps1",
+    "install.py", "install_windows.ps1", "install.sh", "install.bat",
     "uninstall.bat", "uninstall.sh", "crear_acceso_windows.vbs",
-    "iron-chat.bat", "requirements.txt"
+    "iron-chat.bat", "backup.bat",
+    "generar_firma.py", "verificar_firma.py",
+    ".gitignore", "requirements.txt"
 ]
 
 hash_total = hashlib.sha256()

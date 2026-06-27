@@ -1,15 +1,12 @@
 import platform
 import os
-import threading
 import subprocess
 import struct
 import math
 import io
 import wave
-import time
 
 _system = platform.system()
-_system_encoding = "utf-8"
 
 
 def _ensure_pygame():
@@ -118,13 +115,6 @@ class Audio:
     @staticmethod
     def stop_all():
         Audio.stop_music()
-
-    @staticmethod
-    def wait_for_wav(duration_ms):
-        if _system == "Linux":
-            pygame = _ensure_pygame()
-            if pygame:
-                pygame.time.wait(duration_ms)
 
     @staticmethod
     def load_wav(path):

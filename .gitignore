@@ -12,3 +12,4 @@ voices/
 *.gguf
 *.onnx
 *.onnx.json
+run.bat

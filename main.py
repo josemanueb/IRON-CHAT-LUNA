@@ -7,6 +7,8 @@ import glob
 import json
 import re
 import logging
+import platform
+import subprocess
 from audio import Audio
 from PIL import Image, ImageTk
 from ai_module import GPT4AllAI
@@ -29,7 +31,7 @@ logging.info("🚀 IRON CHAT iniciado")
 class ChatbotApp:
     def __init__(self, root):
         self.root = root
-        self.root.title("IRON CHAT - Gym Assistant")
+        self.root.title("IRON CHAT - LUNA")
         self.root.geometry("850x650")
         self.root.configure(bg="#1a1a2e")
         self.root.resizable(False, False)
@@ -85,7 +87,7 @@ class ChatbotApp:
             hora = datetime.now().strftime("%H:%M:%S")
             self.reloj_label.config(text=hora)
             self.root.after(1000, self.actualizar_reloj)
-        except:
+        except Exception:
             pass
 
     def actualizar_contador(self):
@@ -410,15 +412,13 @@ class ChatbotApp:
             self.status_label.config(text=f">> LUNA ESTÁ ESCRIBIENDO{dots[self.animacion_dots]}")
             if self.ai_loaded and self.status_label.cget("text").startswith(">> LUNA"):
                 self.root.after(300, self.animar_escribiendo)
-        except:
+        except Exception:
             pass
 
     def _abrir_ruta(self, ruta):
-        import platform as pf
-        if pf.system() == "Windows":
+        if platform.system() == "Windows":
             os.startfile(ruta)
         else:
-            import subprocess
             subprocess.Popen(['xdg-open', ruta])
 
     def open_music_folder(self):
@@ -438,7 +438,8 @@ class ChatbotApp:
         try:
             desktop = os.path.join(os.path.expanduser("~"), "Desktop")
             if not os.path.exists(desktop):
-                desktop = self.project_dir
+                alt = os.path.join(os.path.expanduser("~"), "Escritorio")
+                desktop = alt if os.path.exists(alt) else self.project_dir
             filename = os.path.join(desktop, f"iron_chat_{datetime.now().strftime('%Y%m%d_%H%M%S')}.txt")
             with open(filename, 'w', encoding='utf-8') as f:
                 f.write("💪 IRON CHAT - HISTORIAL\n")
@@ -738,7 +739,11 @@ class ChatbotApp:
             vals = {}
             for key, entry in fields.items():
                 v = entry.get().strip()
-                vals[key] = float(v) if v else None
+                try:
+                    vals[key] = float(v) if v else None
+                except ValueError:
+                    self.add_message("system", f"⚠️ VALOR INVÁLIDO: '{v}' no es un número")
+                    return
             self.progress.add_entry(**vals, notes=notes_entry.get().strip())
             self.add_message("system", "📊 MEDICIÓN GUARDADA!")
             dialog.destroy()

@@ -9,10 +9,8 @@ echo.
 
 set SCRIPT_DIR=%~dp0
 set DESKTOP=%USERPROFILE%\Desktop
-set FECHA=%DATE:~-4%%DATE:~3,2%%DATE:~0,2%
-set HORA=%TIME:~0,2%%TIME:~3,2%
-set HORA=%HORA: =0%
-set BACKUP_NAME=IRON-CHAT-LUNA-backup-%FECHA%_%HORA%
+for /f %%i in ('powershell -NoProfile -Command "Get-Date -Format 'yyyyMMdd_HHmm'"') do set TS=%%i
+set BACKUP_NAME=IRON-CHAT-LUNA-backup-%TS%
 set BACKUP_DIR=%DESKTOP%\%BACKUP_NAME%
 
 echo 📂 Creando carpeta de respaldo en el escritorio...

@@ -85,7 +85,7 @@ class Sounds:
                         pygame.mixer.init(frequency=sr)
                     sound = pygame.mixer.Sound(io.BytesIO(wav_data))
                     sound.play()
-            except:
+            except Exception:
                 pass
         threading.Thread(target=_play, daemon=True).start()
 
@@ -97,17 +97,8 @@ class Sounds:
             try:
                 Audio.play_beep(880, 120)
                 Audio.play_beep(1100, 150)
-            except:
+            except Exception:
                 pass
         threading.Thread(target=_play, daemon=True).start()
 
-    @classmethod
-    def play_send(cls):
-        if not cls._cooldown():
-            return
-        def _play():
-            try:
-                Audio.play_beep(600, 60)
-            except:
-                pass
-        threading.Thread(target=_play, daemon=True).start()
+

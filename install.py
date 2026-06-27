@@ -210,7 +210,7 @@ def download_model_auto(url, dest, label="Modelo"):
         print(f"     🔄 Intentando: {name}...")
         try:
             if method():
-                if os.path.exists(dest) and os.path.getsize(dest) > (1024**3):
+                if os.path.exists(dest) and os.path.getsize(dest) >= (1024**3):
                     size = os.path.getsize(dest) / (1024**3)
                     print(f"\r     ✅ {label} descargado: {size:.2f} GB".ljust(70))
                     return True
@@ -221,9 +221,9 @@ def download_model_auto(url, dest, label="Modelo"):
 
     # Si llegamos aquí y hay un .tmp, renombrar por si sirve
     if os.path.exists(tmp) and not os.path.exists(dest):
-        os.rename(tmp, dest)
+        shutil.move(tmp, dest)
         size = os.path.getsize(dest) / (1024**3)
-        if size > 1.0:
+        if size >= 1.0:
             log(f"{label} recuperado desde descarga parcial: {size:.2f} GB")
             return True
     return False
@@ -349,7 +349,7 @@ def main():
             input("     Presiona Enter cuando hayas colocado el modelo...")
             if os.path.exists(model_path):
                 size = os.path.getsize(model_path) / (1024**3)
-                if size > 1.0:
+                if size >= 1.0:
                     log(f"Modelo encontrado: {size:.2f} GB")
                 else:
                     log("El archivo parece corrupto (muy pequeño)", False)

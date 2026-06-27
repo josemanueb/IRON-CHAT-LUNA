@@ -83,12 +83,12 @@ else
 
     # curl con fallback SSL
     if command -v curl &> /dev/null; then
-        curl -L "$MODEL_URL" -o "$MODEL_PATH.tmp" --progress-bar 2>/dev/null && \
+        curl -L "$MODEL_URL" -o "$MODEL_PATH.tmp" --progress-bar 2>&1 && \
         mv "$MODEL_PATH.tmp" "$MODEL_PATH" && MODEL_OK=true
 
         if [ "$MODEL_OK" = false ]; then
             echo "     ⚠️ Reintentando con SSL desactivado..."
-            curl -L -k "$MODEL_URL" -o "$MODEL_PATH.tmp" --progress-bar 2>/dev/null && \
+            curl -L -k "$MODEL_URL" -o "$MODEL_PATH.tmp" --progress-bar 2>&1 && \
             mv "$MODEL_PATH.tmp" "$MODEL_PATH" && MODEL_OK=true
         fi
     elif command -v wget &> /dev/null; then
@@ -147,13 +147,13 @@ else
     VOICE_OK=false
 
     if command -v curl &> /dev/null; then
-        curl -L "$VOICE_URL" -o "$VOICE_PATH" --progress-bar 2>/dev/null && \
-        curl -L "$VOICE_JSON_URL" -o "$VOICES_DIR/es_ES-sharvard-medium.onnx.json" --progress-bar 2>/dev/null && \
+        curl -L "$VOICE_URL" -o "$VOICE_PATH" --progress-bar 2>&1 && \
+        curl -L "$VOICE_JSON_URL" -o "$VOICES_DIR/es_ES-sharvard-medium.onnx.json" --progress-bar 2>&1 && \
         VOICE_OK=true
 
         if [ "$VOICE_OK" = false ]; then
-            curl -L -k "$VOICE_URL" -o "$VOICE_PATH" --progress-bar 2>/dev/null && \
-            curl -L -k "$VOICE_JSON_URL" -o "$VOICES_DIR/es_ES-sharvard-medium.onnx.json" --progress-bar 2>/dev/null && \
+            curl -L -k "$VOICE_URL" -o "$VOICE_PATH" --progress-bar 2>&1 && \
+            curl -L -k "$VOICE_JSON_URL" -o "$VOICES_DIR/es_ES-sharvard-medium.onnx.json" --progress-bar 2>&1 && \
             VOICE_OK=true
         fi
     elif command -v wget &> /dev/null; then

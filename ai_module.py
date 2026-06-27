@@ -1,5 +1,7 @@
 import os
+import re
 from ascii_art import ASCIIArt
+from llama_cpp import Llama
 
 class GPT4AllAI:
     def __init__(self):
@@ -14,11 +16,10 @@ class GPT4AllAI:
 
         print("Modelo encontrado: " + self.model_path)
 
-        from llama_cpp import Llama
         print("Cargando modelo (esto puede tomar varios minutos)...")
         self.model = Llama(
             model_path=self.model_path,
-            n_ctx=1024,
+            n_ctx=2048,
             n_threads=4,
             n_gpu_layers=0,
             verbose=False,
@@ -27,9 +28,6 @@ class GPT4AllAI:
             use_mlock=False
         )
         print("Modelo cargado correctamente")
-
-        self.ascii = ASCIIArt()
-        print("ASCII Art cargado - disponible!")
 
     def get_response(self, user_input, history=None):
         try:
@@ -129,7 +127,6 @@ INSTRUCCIONES:
             text = response['choices'][0]['message']['content'].strip()
 
             if "[ASCII:" in text:
-                import re
                 match = re.search(r'\[ASCII:(\w+)\]', text)
                 if match:
                     art_name = match.group(1)
