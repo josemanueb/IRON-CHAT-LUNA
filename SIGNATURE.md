@@ -9,7 +9,7 @@
 - Fecha de creación: 2025
 
 ### 🤖 ASISTENTE DE DESARROLLO
-**UOS AI (Deepin Assistant)**
+**UOS AI (Deepin Assistant) / OpenCode**
 - Rol: Co-desarrollador, optimización, depuración y mejoras
 - Contribución: Código, corrección de errores, implementación de features
 
@@ -26,6 +26,20 @@ Queda prohibida la redistribución comercial sin autorización expresa del autor
 
 ### 🔐 VERIFICACION
 ```
-SHA256: 62fbc5fb78acaebd6e07f62be22879341096db92f49b0d5be6986cae63812615
-Fecha: 2026-06-27 18:42:39
+SHA256: a478d76bb272a883f8f7489aea9bd64a0076d67846c5ed427157be39b4f75b27
+Fecha: 2026-06-26 23:58:48
 ```
+
+### 🆕 v2.1 — Mejoras
+- 🎨 3 temas: Oscuro, Claro, Naturaleza (Ctrl+T)
+- 🥗 Dietas: /dieta volumen / definicion / saludable
+- ⏰ Recordatorios programables: /recordatorio
+- 🏃 Nuevas rutinas: Cardio y Calistenia
+- 📊 Progreso con deltas (▲▼) y estadísticas
+- 🔊 Volumen de música independiente
+- ⚡ Velocidad TTS ajustable
+- ⏱️ Temporizador personalizado
+- ⌨️ Atajos: Ctrl+D (exportar), Ctrl+T (tema)
+- 📚 Guía de ejercicios: /ejercicio
+- 🐛 Fix bare except, Escritorio español, backup.bat
+- 📦 uninstall.sh para Linux

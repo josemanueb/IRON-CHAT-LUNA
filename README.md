@@ -12,18 +12,21 @@
 
 | Función | Descripción |
 |---------|-------------|
-| 🤖 **IA local** | Llama 3.2 3B (GGUF Q4_0) — sin internet necesaria |
+| 🤖 **IA local** | Llama 3.2 3B (GGUF Q4_K_M) — sin internet necesaria |
 | 🧠 **Memoria** | Recuerda los últimos 5 mensajes de la conversación |
 | 🔊 **TTS real** | Piper TTS (Linux) / pyttsx3 (Windows) — voz femenina española |
 | 🎨 **Cara animada** | Robot que se balancea al hablar |
 | 🖼️ **26 dibujos ASCII** | Mancuerna, pesa, musculo, flexión, sentadilla y más |
-| ⏱️ **Temporizador** | Cuenta atrás para descanso entre series (30s/60s/90s/120s) |
-| 🏋️ **Rutinas rápidas** | Push, Pull, Piernas, Full Body en 1 clic |
-| 📊 **Progreso SQLite** | Guarda peso, medidas corporales y ve tu evolución |
-| 🌙 **Tema claro/oscuro** | Alterna entre ambos modos |
+| ⏱️ **Temporizador** | Cuenta atrás para descanso entre series (30s/60s/90s/120s/personalizado) |
+| 🏋️ **Rutinas rápidas** | Push, Pull, Piernas, Full Body, Cardio, Calistenia |
+| 🥗 **Dietas** | Planes de volumen, definición y alimentación saludable |
+| 📊 **Progreso SQLite** | Guarda peso, medidas corporales y ve tu evolución con deltas ▲▼ |
+| 🌙 **3 Temas** | Oscuro, Claro y Naturaleza — alterna con /tema o Ctrl+T |
 | 🎵 **Música** | Reproduce MP3 motivacionales desde la carpeta `musica/` |
+| ⏰ **Recordatorios** | Programa avisos con /recordatorio |
 | 📝 **Notas rápidas** | Bloc de notas para tus entrenos |
-| 📤 **Exportar chat** | Guarda el historial en tu escritorio |
+| 📤 **Exportar chat** | Guarda el historial en tu escritorio (Ctrl+D) |
+| 📚 **Ejercicios** | Guía de técnica para sentadilla, press banca, peso muerto, etc. |
 | 🔐 **Firma digital** | Verificación de integridad SHA256 |
 | 🐉 **Sin AVX** | Compilado para CPUs antiguas (Intel Core i3 M 380) |
 
@@ -60,7 +63,7 @@ pip install llama-cpp-python pygame Pillow
 sudo apt install -y piper-tts
 
 # 5. Descargar el modelo
-# Coloca Llama-3.2-3B-Instruct-Q4_0.gguf en models/
+# Coloca Llama-3.2-3B-Instruct-Q4_K_M.gguf en models/
 
 # 6. Ejecutar
 python3 main.py
@@ -131,13 +134,16 @@ IRON-CHAT-LUNA/
 ### Comandos rápidos (desde el chat)
 
 ```
-/ayuda      - Muestra ayuda
-/limpiar    - Limpia el chat
-/tema       - Cambia modo claro/oscuro
-/exportar   - Exporta historial
-/notas      - Abre bloc de notas
-/musica     - Activa/desactiva música
-/stats      - Muestra estadísticas
+/ayuda              - Muestra ayuda
+/limpiar            - Limpia el chat
+/tema               - Cambia de tema (3 disponibles)
+/exportar           - Exporta historial
+/notas              - Abre bloc de notas
+/musica             - Activa/desactiva música
+/stats              - Muestra estadísticas
+/dieta <tipo>       - Plan de dieta (volumen/definicion/saludable)
+/recordatorio <min> '<msg>' - Programa un aviso
+/ejercicio          - Guía rápida de ejercicios
 ```
 
 ### Atajos de teclado
@@ -146,6 +152,8 @@ IRON-CHAT-LUNA/
 Enter       - Enviar mensaje
 Ctrl+Enter  - Enviar mensaje
 Ctrl+L      - Limpiar chat
+Ctrl+D      - Exportar historial
+Ctrl+T      - Cambiar tema
 ```
 
 ### Dibujos ASCII
@@ -252,7 +260,7 @@ Dibujos disponibles: `mancuerna`, `pesa`, `musculo`, `trofeo`, `fuego`, `corazon
 Descarga el modelo desde Hugging Face y colócalo en `models/`:
 
 ```
-https://huggingface.co/bartowski/Llama-3.2-3B-Instruct-GGUF/resolve/main/Llama-3.2-3B-Instruct-Q4_0.gguf
+https://huggingface.co/bartowski/Llama-3.2-3B-Instruct-GGUF/resolve/main/Llama-3.2-3B-Instruct-Q4_K_M.gguf
 ```
 
 **Configuración actual:**
@@ -293,7 +301,7 @@ Probado en:
 - **CPU**: Intel Core i3 M 380 @ 2.53 GHz (2010, sin AVX)
 - **RAM**: 8 GB
 - **SO**: Deepin (Debian)
-- **Modelo**: Llama 3.2 3B Q4_0 (~2 GB en RAM)
+- **Modelo**: Llama 3.2 3B Q4_K_M (~2 GB en RAM)
 
 ---
 

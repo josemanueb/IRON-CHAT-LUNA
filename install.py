@@ -265,21 +265,95 @@ def main():
     def _pip_llama(args):
         return subprocess.run([pip] + args).returncode == 0
 
+    def _check_vcredist():
+        """Verifica si el runtime VC++ está instalado en Windows"""
+        if platform.system() != "Windows":
+            return True
+        # Buscar vcruntime140.dll en rutas típicas
+        for root in [os.environ.get("SystemRoot", "C:\\Windows"),
+                     os.environ.get("WINDIR", "C:\\Windows")]:
+            path = os.path.join(root, "System32", "vcruntime140.dll")
+            if os.path.exists(path):
+                return True
+        return False
+
+    def _install_vcredist():
+        """Descarga e instala el VC++ Redistributable silenciosamente"""
+        url = "https://aka.ms/vs/17/release/vc_redist.x64.exe"
+        tmp = os.path.join(SCRIPT_DIR, "vc_redist.x64.exe")
+        print("     ⬇️ Descargando Microsoft Visual C++ Redistributable...")
+        try:
+            urllib.request.urlretrieve(url, tmp)
+            print("     🛠️ Instalando (ventana emergente)...")
+            subprocess.run([tmp, "/install", "/quiet", "/norestart"],
+                           timeout=120, capture_output=True)
+            os.unlink(tmp)
+            return _check_vcredist()
+        except Exception as e:
+            print(f"     ⚠️ Error instalando VC++: {e}")
+            return False
+
+    def _download_wheel_direct():
+        """Descarga el .whl directamente desde abetlen.github.io"""
+        py_ver = f"cp{sys.version_info.major}{sys.version_info.minor}"
+        arch = platform.machine().lower()
+        if arch in ("amd64", "x86_64"):
+            arch = "win_amd64"
+        elif arch == "arm64":
+            arch = "win_arm64"
+        else:
+            arch = "win32"
+        # Probar varias versiones de llama-cpp-python
+        for ver in ["0.3.4", "0.3.3", "0.3.2", "0.3.1", "0.3.0",
+                     "0.2.90", "0.2.89", "0.2.88"]:
+            url = (f"https://abetlen.github.io/llama-cpp-python/whl/cpu/"
+                   f"llama_cpp_python-{ver}-{py_ver}-{py_ver}-{arch}.whl")
+            tmp = os.path.join(SCRIPT_DIR, f"llama_{ver}.whl")
+            try:
+                urllib.request.urlretrieve(url, tmp)
+                if os.path.getsize(tmp) > 100000:
+                    print(f"     ✅ Wheel {ver} descargado ({os.path.getsize(tmp)/(1024**2):.0f} MB)")
+                    return tmp
+                os.unlink(tmp)
+            except:
+                if os.path.exists(tmp):
+                    os.unlink(tmp)
+        return None
+
     def _install_llama():
         print("  ⏳ Instalando llama-cpp-python...")
 
-        # En Windows: forzar SOLO binarios, nunca compilar desde fuente
         if platform.system() == "Windows":
-            # Intentar 1: solo wheels (falla rapido si no hay wheel)
-            print("     Buscando wheel pre-compilado...")
+            # Paso 1: verificar VC++ Redistributable
+            if not _check_vcredist():
+                print("     ⚠️ Falta Microsoft Visual C++ Redistributable")
+                if _install_vcredist():
+                    print("     ✅ VC++ Redistributable instalado")
+                else:
+                    print("     ⚠️ No se pudo instalar automáticamente.")
+                    print("     Descárgalo manualmente de:")
+                    print("     https://aka.ms/vs/17/release/vc_redist.x64.exe")
+                    input("     Presiona Enter después de instalarlo...")
+
+            # Paso 2: instalar solo con wheels (NUNCA compilar)
+            print("     Buscando wheel pre-compilado en PyPI...")
             if _pip_llama(["install", "llama-cpp-python", "--only-binary", ":all:"]):
                 return True
-            # Intentar 2: desde el repo de wheels CPU
-            cpu_repo = "https://abetlen.github.io/llama-cpp-python/whl/cpu"
-            print(f"     Buscando en {cpu_repo}...")
+            print("     Buscando en abetlen.github.io...")
             if _pip_llama(["install", "llama-cpp-python", "--only-binary", ":all:",
-                           "--extra-index-url", cpu_repo]):
+                           "--extra-index-url", "https://abetlen.github.io/llama-cpp-python/whl/cpu"]):
                 return True
+            # Paso 3: descargar el .whl directamente
+            print("     Descargando wheel directamente...")
+            whl = _download_wheel_direct()
+            if whl:
+                if _pip_llama(["install", whl]):
+                    os.unlink(whl)
+                    return True
+                try:
+                    os.unlink(whl)
+                except:
+                    pass
             return False
 
         # Linux: puede compilar si no hay wheel
@@ -332,26 +406,26 @@ def main():
             arch = "win_arm64"
         else:
             arch = "win32"
-        wheel_name = f"llama_cpp_python-*-{py_ver}-{py_ver}-{arch}.whl"
-        wheel_url = f"https://abetlen.github.io/llama-cpp-python/whl/cpu/{wheel_name}"
 
         print("\n  ❌ FALLO CRÍTICO: llama-cpp-python no se instaló correctamente.")
         print("  =" * 30)
-        print("  🔧 Para EVITAR instalar Visual C++, usa un wheel pre-compilado:")
         print()
-        print(f"     Tu Python: {py_ver}, arquitectura: {arch}")
+        print("  🔧 Esto suele pasar por UNA de estas razones:")
         print()
-        print("  📥 Opción 1 (automática):")
-        print(f"     {pip} install https://abetlen.github.io/llama-cpp-python/whl/cpu/llama_cpp_python-0.3.4-{py_ver}-{py_ver}-{arch}.whl")
+        print("  1️⃣  Falta el Microsoft Visual C++ Redistributable")
+        print("      Descárgalo e instálalo desde:")
+        print("      https://aka.ms/vs/17/release/vc_redist.x64.exe")
+        print("      (solo el runtime, NO necesitas Build Tools)")
         print()
-        print("  📥 Opción 2 (manual):")
-        print("     1. Abre: https://abetlen.github.io/llama-cpp-python/whl/cpu/")
-        print(f"     2. Busca el archivo que termine en '{py_ver}-{py_ver}-{arch}.whl'")
-        print("     3. Descárgalo y ejecuta:")
-        print(f"        {pip} install ruta/al/archivo.whl")
+        print("  2️⃣  No hay wheel pre-compilado para tu Python")
+        print(f"      Python: {py_ver}, arquitectura: {arch}")
+        print("      Prueba a instalar manualmente:")
+        wheel_url = (f"https://abetlen.github.io/llama-cpp-python/whl/cpu/"
+                     f"llama_cpp_python-0.3.4-{py_ver}-{py_ver}-{arch}.whl")
+        print(f"      {pip} install {wheel_url}")
         print()
-        print("  📥 Opción 3 (instalar Visual C++ Build Tools):")
-        print("     https://visualstudio.microsoft.com/visual-cpp-build-tools/")
+        print("  3️⃣  Error de conexión")
+        print("      Asegúrate de tener internet y vuelve a intentar.")
         print()
         input("\nPresiona Enter para salir...")
         sys.exit(1)

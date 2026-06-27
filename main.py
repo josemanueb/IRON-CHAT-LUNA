@@ -7,7 +7,7 @@ import glob
 import json
 import re
 import logging
-import platform
+import platform as _platform
 import subprocess
 from audio import Audio
 from PIL import Image, ImageTk
@@ -31,7 +31,7 @@ logging.info("🚀 IRON CHAT iniciado")
 class ChatbotApp:
     def __init__(self, root):
         self.root = root
-        self.root.title("IRON CHAT - LUNA")
+        self.root.title("IRON CHAT - Gym Assistant")
         self.root.geometry("850x650")
         self.root.configure(bg="#1a1a2e")
         self.root.resizable(False, False)
@@ -44,12 +44,15 @@ class ChatbotApp:
         self.timer_running = False
         self.timer_remaining = 0
         self.timer_job = None
+        self._sending = False
         self.progress = ProgressTracker(os.path.join(self.project_dir, "progreso.db"))
         self.init_ui()
         self.ai = None
         self.ai_loaded = False
         threading.Thread(target=self.load_ai, daemon=True).start()
         self.root.bind("<Control-l>", lambda e: self.clear_chat())
+        self.root.bind("<Control-d>", lambda e: self.export_chat())
+        self.root.bind("<Control-t>", lambda e: self.toggle_theme())
         self.actualizar_reloj()
 
     def _find_image(self, *names):
@@ -76,9 +79,8 @@ class ChatbotApp:
 
     def guardar_historial(self):
         try:
-            solo_conversacion = [m for m in self.chat_history if m.startswith("[")]
             with open(self.historial_file, 'w', encoding='utf-8') as f:
-                json.dump(solo_conversacion, f, ensure_ascii=False, indent=2)
+                json.dump(self.chat_history, f, ensure_ascii=False, indent=2)
         except Exception as e:
             logging.warning(f"Error guardando historial: {e}")
 
@@ -94,9 +96,7 @@ class ChatbotApp:
         self.contador_label.config(text=f"💬 {self.mensajes_count} msgs")
 
     def aplicar_tema(self):
-        """Aplica los colores del tema actual a TODOS los widgets"""
-        tema = "oscuro" if self.tema_oscuro else "claro"
-        c = self.colores[tema]
+        c = self.colores[self.tema_actual]
 
         self.root.configure(bg=c["bg"])
         self.header.configure(bg=c["bg"])
@@ -110,13 +110,17 @@ class ChatbotApp:
         self.text_frame.configure(bg=c["chat_bg"])
         self.chat_area.configure(bg=c["chat_bg"], fg=c["fg"], insertbackground=c["fg"])
 
-        if self.tema_oscuro:
+        if self.tema_actual == 0:
             self.chat_area.tag_config("user_msg", background="#1a3a5e")
             self.chat_area.tag_config("ai_msg", background="#1a3a2e")
             self.chat_area.tag_config("system_msg", background=c["chat_bg"])
-        else:
+        elif self.tema_actual == 1:
             self.chat_area.tag_config("user_msg", background="#D6EAF8")
             self.chat_area.tag_config("ai_msg", background="#D5F5E3")
+            self.chat_area.tag_config("system_msg", background=c["chat_bg"])
+        else:
+            self.chat_area.tag_config("user_msg", background="#1a3a2e")
+            self.chat_area.tag_config("ai_msg", background="#1a2e1a")
             self.chat_area.tag_config("system_msg", background=c["chat_bg"])
 
         self.scrollbar.configure(bg=c["scroll"], troughcolor=c["bg"])
@@ -133,7 +137,6 @@ class ChatbotApp:
 
         btn_bg = c["btn_bg"]
         self.btn_clear.configure(bg=btn_bg)
-        self.btn_tts.configure(bg="#27AE60" if self.tts_enabled else "#E74C3C")
         self.btn_export.configure(bg=btn_bg)
         self.btn_info.configure(bg=btn_bg)
         self.btn_notes.configure(bg=btn_bg)
@@ -141,7 +144,6 @@ class ChatbotApp:
         self.btn_progress.configure(bg=btn_bg)
         self.btn_ayuda.configure(bg=btn_bg)
         self.btn_credits.configure(bg=btn_bg)
-        self.btn_music.configure(bg="#27AE60" if self.music_playing else btn_bg)
         self.btn_music_folder.configure(bg=btn_bg)
         self.timer_frame.configure(bg=c["bg"])
         self.timer_label.configure(bg=c["bg"], fg=c["acento"])
@@ -152,18 +154,21 @@ class ChatbotApp:
         self.vol_label.configure(bg=c["bg"], fg=c["fg"])
         self.vol_slider.configure(bg=c["btn_bg"], fg=c["acento"], troughcolor=c["bg"])
         self.vol_num_label.configure(bg=c["bg"], fg=c["acento"])
+        self.vol_label_music.configure(bg=c["bg"], fg=c["fg"])
+        self.vol_music_slider.configure(bg=c["btn_bg"], fg=c["acento"], troughcolor=c["bg"])
+        self.vol_music_num_label.configure(bg=c["bg"], fg=c["acento"])
+        self.vol_label_speed.configure(bg=c["bg"], fg=c["fg"])
+        self.vol_speed_slider.configure(bg=c["btn_bg"], fg=c["acento"], troughcolor=c["bg"])
+        self.vol_speed_num_label.configure(bg=c["bg"], fg=c["acento"])
         self.credit_frame.configure(bg=c["bg"])
         self.credit_label.configure(bg=c["bg"], fg=c["naranja"])
 
         try:
             self.face.canvas.configure(bg=c["face_bg"])
-        except:
+        except Exception:
             pass
 
-        if self.tema_oscuro:
-            self.btn_theme.config(text="🌙 MODO OSCURO", bg="#2C3E50")
-        else:
-            self.btn_theme.config(text="☀️ MODO CLARO", bg="#2980B9")
+        self.btn_theme.config(text=c["nombre"], bg=c["btn_bg"])
 
     def init_ui(self):
         # === 1. HEADER ===
@@ -299,30 +304,52 @@ class ChatbotApp:
         self.btn_credits.grid(row=5, column=1, padx=5, pady=3)
 
         # === 5. COLORES ===
-        self.tema_oscuro = True
-        self.colores = {
-            "oscuro": {
+        self.tema_actual = 0
+        self.colores = [
+            {
+                "nombre": "🌙 Oscuro",
                 "bg": "#1a1a2e", "fg": "#ECF0F1", "chat_bg": "#0d0d1a",
                 "btn_bg": "#2C3E50", "acento": "#FFD700", "naranja": "#FF6B35",
                 "input_bg": "#1a1a2e", "scroll": "#34495E", "face_bg": "#2C3E50"
             },
-            "claro": {
+            {
+                "nombre": "☀️ Claro",
                 "bg": "#F5F5F5", "fg": "#2C3E50", "chat_bg": "#FFFFFF",
                 "btn_bg": "#2980B9", "acento": "#E67E22", "naranja": "#E74C3C",
                 "input_bg": "#FFFFFF", "scroll": "#BDC3C7", "face_bg": "#2980B9"
-            }
-        }
+            },
+            {
+                "nombre": "🌿 Naturaleza",
+                "bg": "#1a2e1a", "fg": "#E8F5E9", "chat_bg": "#0d1a0d",
+                "btn_bg": "#2E7D32", "acento": "#A5D6A7", "naranja": "#FF8A65",
+                "input_bg": "#1a2e1a", "scroll": "#388E3C", "face_bg": "#2E7D32"
+            },
+        ]
 
         # === 6. VOLUMEN ===
         self.vol_frame = tk.Frame(self.tools_frame, bg="#1a1a2e")
         self.vol_frame.pack(fill=tk.X, pady=(5, 0), padx=10)
-        self.vol_label = tk.Label(self.vol_frame, text="🔊 VOL:", font=("Helvetica", 8, "bold"), bg="#1a1a2e", fg="#ECF0F1")
-        self.vol_label.pack(side=tk.LEFT, padx=(0, 5))
-        self.vol_slider = tk.Scale(self.vol_frame, from_=0, to=100, orient=tk.HORIZONTAL, bg="#2C3E50", fg="#FFD700", troughcolor="#1a1a2e", highlightthickness=0, bd=0, length=180, font=("Helvetica", 8), showvalue=False, command=self.cambiar_volumen)
+        self.vol_label = tk.Label(self.vol_frame, text="🔊", font=("Helvetica", 8, "bold"), bg="#1a1a2e", fg="#ECF0F1")
+        self.vol_label.pack(side=tk.LEFT, padx=(0, 2))
+        self.vol_slider = tk.Scale(self.vol_frame, from_=0, to=100, orient=tk.HORIZONTAL, bg="#2C3E50", fg="#FFD700", troughcolor="#1a1a2e", highlightthickness=0, bd=0, length=70, font=("Helvetica", 8), showvalue=False, command=self.cambiar_volumen)
         self.vol_slider.set(70)
         self.vol_slider.pack(side=tk.LEFT)
-        self.vol_num_label = tk.Label(self.vol_frame, text="70%", font=("Helvetica", 8, "bold"), bg="#1a1a2e", fg="#FFD700")
-        self.vol_num_label.pack(side=tk.LEFT, padx=(5, 0))
+        self.vol_num_label = tk.Label(self.vol_frame, text="70%", font=("Helvetica", 7, "bold"), bg="#1a1a2e", fg="#FFD700")
+        self.vol_num_label.pack(side=tk.LEFT, padx=(1, 3))
+        self.vol_label_music = tk.Label(self.vol_frame, text="🎵", font=("Helvetica", 8, "bold"), bg="#1a1a2e", fg="#ECF0F1")
+        self.vol_label_music.pack(side=tk.LEFT, padx=(3, 2))
+        self.vol_music_slider = tk.Scale(self.vol_frame, from_=0, to=100, orient=tk.HORIZONTAL, bg="#2C3E50", fg="#FFD700", troughcolor="#1a1a2e", highlightthickness=0, bd=0, length=55, font=("Helvetica", 8), showvalue=False, command=self.cambiar_volumen_musica)
+        self.vol_music_slider.set(50)
+        self.vol_music_slider.pack(side=tk.LEFT)
+        self.vol_music_num_label = tk.Label(self.vol_frame, text="50%", font=("Helvetica", 7, "bold"), bg="#1a1a2e", fg="#FFD700")
+        self.vol_music_num_label.pack(side=tk.LEFT, padx=(1, 3))
+        self.vol_label_speed = tk.Label(self.vol_frame, text="⚡", font=("Helvetica", 8, "bold"), bg="#1a1a2e", fg="#ECF0F1")
+        self.vol_label_speed.pack(side=tk.LEFT, padx=(3, 2))
+        self.vol_speed_slider = tk.Scale(self.vol_frame, from_=50, to=200, orient=tk.HORIZONTAL, bg="#2C3E50", fg="#FFD700", troughcolor="#1a1a2e", highlightthickness=0, bd=0, length=55, font=("Helvetica", 8), showvalue=False, command=self.cambiar_velocidad_tts)
+        self.vol_speed_slider.set(100)
+        self.vol_speed_slider.pack(side=tk.LEFT)
+        self.vol_speed_num_label = tk.Label(self.vol_frame, text="1.0x", font=("Helvetica", 7, "bold"), bg="#1a1a2e", fg="#FFD700")
+        self.vol_speed_num_label.pack(side=tk.LEFT, padx=(1, 0))
 
         # === 7. TEMPORIZADOR ===
         self.timer_frame = tk.Frame(self.tools_frame, bg="#1a1a2e")
@@ -337,6 +364,8 @@ class ChatbotApp:
                            command=lambda s=secs: self.timer_start(s), relief=tk.FLAT, width=4, height=1, bd=0)
             btn.pack(side=tk.LEFT, padx=2)
             self.timer_buttons.append(btn)
+        tk.Button(timer_btn_frame, text="⏱️", font=("Helvetica", 8, "bold"), bg="#8E44AD", fg="white",
+                 command=self.timer_custom, relief=tk.FLAT, width=3, height=1, bd=0).pack(side=tk.LEFT, padx=2)
         tk.Button(timer_btn_frame, text="⏹", font=("Helvetica", 8, "bold"), bg="#E74C3C", fg="white",
                  command=self.timer_stop, relief=tk.FLAT, width=3, height=1, bd=0).pack(side=tk.LEFT, padx=2)
 
@@ -396,13 +425,21 @@ class ChatbotApp:
         if hasattr(self, 'tts'):
             self.tts.set_volume(vol)
 
+    def cambiar_volumen_musica(self, val):
+        self.vol_music_num_label.config(text=f"{int(val)}%")
+        Audio.set_music_volume(int(val) / 100.0)
+
+    def cambiar_velocidad_tts(self, val):
+        speed = int(val)
+        display = f"{speed/100:.1f}x"
+        self.vol_speed_num_label.config(text=display)
+        if hasattr(self, 'tts'):
+            self.tts.set_speed(speed)
+
     def toggle_theme(self):
-        self.tema_oscuro = not self.tema_oscuro
+        self.tema_actual = (self.tema_actual + 1) % len(self.colores)
         self.aplicar_tema()
-        if self.tema_oscuro:
-            self.add_message("system", "🌙 MODO OSCURO ACTIVADO")
-        else:
-            self.add_message("system", "☀️ MODO CLARO ACTIVADO")
+        self.add_message("system", f"{self.colores[self.tema_actual]['nombre']} ACTIVADO")
 
     def animar_escribiendo(self):
         """Animación de puntitos mientras escribe"""
@@ -412,11 +449,11 @@ class ChatbotApp:
             self.status_label.config(text=f">> LUNA ESTÁ ESCRIBIENDO{dots[self.animacion_dots]}")
             if self.ai_loaded and self.status_label.cget("text").startswith(">> LUNA"):
                 self.root.after(300, self.animar_escribiendo)
-        except Exception:
+        except:
             pass
 
     def _abrir_ruta(self, ruta):
-        if platform.system() == "Windows":
+        if _platform.system() == "Windows":
             os.startfile(ruta)
         else:
             subprocess.Popen(['xdg-open', ruta])
@@ -438,8 +475,9 @@ class ChatbotApp:
         try:
             desktop = os.path.join(os.path.expanduser("~"), "Desktop")
             if not os.path.exists(desktop):
-                alt = os.path.join(os.path.expanduser("~"), "Escritorio")
-                desktop = alt if os.path.exists(alt) else self.project_dir
+                desktop = os.path.join(os.path.expanduser("~"), "Escritorio")
+            if not os.path.exists(desktop):
+                desktop = self.project_dir
             filename = os.path.join(desktop, f"iron_chat_{datetime.now().strftime('%Y%m%d_%H%M%S')}.txt")
             with open(filename, 'w', encoding='utf-8') as f:
                 f.write("💪 IRON CHAT - HISTORIAL\n")
@@ -453,11 +491,42 @@ class ChatbotApp:
             logging.error(f"Error exportando: {e}")
 
     def show_info(self):
-        info = ("💪 IRON CHAT v2.0\n\n🤖 MODELO: Llama 3.2 3B\n🔊 TTS: Piper real\n🎨 DISEÑO: Gym Style\n🎨 ASCII ART: 26 dibujos!\n📝 NOTAS RAPIDAS\n🎵 MUSICA MOTIVACIONAL\n📂 CARPETA MP3\n🌙☀️ TEMA CLARO/OSCURO\n\n⚡ JMbirner ⚡")
+        info = ("💪 IRON CHAT v2.0\n\n"
+                "🤖 MODELO: Llama 3.2 3B\n"
+                "🔊 TTS: Piper real + pyttsx3\n"
+                "🎨 DISEÑO: Gym Style\n"
+                "🎨 ASCII ART: 26 dibujos!\n"
+                "📝 NOTAS RAPIDAS\n"
+                "🎵 MUSICA MOTIVACIONAL\n"
+                "📂 CARPETA MP3\n"
+                "🌙☀️🌿 3 TEMAS: Oscuro/Claro/Naturaleza\n"
+                "⏱️ TEMPORIZADOR + RECORDATORIOS\n"
+                "🥗 DIETAS: Volumen/Definición/Saludable\n"
+                "📊 PROGRESO CON DELTAS\n\n"
+                "⚡ JMbirner ⚡")
         messagebox.showinfo("💪 IRON CHAT", info)
 
     def show_help(self):
-        ayuda = ("❓ COMANDOS RAPIDOS:\n\n  /ayuda  - Muestra esta ayuda\n  /limpiar - Limpia el chat\n  /tema - Cambia modo claro/oscuro\n  /exportar - Exporta el historial\n  /notas - Abre el bloc de notas\n  /musica - Activa/desactiva musica\n  /stats - Muestra estadisticas\n\n⌨️ ATAJOS:\n  Enter - Enviar mensaje\n  Ctrl+Enter - Enviar mensaje\n  Ctrl+L - Limpiar chat\n\n🎨 DIBUJOS ASCII:\n  Escribe 'dibuja una mancuerna' o similar")
+        ayuda = ("❓ COMANDOS RAPIDOS:\n\n"
+                 "  /ayuda       - Muestra esta ayuda\n"
+                 "  /limpiar     - Limpia el chat\n"
+                 "  /tema        - Cambia de tema (3 disponibles)\n"
+                 "  /exportar    - Exporta el historial\n"
+                 "  /notas       - Abre el bloc de notas\n"
+                 "  /musica      - Activa/desactiva musica\n"
+                 "  /stats       - Muestra estadisticas\n"
+                 "  /dieta       - Plan de dieta (volumen/definicion/saludable)\n"
+                 "  /recordatorio <min> '<msg>' - Programa un aviso\n"
+                 "  /ejercicio   - Guia rapida de ejercicios\n\n"
+                 "⌨️ ATAJOS:\n"
+                 "  Enter        - Enviar mensaje\n"
+                 "  Ctrl+Enter   - Enviar mensaje\n"
+                 "  Ctrl+L       - Limpiar chat\n"
+                 "  Ctrl+D       - Exportar historial\n"
+                 "  Ctrl+T       - Cambiar tema\n\n"
+                 "🎨 DIBUJOS ASCII:\n"
+                 "  Escribe 'dibuja una mancuerna' o similar\n"
+                 "  🏋️ 26 dibujos disponibles!")
         messagebox.showinfo("❓ AYUDA IRON CHAT", ayuda)
 
     def open_notes(self):
@@ -519,9 +588,16 @@ class ChatbotApp:
     def on_ai_loaded(self):
         self.progress_bar.stop()
         self.progress_bar.pack_forget()
-        self.status_label.config(text=">> MODELO CARGADO - LISTO!", fg="#27AE60")
-        self.add_message("system", "✅ MODELO CARGADO! PUEDES EMPEZAR A CHATEAR.")
-        logging.info("Modelo listo!")
+        if self.ai and getattr(self.ai, 'is_offline', False):
+            self.status_label.config(text=">> MODO OFFLINE - RESPUESTAS LIMITADAS", fg="#FF6B35")
+            self.add_message("system", "⚠️ MODO OFFLINE: El modelo de IA no está disponible.")
+            self.add_message("system", "📥 Ejecuta install.bat o install.py para descargar el modelo.")
+            self.add_message("system", "💬 Mientras tanto, LUNA responde con conocimientos básicos.")
+            logging.info("Modelo en modo offline")
+        else:
+            self.status_label.config(text=">> MODELO CARGADO - LISTO!", fg="#27AE60")
+            self.add_message("system", "✅ MODELO CARGADO! PUEDES EMPEZAR A CHATEAR.")
+            logging.info("Modelo listo!")
 
     def on_ai_error(self, error):
         self.progress_bar.stop()
@@ -585,8 +661,54 @@ class ChatbotApp:
             self.toggle_music()
             return True
         elif cmd == "/stats":
-            stats = f"📊 ESTADISTICAS:\nMensajes: {self.mensajes_count}\nTTS: {'ON' if self.tts_enabled else 'OFF'}\nTema: {'OSCURO' if self.tema_oscuro else 'CLARO'}\nModelo: {'CARGADO' if self.ai_loaded else 'CARGANDO'}"
+            tema_nombre = self.colores[self.tema_actual]["nombre"]
+            stats = f"📊 ESTADISTICAS:\nMensajes: {self.mensajes_count}\nTTS: {'ON' if self.tts_enabled else 'OFF'}\nTema: {tema_nombre}\nModelo: {'CARGADO' if self.ai_loaded else 'CARGANDO'}"
             messagebox.showinfo("📊 ESTADISTICAS", stats)
+            return True
+        elif cmd.startswith("/dieta"):
+            parts = cmd.split(maxsplit=1)
+            tipo = parts[1] if len(parts) > 1 else ""
+            prompt_map = {
+                "volumen": "Dame un plan de dieta de volumen para ganar masa muscular. Incluye comidas, cantidades y calorías.",
+                "definicion": "Dame un plan de dieta de definición para perder grasa corporal. Incluye comidas, cantidades y calorías.",
+                "definición": "Dame un plan de dieta de definición para perder grasa corporal. Incluye comidas, cantidades y calorías.",
+                "saludable": "Dame un plan de alimentación saludable y equilibrada para mantener un buen estado físico.",
+            }
+            if tipo in prompt_map:
+                self.input_field.delete(0, tk.END)
+                self.input_field.insert(0, prompt_map[tipo])
+                self.send_message()
+            else:
+                ayuda_dieta = ("🥗 DIETAS DISPONIBLES:\n\n"
+                              "• /dieta volumen — Para ganar masa muscular\n"
+                              "• /dieta definicion — Para perder grasa\n"
+                              "• /dieta saludable — Plan equilibrado\n\n"
+                              "O pregúntame directamente en el chat.")
+                messagebox.showinfo("🥗 DIETA", ayuda_dieta)
+            return True
+        elif cmd.startswith("/recordatorio") or cmd.startswith("/reminder"):
+            parts = cmd.split(maxsplit=2)
+            if len(parts) >= 3:
+                try:
+                    mins = int(parts[1])
+                    msg = parts[2]
+                    self.add_message("system", f"⏰ RECORDATORIO PROGRAMADO: {msg} en {mins} minuto(s)")
+                    threading.Thread(target=self._reminder_thread, args=(mins * 60, msg), daemon=True).start()
+                except ValueError:
+                    self.add_message("system", "❌ Usa: /recordatorio <minutos> '<mensaje>'")
+            else:
+                self.add_message("system", "❌ Usa: /recordatorio <minutos> '<mensaje>' (ej: /recordatorio 30 'Beber agua')")
+            return True
+        elif cmd == "/ejercicio":
+            ayuda_ej = ("📚 EJERCICIOS:\n\n"
+                        "Pregúntame en el chat:\n"
+                        "'cómo se hace sentadilla'\n"
+                        "'cómo se hace press banca'\n"
+                        "'cómo se hace peso muerto'\n"
+                        "'cómo se hace dominada'\n"
+                        "'cómo se hace flexión'\n"
+                        "'cómo se hace curl de bíceps'")
+            messagebox.showinfo("📚 EJERCICIOS", ayuda_ej)
             return True
         return False
 
@@ -594,13 +716,17 @@ class ChatbotApp:
         if not self.ai_loaded:
             messagebox.showwarning("ESPERA", "EL MODELO AUN SE ESTA CARGANDO...")
             return
+        if self._sending:
+            return
         user_input = self.input_field.get().strip()
         if not user_input:
             return
         self.input_field.delete(0, tk.END)
         if self.procesar_comando(user_input):
             return
-        Sounds.play_chat()
+        self._sending = True
+        self.send_button.config(state=tk.DISABLED)
+        Sounds.play_send()
         self.add_message("user", user_input)
         self.mensajes_count += 1
         self.actualizar_contador()
@@ -613,20 +739,28 @@ class ChatbotApp:
             self.root.after(0, lambda: self.status_label.config(text=">> PENSANDO...", fg="#3498DB"))
             history = self._get_conversation_context(5)
             response = self.ai.get_response(user_input, history=history)
-            self.root.after(0, lambda: self.add_message("ai", response))
-            self.root.after(0, lambda: Sounds.play_chat())
-            self.root.after(0, lambda: self.speak_response(response))
+            self.root.after(0, lambda r=response: self._on_response(r))
         except Exception as e:
             error_msg = str(e)
             logging.error(f"Error en get_response: {error_msg}")
             self.root.after(0, lambda: self.add_message("system", "❌ ERROR: " + error_msg))
             self.root.after(0, lambda: self.status_label.config(text=">> ERROR", fg="#E74C3C"))
 
+    def _on_response(self, response):
+        self.add_message("ai", response)
+        Sounds.play_notification()
+        self.speak_response(response)
+
+    def _finish_sending(self):
+        self._sending = False
+        self.send_button.config(state=tk.NORMAL)
+
     def speak_response(self, response):
         texto_limpio = re.sub(r"[^\w\s,;:.!?¡¿áéíóúüñÁÉÍÓÚÜÑ]", " ", response)
         texto_limpio = re.sub(r"\s+", " ", texto_limpio).strip()
         if not self.tts_enabled:
             self.status_label.config(text=">> LISTO", fg="#27AE60")
+            self._finish_sending()
             return
         self.face.set_speaking(True)
         self.status_label.config(text=">> HABLANDO...", fg="#FF6B35")
@@ -635,10 +769,37 @@ class ChatbotApp:
     def on_tts_finish(self):
         self.face.set_speaking(False)
         self.status_label.config(text=">> LISTO", fg="#27AE60")
+        self._finish_sending()
 
     # ===================================================================
     # TEMPORIZADOR
     # ===================================================================
+    def timer_custom(self):
+        dialog = tk.Toplevel(self.root)
+        dialog.title("⏱️ TEMPORIZADOR PERSONALIZADO")
+        dialog.geometry("300x150")
+        dialog.configure(bg="#1a1a2e")
+        dialog.resizable(False, False)
+        tk.Label(dialog, text="Minutos:", font=("Helvetica", 11, "bold"), bg="#1a1a2e", fg="#FFD700").pack(pady=(15, 5))
+        entry = tk.Entry(dialog, font=("Consolas", 14), bg="#1a1a2e", fg="#ECF0F1", insertbackground="#ECF0F1", relief=tk.FLAT, width=10, justify=tk.CENTER)
+        entry.pack(pady=5)
+        entry.insert(0, "1")
+        entry.select_range(0, tk.END)
+        entry.focus()
+        def start_custom():
+            try:
+                mins = int(entry.get().strip())
+                if mins > 0 and mins <= 60:
+                    self.timer_start(mins * 60)
+                    dialog.destroy()
+                else:
+                    messagebox.showwarning("⏱️", "Introduce entre 1 y 60 minutos.")
+            except ValueError:
+                messagebox.showwarning("⏱️", "Introduce un número válido.")
+        tk.Button(dialog, text="INICIAR", font=("Helvetica", 11, "bold"), bg="#27AE60", fg="white",
+                 command=start_custom, relief=tk.FLAT, width=15, bd=0).pack(pady=10)
+        dialog.bind("<Return>", lambda e: start_custom())
+
     def timer_start(self, seconds):
         if self.timer_running:
             self.timer_stop()
@@ -667,13 +828,19 @@ class ChatbotApp:
         else:
             self.timer_job = self.root.after(1000, self.timer_tick)
 
+    def _reminder_thread(self, seconds, message):
+        import time
+        time.sleep(seconds)
+        self.root.after(0, lambda: self.add_message("system", f"⏰ RECORDATORIO: {message}"))
+        self.root.after(0, lambda: Sounds.play_notification())
+
     # ===================================================================
     # RUTINAS RAPIDAS
     # ===================================================================
     def show_routines(self):
         dialog = tk.Toplevel(self.root)
         dialog.title("🏋️ RUTINAS RÁPIDAS")
-        dialog.geometry("320x260")
+        dialog.geometry("360x340")
         dialog.configure(bg="#1a1a2e")
         dialog.resizable(False, False)
         tk.Label(dialog, text="¿Qué rutina quieres?", font=("Helvetica", 12, "bold"), bg="#1a1a2e", fg="#FFD700").pack(pady=10)
@@ -682,6 +849,8 @@ class ChatbotApp:
             ("🏋️ PULL (Tracción)", "Crea una rutina de ejercicios de tracción (pull): espalda y bíceps. Incluye series y repeticiones."),
             ("🦵 PIERNAS", "Crea una rutina de piernas completa: cuádriceps, isquiotibiales, glúteos y gemelos. Incluye series y repeticiones."),
             ("💪 FULL BODY", "Crea una rutina de cuerpo completo con ejercicios compuestos. Incluye series y repeticiones."),
+            ("🏃 CARDIO", "Crea una rutina de cardio para quemar grasa: HIIT, trote, bicicleta, cuerda. Incluye tiempos y series."),
+            ("🤸 CALISTENIA", "Crea una rutina de calistenia sin pesas: flexiones, dominadas, sentadillas, plancha. Incluye series y repeticiones."),
         ]:
             tk.Button(dialog, text=name, font=("Helvetica", 10, "bold"), bg="#2C3E50", fg="white",
                      command=lambda p=prompt: self._send_routine(p, dialog), relief=tk.FLAT, width=28, bd=0).pack(pady=3)
@@ -739,11 +908,7 @@ class ChatbotApp:
             vals = {}
             for key, entry in fields.items():
                 v = entry.get().strip()
-                try:
-                    vals[key] = float(v) if v else None
-                except ValueError:
-                    self.add_message("system", f"⚠️ VALOR INVÁLIDO: '{v}' no es un número")
-                    return
+                vals[key] = float(v) if v else None
             self.progress.add_entry(**vals, notes=notes_entry.get().strip())
             self.add_message("system", "📊 MEDICIÓN GUARDADA!")
             dialog.destroy()
@@ -756,7 +921,7 @@ class ChatbotApp:
         entries = self.progress.get_entries()
         dialog = tk.Toplevel(parent)
         dialog.title("📈 HISTORIAL")
-        dialog.geometry("500x400")
+        dialog.geometry("650x450")
         dialog.configure(bg="#1a1a2e")
         dialog.resizable(False, False)
         tk.Label(dialog, text="📈 HISTORIAL DE PROGRESO", font=("Helvetica", 12, "bold"), bg="#1a1a2e", fg="#FFD700").pack(pady=10)
@@ -767,19 +932,56 @@ class ChatbotApp:
         scroll = tk.Scrollbar(text_frame, command=text_area.yview, bg="#34495E", troughcolor="#1a1a2e")
         scroll.pack(fill=tk.Y, side=tk.RIGHT)
         text_area.config(yscrollcommand=scroll.set)
-        text_area.insert(tk.END, f"{'FECHA':<18} {'PESO':<8} {'BÍCEPS':<8} {'PECHO':<8} {'CINTURA':<8} {'PIERNA':<8}\n")
-        text_area.insert(tk.END, "-"*60 + "\n")
+        text_area.insert(tk.END, f"{'FECHA':<16} {'PESO':<9} {'BÍCEPS':<9} {'PECHO':<9} {'CINTURA':<9} {'PIERNA':<9}\n")
+        text_area.insert(tk.END, "-"*65 + "\n")
+        prev = None
         for entry in entries:
             date, weight, bicep, chest, waist, thigh, notes = entry
-            w = f"{weight:.1f}" if weight else "-"
-            b = f"{bicep:.1f}" if bicep else "-"
-            c = f"{chest:.1f}" if chest else "-"
-            wa = f"{waist:.1f}" if waist else "-"
-            t = f"{thigh:.1f}" if thigh else "-"
-            text_area.insert(tk.END, f"{date:<18} {w:<8} {b:<8} {c:<8} {wa:<8} {t:<8}\n")
+            def fmt(v, pv):
+                s = f"{v:.1f}" if v else "-"
+                if pv is not None and v is not None and pv is not None:
+                    delta = v - pv
+                    if delta > 0:
+                        s += f" ▲{delta:.1f}"
+                    elif delta < 0:
+                        s += f" ▼{abs(delta):.1f}"
+                    else:
+                        s += f"  ="
+                return s.center(9)
+            w = fmt(weight, prev[1] if prev else None)
+            b = fmt(bicep, prev[2] if prev else None)
+            c = fmt(chest, prev[3] if prev else None)
+            wa = fmt(waist, prev[4] if prev else None)
+            t = fmt(thigh, prev[5] if prev else None)
+            text_area.insert(tk.END, f"{date:<16} {w} {b} {c} {wa} {t}\n")
+            prev = (date, weight, bicep, chest, waist, thigh, notes)
         text_area.config(state=tk.DISABLED)
-        tk.Button(dialog, text="CERRAR", font=("Helvetica", 9, "bold"), bg="#E74C3C", fg="white",
-                 command=dialog.destroy, relief=tk.FLAT, width=20, bd=0).pack(pady=8)
+        btn_frame = tk.Frame(dialog, bg="#1a1a2e")
+        btn_frame.pack(pady=5)
+        tk.Button(btn_frame, text="📊 VER ESTADÍSTICAS", font=("Helvetica", 9, "bold"), bg="#2980B9", fg="white",
+                 command=lambda: self._show_progress_stats(entries), relief=tk.FLAT, width=18, bd=0).pack(side=tk.LEFT, padx=5)
+        tk.Button(btn_frame, text="CERRAR", font=("Helvetica", 9, "bold"), bg="#E74C3C", fg="white",
+                 command=dialog.destroy, relief=tk.FLAT, width=18, bd=0).pack(side=tk.LEFT, padx=5)
+
+    def _show_progress_stats(self, entries):
+        if len(entries) < 2:
+            messagebox.showinfo("📊 ESTADÍSTICAS", "Necesitas al menos 2 mediciones para ver estadísticas.")
+            return
+        first = entries[-1]
+        last = entries[0]
+        fields = [("Peso", 1), ("Bíceps", 2), ("Pecho", 3), ("Cintura", 4), ("Pierna", 5)]
+        lines = ["📊 RESUMEN DE PROGRESO\n", "="*35 + "\n"]
+        for fname, fidx in fields:
+            fv = first[fidx]
+            lv = last[fidx]
+            if fv is not None and lv is not None:
+                delta = lv - fv
+                arrow = "▲" if delta > 0 else "▼" if delta < 0 else "="
+                lines.append(f"{fname}: {fv:.1f} → {lv:.1f}  {arrow} {abs(delta):.1f}\n")
+            elif lv is not None:
+                lines.append(f"{fname}: - → {lv:.1f}\n")
+        lines.append(f"\nPeríodo: {first[0]} → {last[0]}")
+        messagebox.showinfo("📊 ESTADÍSTICAS", "".join(lines))
 
     def show_credits(self):
         credits = (

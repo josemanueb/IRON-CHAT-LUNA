@@ -1,132 +1,247 @@
 import os
-import re
+import random
 from ascii_art import ASCIIArt
 
 class GPT4AllAI:
     def __init__(self):
         print("Inicializando LUNA - Entrenadora personal...")
-        from llama_cpp import Llama
 
-        self.model_name = "Llama-3.2-3B-Instruct-Q4_0.gguf"
+        self.model_name = "Llama-3.2-3B-Instruct-Q4_K_M.gguf"
         self.model_path = os.path.join(os.path.dirname(__file__), "models", self.model_name)
+        self.is_offline = False
 
         if not os.path.exists(self.model_path):
-            print("ERROR: Modelo no encontrado en: " + self.model_path)
-            raise FileNotFoundError("No se encuentra el modelo en: " + self.model_path)
+            print("⚠️ Modelo no encontrado en: " + self.model_path)
+            print("⚠️ Modo OFFLINE activado — respuestas basadas en reglas")
+            self.is_offline = True
+            self.ascii = ASCIIArt()
+            return
 
         print("Modelo encontrado: " + self.model_path)
 
+        from llama_cpp import Llama
         print("Cargando modelo (esto puede tomar varios minutos)...")
         self.model = Llama(
             model_path=self.model_path,
             n_ctx=2048,
             n_threads=4,
             n_gpu_layers=0,
-            verbose=False,
-            chat_format="llama-3",
-            use_mmap=True,
-            use_mlock=False
+            verbose=False
         )
         print("Modelo cargado correctamente")
 
+        self.ascii = ASCIIArt()
+        print("ASCII Art cargado - disponible!")
+
+    def _offline_response(self, user_input, history=None):
+        text = user_input.lower().strip()
+
+        if any(p in text for p in ["push", "empuje", "pecho", "hombro", "triceps", "tríceps"]):
+            return ("🔥 RUTINA PUSH (Empuje):\n\n"
+                    "1️⃣ Press de banca con barra — 4x8-10\n"
+                    "2️⃣ Press militar con mancuernas — 4x10-12\n"
+                    "3️⃣ Aperturas con mancuernas en banco plano — 3x12\n"
+                    "4️⃣ Elevaciones laterales — 3x15\n"
+                    "5️⃣ Fondos en paralelas — 3x10-12\n"
+                    "6️⃣ Extensiones de tríceps en polea — 3x15\n\n"
+                    "💪 Descansa 60-90s entre series. ¡A darle!")
+
+        if any(p in text for p in ["pull", "traccion", "tracción", "espalda", "biceps", "bíceps"]):
+            return ("🔥 RUTINA PULL (Tracción):\n\n"
+                    "1️⃣ Dominadas (o jalón al pecho) — 4x8-10\n"
+                    "2️⃣ Remo con barra — 4x10-12\n"
+                    "3️⃣ Jalón al pecho en polea alta — 3x12\n"
+                    "4️⃣ Remo con mancuerna a una mano — 3x12 por brazo\n"
+                    "5️⃣ Curl con barra — 3x12\n"
+                    "6️⃣ Curl martillo — 3x15\n\n"
+                    "🔥 Concéntrate en la contracción. ¡Tira fuerte!")
+
+        if any(p in text for p in ["pierna", "piernas", "leg", "quad", "cuadriceps", "gluteo", "glúteo"]):
+            return ("🦵 RUTINA DE PIERNAS:\n\n"
+                    "1️⃣ Sentadilla con barra — 4x8-10\n"
+                    "2️⃣ Prensa de piernas — 4x12\n"
+                    "3️⃣ Curl femoral acostado — 3x15\n"
+                    "4️⃣ Extensiones de cuádriceps — 3x15\n"
+                    "5️⃣ Elevaciones de gemelos de pie — 4x20\n"
+                    "6️⃣ Zancadas con mancuernas — 3x10 por pierna\n\n"
+                    "🦵 ¡Las piernas son la base de todo! Dale duro.")
+
+        if any(p in text for p in ["full body", "cuerpo completo", "cuerpo entero"]):
+            return ("💪 RUTINA FULL BODY:\n\n"
+                    "1️⃣ Sentadilla con barra — 4x8-10\n"
+                    "2️⃣ Press de banca — 4x8-10\n"
+                    "3️⃣ Remo con barra — 4x10-12\n"
+                    "4️⃣ Press militar — 3x10\n"
+                    "5️⃣ Peso muerto rumano — 3x12\n"
+                    "6️⃣ Curl de bíceps + extensiones tríceps — 3x15\n\n"
+                    "🔥 Cuerpo completo en una sesión. ¡Intensidad total!")
+
+        if any(p in text for p in ["cardio", "cardiovascular", "correr", "bicicleta", "elíptica", "eliptica"]):
+            return ("🏃 RUTINA DE CARDIO:\n\n"
+                    "1️⃣ Calentamiento: 5 min caminata rápida\n"
+                    "2️⃣ Trote suave — 10 min a ritmo constante\n"
+                    "3️⃣ HIIT: 30s sprint / 30s recuperación x 8 rondas\n"
+                    "4️⃣ Bicicleta estática — 10 min ritmo moderado\n"
+                    "5️⃣ Cuerda para saltar — 3x1 min\n"
+                    "6️⃣ Enfriamiento: 5 min estiramientos\n\n"
+                    "🔥 Quema grasa y mejora tu resistencia cardiovascular!")
+
+        if any(p in text for p in ["calistenia", "calisthenics", "peso corporal", "bodyweight", "sin pesas"]):
+            return ("💪 RUTINA DE CALISTENIA (sin pesas):\n\n"
+                    "1️⃣ Flexiones (push-ups) — 4x15\n"
+                    "2️⃣ Dominadas (o negativas) — 4x8\n"
+                    "3️⃣ Sentadillas con peso corporal — 4x20\n"
+                    "4️⃣ Fondos en silla — 3x12\n"
+                    "5️⃣ Plancha — 3x45s\n"
+                    "6️⃣ Burpees — 3x10\n\n"
+                    "🔥 Controla tu propio peso corporal. ¡Sin excusas!")
+
+        if any(p in text for p in ["dibuja", "ascii", "dibujo", "arte"]):
+            for art_name in ASCIIArt.list_arts():
+                if art_name in text:
+                    art = ASCIIArt.get_art(art_name)
+                    return f"🎨 Aquí tienes tu {art_name}:\n```\n{art}\n```"
+            art_name = random.choice(ASCIIArt.list_arts())
+            art = ASCIIArt.get_art(art_name)
+            return f"🎨 Aquí tienes un dibujo de {art_name}:\n```\n{art}\n```"
+
+        if any(p in text for p in ["dieta", "comer", "comida", "nutricion", "nutrición", "almuerzo", "cena", "desayuno"]):
+            if any(p in text for p in ["volumen", "masa", "crecer", "ganar peso", "bulking"]):
+                return ("🥗 DIETA DE VOLUMEN (Ganar masa muscular):\n\n"
+                        "🍳 Desayuno: 4 huevos revueltos, avena con leche, plátano\n"
+                        "🥪 Media mañana: Batido de proteína + 2 rebanadas pan integral con crema de cacahuete\n"
+                        "🥗 Comida: 200g arroz, 250g pechuga pollo, aguacate\n"
+                        "🥤 Post-entreno: Batido proteína + dextrosa\n"
+                        "🥩 Cena: 250g carne roja magra, patata asada, espárragos\n"
+                        "🌙 Antes de dormir: Caseína o requesón\n\n"
+                        "🔥 Superávit calórico de ~300-500 kcal. ¡A crecer!")
+            elif any(p in text for p in ["definicion", "definición", "perder", "bajar", "perder peso", "cortar"]):
+                return ("🥗 DIETA DE DEFINICIÓN (Perder grasa):\n\n"
+                        "🍳 Desayuno: Clara de huevo, avena ligera, té verde\n"
+                        "🥪 Media mañana: Manzana + 10 almendras\n"
+                        "🥗 Comida: 150g pollo, ensalada verde, quinoa\n"
+                        "🥤 Post-entreno: Batido proteína con agua\n"
+                        "🥩 Cena: Pescado blanco o pollo, verduras al vapor\n\n"
+                        "🔥 Déficit calórico de ~300-500 kcal. Mucha proteína!")
+            else:
+                return ("🥗 PLAN DE ALIMENTACIÓN SALUDABLE:\n\n"
+                        "🍳 Desayuno: Avena con proteína en polvo, plátano y almendras\n"
+                        "🥪 Almuerzo: Pechuga de pollo, arroz integral y brócoli\n"
+                        "🥗 Comida: Salmón, quinoa y espárragos\n"
+                        "🥤 Merienda: Batido de proteína con fruta\n"
+                        "🥩 Cena: Carne magra, batata y ensalada\n\n"
+                        "💧 Bebe 2-3L de agua al día. ¡La nutrición es el 70%!")
+
+        if any(p in text for p in ["ejercicio", "ejercicios", "ejecutar", "como se hace"]):
+            exercise_db = {
+                "sentadilla": "🏋️ SENTADILLA (Squat):\n• Pies al ancho de hombros\n• Barra en trampa cervical\n• Baja hasta paralela (muslo paralelo al suelo)\n• Rodillas hacia afuera, pecho arriba\n• Series: 4x8-10",
+                "press banca": "🏋️ PRESS DE BANCA (Bench Press):\n• Acuéstate en banco plano\n• Barra a la altura del pecho\n• Baja controlado hasta tocar el pecho\n• Sube explosivamente\n• Series: 4x8-10",
+                "peso muerto": "🏋️ PESO MUERTO (Deadlift):\n• Pies al ancho de hombros\n• Barra sobre el empeine\n• Espalda recta, cadera atrás\n• Levanta con fuerza de piernas\n• Series: 3x5-8",
+                "dominada": "🏋️ DOMINADA (Pull-up):\n• Agarre prono, manos al ancho de hombros\n• Activa escápulas\n• Sube hasta que la barbilla pase la barra\n• Baja controlado\n• Series: 4x8-12",
+                "flexion": "🏋️ FLEXIÓN (Push-up):\n• Cuerpo recto, manos al ancho de hombros\n• Baja el pecho hasta rozar el suelo\n• Sube explosivamente\n• Variante: inclinada, declinada, diamante\n• Series: 3x15-20",
+                "curl": "🏋️ CURL DE BÍCEPS:\n• Mancuernas o barra\n• Codos pegados al cuerpo\n• Sube contrayendo el bíceps\n• Baja controlado (3s)\n• Series: 3x12-15",
+            }
+            for ex_name, ex_desc in exercise_db.items():
+                if ex_name in text:
+                    return ex_desc
+            return ("📚 EJERCICIOS DISPONIBLES:\n"
+                    "• Sentadilla\n• Press banca\n• Peso muerto\n"
+                    "• Dominada\n• Flexión\n• Curl de bíceps\n\n"
+                    "Escribe 'cómo se hace [ejercicio]' para ver la técnica.")
+
+        if any(p in text for p in ["recordatorio", "recuerda", "recordar", "avísame"]):
+            return ("⏰ FUNCIÓN RECORDATORIO:\n\n"
+                    "Usa el comando /recordatorio para programar un aviso.\n"
+                    "Ejemplo: /recordatorio 30 'Beber agua'\n\n"
+                    "También puedes usar el temporizador del panel derecho ⏱️")
+
+        if any(p in text for p in ["gracias", "thanks", "vale", "ok", "perfecto"]):
+            return "¡De nada! 💪 Estoy aquí para ayudarte a conseguir tus metas. ¡Sigue así! 🔥"
+
+        if any(p in text for p in ["hola", "buenos días", "buenas", "hey", "que tal", "saludos"]):
+            return ("¡Hola! 👋 Soy LUNA, tu entrenadora personal. ¿En qué puedo ayudarte hoy?\n\n"
+                    "Puedes pedirme:\n"
+                    "🏋️ Rutinas: Push, Pull, Piernas, Full Body, Cardio, Calistenia\n"
+                    "🥗 Dietas: Volumen, Definición o Saludable\n"
+                    "🎨 Dibujos ASCII (ej: 'dibuja una mancuerna')\n"
+                    "📊 Seguimiento de progreso\n"
+                    "⏱️ Temporizador de descanso\n"
+                    "📝 Ver ejercicios (ej: 'cómo se hace sentadilla')\n\n"
+                    "¿Por dónde empezamos? 💪🔥")
+
+        responses = [
+            "¡Sigue así! 💪 Cada repetición cuenta. ¿Quieres que te sugiera una rutina?",
+            "El esfuerzo de hoy es el resultado de mañana. 🏋️ ¿Necesitas algo específico?",
+            "Recuerda: la disciplina supera a la motivación. 🔥 ¿En qué te ayudo?",
+            "💪 ¡A darle! Puedo ayudarte con rutinas, nutrición o lo que necesites.",
+            "El gym es tu templo. 🏛️ ¿Preparado para la siguiente serie?",
+            "No hay atajos. Solo trabajo duro. 🏋️ ¿Qué ejercicios quieres hacer hoy?",
+            "Vamos allá! 🔥 Puedo crearte una rutina personalizada si quieres.",
+            "Duerme bien, entrena duro, come limpio. 🔁 ¡Así de simple!",
+            "La motivación te hace empezar, la disciplina te hace continuar. 🔥",
+        ]
+        return random.choice(responses)
+
     def get_response(self, user_input, history=None):
         try:
+            if self.is_offline:
+                return self._offline_response(user_input, history)
+
             ascii_arts_list = ", ".join(ASCIIArt.list_arts())
 
-            system_prompt = f"""Eres LUNA, una entrenadora personal certificada y nutricionista deportiva. Hablas español con un tono profesional, motivador y basado en ciencia.
-
-PERFIL PROFESIONAL:
-- Entrenadora personal con especializacion en fuerza, hipertrofia y calistenia
-- Nutricionista deportiva especializada en composicion corporal
-- Experta en biomecanica y prevencion de lesiones
-- Coach de motivacion y disciplina deportiva
-
-FORMATO DE RESPUESTA:
-- Responde SIEMPRE en español con estructura clara
-- Usa emojis con moderacion y criterio: 💪🔥📊🥗🏋️📋
-- Organiza las rutinas en tablas o listados numerados
-- Separa las secciones con lineas (---) para legibilidad
-- Incluye series, repeticiones, descanso y RPE/TIEMPO bajo tension
-
-PLANTILLAS DE RUTINA:
-
---- PUSH (Empuje) ---
-| Ejercicio | Series | Reps | Descanso |
-|-----------|--------|------|----------|
-| Press banca barra | 4 | 8-10 | 90s |
-| Press militar mancuernas | 3 | 10-12 | 60s |
-| Fondos en paralelas | 3 | fallo | 60s |
-| Aperturas con mancuerna | 3 | 12-15 | 45s |
-| Extensiones de triceps | 3 | 12-15 | 45s |
-
---- PULL (Traccion) ---
-| Ejercicio | Series | Reps | Descanso |
-|-----------|--------|------|----------|
-| Dominadas lastradas | 4 | 6-8 | 90s |
-| Remo con barra | 4 | 8-10 | 90s |
-| Jalones al pecho | 3 | 10-12 | 60s |
-| Face pulls | 3 | 15-20 | 45s |
-| Curl de biceps barra | 3 | 10-12 | 60s |
-
---- PIERNAS ---
-| Ejercicio | Series | Reps | Descanso |
-|-----------|--------|------|----------|
-| Sentadilla barra | 4 | 6-8 | 120s |
-| Peso muerto rumano | 4 | 8-10 | 90s |
-| Prensa de piernas | 3 | 10-12 | 60s |
-| Extensiones cuadriceps | 3 | 12-15 | 45s |
-| Curl femoral tumbado | 3 | 12-15 | 45s |
-| Gemelos de pie | 4 | 15-20 | 45s |
-
---- FULL BODY ---
-| Ejercicio | Series | Reps | Descanso |
-|-----------|--------|------|----------|
-| Sentadilla goblet | 3 | 10-12 | 60s |
-| Press banca mancuernas | 3 | 10-12 | 60s |
-| Remo con mancuerna | 3 | 10-12 | 60s |
-| Peso muerto rumano | 3 | 12-15 | 60s |
-| Plancha | 3 | 45s | 45s |
-
---- PLANTILLA DE DIETA ---
-Desayuno (8:00): Avena + proteina + fruta
-Media manana (11:00): Yogur griego + frutos secos
-Comida (14:00): Proteina + carbohidrato + verduras
-Merienda (17:00): Batido de proteina + platano
-Cena (20:00): Proteina + verduras + grasas saludables
-
-INSTRUCCIONES:
-- Si piden una rutina, usa la plantilla correspondiente y ajustala al nivel del usuario
-- Si piden un plan de comidas, usa la plantilla de dieta y personaliza
-- Si piden un dibujo ASCII, responde con [ASCII:nombre] y el dibujo aparecera solo
-- Los dibujos disponibles son: {ascii_arts_list}
-- Pregunta el nivel (principiante/intermedio/avanzado) antes de recomendar cargas
-- Pregunta si tienen lesiones o limitaciones
-- Da motivos cientificos para cada recomendacion (ej: "esto activa mas fibras tipo II")
-- Recuerda el contexto de la conversacion"""
-
-            messages = [{"role": "system", "content": system_prompt}]
-            
+            history_block = ""
             if history:
                 for role, text in history:
                     if role == "user":
-                        messages.append({"role": "user", "content": text})
+                        history_block += f"<|eot_id|>\n<|start_header_id|>user<|end_header_id|>\n\n{text}"
                     elif role == "assistant":
-                        messages.append({"role": "assistant", "content": text})
-            
-            messages.append({"role": "user", "content": user_input})
+                        history_block += f"<|eot_id|>\n<|start_header_id|>assistant<|end_header_id|>\n\n{text}"
 
-            response = self.model.create_chat_completion(
-                messages=messages,
-                max_tokens=512,
+            prompt = f"""<|begin_of_text|><|start_header_id|>system<|end_header_id|>
+
+Eres LUNA, una entrenadora personal y nutricionista profesional. Hablas español con energia y motivacion.
+
+TUS CONOCIMIENTOS:
+- Creacion de rutinas de ejercicios personalizadas (pesas, cardio, calistenia)
+- Nutricion deportiva y planes de alimentacion
+- Consejos de suplementacion
+- Anatomia y biomecanica
+- Lesiones y recuperacion
+- Motivacion y disciplina
+
+INSTRUCCIONES:
+- Responde SIEMPRE en español
+- Se motivadora y usa emojis como 💪🔥🏋️🥗
+- Da respuestas detalladas y utiles
+- Si te piden una rutina, crea una completa con ejercicios, series y repeticiones
+- Si te piden dieta, da opciones de comidas especificas
+- Se profesional pero cercana
+- Si te piden un dibujo o arte ASCII, responde SOLO con el nombre del dibujo entre [ASCII:nombre], por ejemplo: [ASCII:mancuerna]
+- Los dibujos disponibles son: {ascii_arts_list}
+- Recuerda lo que el usuario te ha dicho antes en la conversacion
+
+{history_block}
+<|eot_id|>
+<|start_header_id|>user<|end_header_id|>
+
+{user_input}
+
+<|eot_id|>
+<|start_header_id|>assistant<|end_header_id|>"""
+
+            response = self.model(
+                prompt,
+                max_tokens=500,
                 temperature=0.7,
                 top_p=0.9,
                 top_k=40,
                 repeat_penalty=1.1,
-                stop=["<|eot_id|>"]
+                stop=["<|eot_id|>", "<|end_header_id|>"]
             )
-            text = response['choices'][0]['message']['content'].strip()
+            text = response['choices'][0]['text'].strip()
 
             if "[ASCII:" in text:
+                import re
                 match = re.search(r'\[ASCII:(\w+)\]', text)
                 if match:
                     art_name = match.group(1)
@@ -136,4 +251,4 @@ INSTRUCCIONES:
             return text
         except Exception as e:
             print("Error al generar respuesta: " + str(e))
-            return "Lo siento, hubo un error al procesar tu mensaje. Intenta de nuevo."
+            return self._offline_response(user_input, history)

@@ -55,17 +55,70 @@ Write-Host "`n📦 Instalando dependencias Python..." -ForegroundColor Cyan
 Write-Host "  ⏳ Instalando llama-cpp-python..." -ForegroundColor Yellow
 $llamaOk = $false
 
-# En Windows: forzar SOLO binarios, nunca compilar desde fuente
-# Intento 1: solo wheels (falla rapido si no hay wheel)
-Write-Host "     Buscando wheel pre-compilado..." -ForegroundColor Yellow
+# Paso 1: verificar VC++ Redistributable
+$vcredistOk = Test-Path "$env:SystemRoot\System32\vcruntime140.dll"
+if (-not $vcredistOk) {
+    Write-Host "  ⚠️ Falta Microsoft Visual C++ Redistributable" -ForegroundColor Yellow
+    Write-Host "     Descargando e instalando..." -ForegroundColor Yellow
+    try {
+        $vcUrl = "https://aka.ms/vs/17/release/vc_redist.x64.exe"
+        $vcTmp = "$SCRIPT_DIR\vc_redist.x64.exe"
+        $wc = New-Object System.Net.WebClient
+        $wc.DownloadFile($vcUrl, $vcTmp)
+        Write-Host "     Ejecutando instalador silencioso..." -ForegroundColor Yellow
+        Start-Process -FilePath $vcTmp -ArgumentList "/install", "/quiet", "/norestart" -Wait
+        Remove-Item $vcTmp -Force
+        Start-Sleep -Seconds 2
+        if (Test-Path "$env:SystemRoot\System32\vcruntime140.dll") {
+            Write-Host "  ✅ VC++ Redistributable instalado" -ForegroundColor Green
+        } else {
+            Write-Host "  ⚠️ No se pudo instalar automáticamente." -ForegroundColor Yellow
+            Write-Host "     Descárgalo de: https://aka.ms/vs/17/release/vc_redist.x64.exe" -ForegroundColor Yellow
+            pause
+        }
+    } catch {
+        Write-Host "  ⚠️ Error descargando VC++: $_" -ForegroundColor Yellow
+        Write-Host "     Descárgalo manualmente de: https://aka.ms/vs/17/release/vc_redist.x64.exe" -ForegroundColor Yellow
+        pause
+    }
+}
+
+# Paso 2: instalar solo con wheels (NUNCA compilar)
+Write-Host "     Buscando wheel pre-compilado en PyPI..." -ForegroundColor Yellow
 $result = & $venvPip install --only-binary :all: llama-cpp-python 2>&1
 if ($LASTEXITCODE -eq 0) { $llamaOk = $true }
 
-# Intento 2: desde el repo de wheels CPU
 if (-not $llamaOk) {
     Write-Host "     Buscando en abetlen.github.io..." -ForegroundColor Yellow
     $result = & $venvPip install --only-binary :all: --extra-index-url https://abetlen.github.io/llama-cpp-python/whl/cpu llama-cpp-python 2>&1
     if ($LASTEXITCODE -eq 0) { $llamaOk = $true }
+}
+
+# Paso 3: descargar el .whl directamente
+if (-not $llamaOk) {
+    Write-Host "     Descargando wheel directamente..." -ForegroundColor Yellow
+    $pyVerNum = & $venvPython -c "import sys; print(f'{sys.version_info.major}{sys.version_info.minor}')"
+    $pyVer = "cp$pyVerNum"
+    $arch = if ([Environment]::Is64BitOperatingSystem) { "win_amd64" } else { "win32" }
+    $vers = @("0.3.4", "0.3.3", "0.3.2", "0.3.1", "0.3.0", "0.2.90", "0.2.89")
+    foreach ($ver in $vers) {
+        $url = "https://abetlen.github.io/llama-cpp-python/whl/cpu/llama_cpp_python-$ver-$pyVer-$pyVer-$arch.whl"
+        $tmp = "$SCRIPT_DIR\llama_$ver.whl"
+        try {
+            $wc = New-Object System.Net.WebClient
+            $wc.DownloadFile($url, $tmp)
+            if ((Get-Item $tmp).Length -gt 100KB) {
+                Write-Host "     ✅ Wheel $ver descargado" -ForegroundColor Yellow
+                $result = & $venvPip install $tmp 2>&1
+                if ($LASTEXITCODE -eq 0) { $llamaOk = $true }
+                Remove-Item $tmp -Force
+                break
+            }
+            Remove-Item $tmp -Force
+        } catch {
+            if (Test-Path $tmp) { Remove-Item $tmp -Force }
+        }
+    }
 }
 
 if ($llamaOk) {
@@ -78,21 +131,19 @@ if ($llamaOk) {
 
     Write-Host "  ❌ Error CRITICO instalando llama-cpp-python" -ForegroundColor Red
     Write-Host ""
-    Write-Host "  🔧 Para EVITAR instalar Visual C++, usa un wheel pre-compilado:" -ForegroundColor Yellow
+    Write-Host "  🔧 Esto suele pasar por UNA de estas razones:" -ForegroundColor Yellow
     Write-Host ""
-    Write-Host "     Tu Python: $pyVer, arquitectura: $arch" -ForegroundColor Yellow
+    Write-Host "  1️⃣  Falta el Microsoft Visual C++ Redistributable" -ForegroundColor Yellow
+    Write-Host "      Descárgalo e instálalo desde:" -ForegroundColor Yellow
+    Write-Host "      https://aka.ms/vs/17/release/vc_redist.x64.exe" -ForegroundColor Yellow
+    Write-Host "      (solo el runtime, NO necesitas Build Tools)" -ForegroundColor Yellow
     Write-Host ""
-    Write-Host "  📥 Opción 1 (automática):" -ForegroundColor Yellow
-    Write-Host "     & $venvPip install $wheelUrl" -ForegroundColor Yellow
+    Write-Host "  2️⃣  No hay wheel para tu Python" -ForegroundColor Yellow
+    Write-Host "      Python: $pyVer, arquitectura: $arch" -ForegroundColor Yellow
+    Write-Host "      Prueba: & $venvPip install $wheelUrl" -ForegroundColor Yellow
     Write-Host ""
-    Write-Host "  📥 Opción 2 (manual):" -ForegroundColor Yellow
-    Write-Host "     1. Abre: https://abetlen.github.io/llama-cpp-python/whl/cpu/" -ForegroundColor Yellow
-    Write-Host "     2. Busca el archivo que termine en '$pyVer-$pyVer-$arch.whl'" -ForegroundColor Yellow
-    Write-Host "     3. Descárgalo y ejecuta:" -ForegroundColor Yellow
-    Write-Host "        & $venvPip install ruta/al/archivo.whl" -ForegroundColor Yellow
-    Write-Host ""
-    Write-Host "  📥 Opción 3 (instalar Visual C++ Build Tools):" -ForegroundColor Yellow
-    Write-Host "     https://visualstudio.microsoft.com/visual-cpp-build-tools/" -ForegroundColor Yellow
+    Write-Host "  3️⃣  Error de conexión" -ForegroundColor Yellow
+    Write-Host "      Asegúrate de tener internet y vuelve a intentar." -ForegroundColor Yellow
     pause
     exit 1
 }
