@@ -1,9 +1,21 @@
 import os
 import threading
+import time
 from audio import Audio
 
 class Sounds:
     _project_dir = os.path.dirname(os.path.abspath(__file__))
+    _last_sound_time = 0
+    _lock = threading.Lock()
+
+    @classmethod
+    def _cooldown(cls):
+        with cls._lock:
+            now = time.time()
+            if now - cls._last_sound_time < 1.0:
+                return False
+            cls._last_sound_time = now
+            return True
 
     @classmethod
     def play_startup(cls):
@@ -17,6 +29,8 @@ class Sounds:
 
     @classmethod
     def play_notification(cls):
+        if not cls._cooldown():
+            return
         def _play():
             try:
                 Audio.play_beep(880, 120)
@@ -27,6 +41,8 @@ class Sounds:
 
     @classmethod
     def play_send(cls):
+        if not cls._cooldown():
+            return
         def _play():
             try:
                 Audio.play_beep(600, 60)
