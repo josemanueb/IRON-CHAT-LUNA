@@ -24,27 +24,6 @@ def _ensure_pygame():
     return None
 
 
-def _get_pid_by_name(name):
-    try:
-        result = subprocess.run(
-            ['tasklist', '/FI', f'IMAGENAME eq {name}', '/NH', '/FO', 'CSV'],
-            capture_output=True, text=True, timeout=5
-        )
-        pids = []
-        for line in result.stdout.strip().split('\n'):
-            if not line:
-                continue
-            parts = line.strip('"').split('","')
-            if len(parts) >= 2:
-                try:
-                    pids.append(int(parts[1]))
-                except ValueError:
-                    pass
-        return pids
-    except:
-        return []
-
-
 class Audio:
     _music_process = None
     _music_winsound_playing = False

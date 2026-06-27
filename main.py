@@ -74,8 +74,9 @@ class ChatbotApp:
 
     def guardar_historial(self):
         try:
+            solo_conversacion = [m for m in self.chat_history if m.startswith("[")]
             with open(self.historial_file, 'w', encoding='utf-8') as f:
-                json.dump(self.chat_history, f, ensure_ascii=False, indent=2)
+                json.dump(solo_conversacion, f, ensure_ascii=False, indent=2)
         except Exception as e:
             logging.warning(f"Error guardando historial: {e}")
 

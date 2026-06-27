@@ -145,12 +145,14 @@ def main():
             import socket
             socket.setdefaulttimeout(1800)  # 30 minutos
             def report(block, block_size, total):
+                downloaded = block * block_size / (1024**3)
                 if total > 0:
-                    downloaded = block * block_size / (1024**3)
                     total_gb = total / (1024**3)
                     pct = min(100, int(downloaded / total_gb * 100))
                     bar = "█" * (pct // 2) + "░" * (50 - pct // 2)
                     print(f"     [{bar}] {downloaded:.1f}/{total_gb:.1f} GB ({pct}%)", end="\r")
+                else:
+                    print(f"     Descargados {downloaded:.1f} GB...", end="\r")
             urlretrieve(model_url, model_path + ".tmp", reporthook=report)
             os.replace(model_path + ".tmp", model_path)
             size = os.path.getsize(model_path) / (1024**3)
