@@ -49,14 +49,14 @@ def _download_chunked(url, dest, verified=True, timeout=120):
     tmp = dest + ".tmp"
     ctx = ssl.create_default_context() if verified else ssl._create_unverified_context()
     resume_bytes = 0
+    total = 0
 
-    # Reanudar descarga parcial
     if os.path.exists(tmp):
         resume_bytes = os.path.getsize(tmp)
         if resume_bytes > 0:
             print(f"     🔄 Reanudando desde {resume_bytes/(1024**3):.2f} GB...")
 
-    CHUNK = 1024 * 1024  # 1 MB por chunk
+    CHUNK = 1024 * 1024
     max_retries = 5
     attempt = 0
 
@@ -67,10 +67,24 @@ def _download_chunked(url, dest, verified=True, timeout=120):
                 req.add_header("Range", f"bytes={resume_bytes}-")
 
             resp = urllib.request.urlopen(req, timeout=timeout, context=ctx)
-            total = int(resp.headers.get("Content-Length", 0)) + resume_bytes
-            total_gb = total / (1024**3)
+            status = resp.status
 
-            mode = "ab" if resume_bytes > 0 else "wb"
+            # Si el servidor ignoró el Range (200 en vez de 206), empezar de cero
+            if resume_bytes > 0 and status != 206:
+                resume_bytes = 0
+                tmp = dest + ".tmp"
+
+            cl = resp.headers.get("Content-Length")
+            remaining = int(cl) if cl else 0
+
+            if status == 206:
+                total = remaining + resume_bytes
+            else:
+                total = remaining
+
+            total_gb = total / (1024**3)
+            mode = "wb" if resume_bytes == 0 else "ab"
+
             with open(tmp, mode) as f:
                 while True:
                     try:
@@ -95,14 +109,12 @@ def _download_chunked(url, dest, verified=True, timeout=120):
                         attempt += 1
                         break
                 else:
-                    # loop completed without break -> success
                     if resume_bytes >= total or total == 0:
                         os.replace(tmp, dest)
                         return True
                     continue
         except urllib.request.HTTPError as e:
             if e.code == 416 and resume_bytes > 0:
-                # Range not satisfiable -> file already complete
                 os.replace(tmp, dest)
                 return True
             return False
@@ -119,21 +131,23 @@ def _download_urllib(url, dest, verified=True):
     except Exception:
         return False
 
+def _ps_ok(tmp, dest):
+    """Verifica descarga PowerShell y renombra .tmp a destino"""
+    if os.path.exists(tmp) and os.path.getsize(tmp) > 1024 * 1024:
+        os.replace(tmp, dest)
+        return True
+    return False
+
 def download_with_powershell(url, dest):
     """Descarga usando PowerShell WebClient"""
     try:
         tmp = dest + ".tmp"
-        resume = os.path.getsize(tmp) if os.path.exists(tmp) else 0
-        if resume > 0:
-            print(f"     🔄 Reanudando desde {resume/(1024**3):.2f} GB...")
         cmd = [
             'powershell', '-NoProfile', '-Command',
-            f'$wc = New-Object System.Net.WebClient; '
-            f'if ({resume} -gt 0) {{ $wc.AddRange({resume}, -1) }}; '
-            f'$wc.DownloadFile("{url}", "{tmp}")'
+            f'$wc = New-Object System.Net.WebClient; $wc.DownloadFile("{url}", "{tmp}")'
         ]
-        result = subprocess.run(cmd, capture_output=True, text=True, timeout=7200)
-        return result.returncode == 0 and os.path.exists(tmp) and os.path.getsize(tmp) > 0 and (os.path.rename(tmp, dest) or True)
+        subprocess.run(cmd, capture_output=True, text=True, timeout=7200)
+        return _ps_ok(tmp, dest)
     except:
         return False
 
@@ -141,15 +155,17 @@ def download_with_powershell_ssl_fallback(url, dest):
     """Descarga con PowerShell ignorando errores SSL"""
     try:
         tmp = dest + ".tmp"
-        script = f'''
-[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
-[System.Net.ServicePointManager]::ServerCertificateValidationCallback = {{$true}}
-$wc = New-Object System.Net.WebClient
-$wc.DownloadFile("{url}", "{tmp}")
-'''
-        cmd = ['powershell', '-NoProfile', '-Command', script]
-        result = subprocess.run(cmd, capture_output=True, text=True, timeout=7200)
-        return result.returncode == 0 and os.path.exists(tmp) and os.path.getsize(tmp) > 0 and (os.path.rename(tmp, dest) or True)
+        script = (
+            '[Net.ServicePointManager]::SecurityProtocol = '
+            '[Net.SecurityProtocolType]::Tls12; '
+            '[System.Net.ServicePointManager]::'
+            'ServerCertificateValidationCallback = {$true}; '
+            f'$wc = New-Object System.Net.WebClient; '
+            f'$wc.DownloadFile("{url}", "{tmp}")'
+        )
+        subprocess.run(['powershell', '-NoProfile', '-Command', script],
+                       capture_output=True, text=True, timeout=7200)
+        return _ps_ok(tmp, dest)
     except:
         return False
 
@@ -157,12 +173,11 @@ def download_with_bits(url, dest):
     """Descarga usando BITS (Background Intelligent Transfer Service)"""
     try:
         tmp = dest + ".tmp"
-        cmd = [
+        subprocess.run([
             'powershell', '-NoProfile', '-Command',
             f'Start-BitsTransfer -Source "{url}" -Destination "{tmp}" -Priority High'
-        ]
-        result = subprocess.run(cmd, capture_output=True, text=True, timeout=7200)
-        return result.returncode == 0 and os.path.exists(tmp) and os.path.getsize(tmp) > 0 and (os.path.rename(tmp, dest) or True)
+        ], capture_output=True, text=True, timeout=7200)
+        return _ps_ok(tmp, dest)
     except:
         return False
 
@@ -438,23 +453,16 @@ def main():
             (voice_url, voice_path, "Voz"),
             (voice_json_url, voice_path + ".json", "Config")
         ]:
-            if download_with_powershell(url, dest) or \
-               download_with_powershell_ssl_fallback(url, dest) or \
-               download_with_bits(url, dest):
+            ok = (_download_urllib(url, dest, verified=True) or
+                  _download_urllib(url, dest, verified=False) or
+                  download_with_powershell(url, dest) or
+                  download_with_powershell_ssl_fallback(url, dest) or
+                  download_with_bits(url, dest))
+            if ok:
                 log(f"{label} descargada")
                 voice_ok = True
             else:
-                # Fallback a urllib
-                try:
-                    import ssl
-                    ctx = ssl._create_unverified_context()
-                    opener = urllib.request.build_opener(urllib.request.HTTPSHandler(context=ctx))
-                    urllib.request.install_opener(opener)
-                    urllib.request.urlretrieve(url, dest)
-                    log(f"{label} descargada")
-                    voice_ok = True
-                except:
-                    log(f"No se pudo descargar {label}", False)
+                log(f"No se pudo descargar {label}", False)
 
         if not voice_ok:
             log("No se pudo descargar la voz", False)
