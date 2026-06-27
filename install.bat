@@ -8,21 +8,27 @@ echo ║   PARA WINDOWS                       ║
 echo ╚══════════════════════════════════════╝
 echo.
 
-REM Intentar con py (Windows Launcher) o python
+REM Buscar Python: probar py (Windows Launcher) y python
+set PYTHON=
 where py >nul 2>nul
 if %errorlevel% equ 0 (
-    set PYTHON=py
-) else (
+    py --version >nul 2>nul
+    if %errorlevel% equ 0 set PYTHON=py
+)
+if not defined PYTHON (
     where python >nul 2>nul
-    if %errorlevel% neq 0 (
-        echo ❌ Python no encontrado.
-        echo ⬇️ Descárgalo desde: https://www.python.org/downloads/
-        echo ⚠️ MARCA "Add Python to PATH" durante la instalación.
-        echo.
-        pause
-        exit /b 1
+    if %errorlevel% equ 0 (
+        python --version >nul 2>nul
+        if %errorlevel% equ 0 set PYTHON=python
     )
-    set PYTHON=python
+)
+if not defined PYTHON (
+    echo ❌ Python no encontrado.
+    echo ⬇️ Descárgalo desde: https://www.python.org/downloads/
+    echo ⚠️ MARCA "Add Python to PATH" durante la instalación.
+    echo.
+    pause
+    exit /b 1
 )
 
 %PYTHON% --version
