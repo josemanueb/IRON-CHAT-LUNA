@@ -599,7 +599,7 @@ class ChatbotApp:
         self.input_field.delete(0, tk.END)
         if self.procesar_comando(user_input):
             return
-        Sounds.play_send()
+        Sounds.play_chat()
         self.add_message("user", user_input)
         self.mensajes_count += 1
         self.actualizar_contador()
@@ -613,7 +613,7 @@ class ChatbotApp:
             history = self._get_conversation_context(5)
             response = self.ai.get_response(user_input, history=history)
             self.root.after(0, lambda: self.add_message("ai", response))
-            self.root.after(0, lambda: Sounds.play_notification())
+            self.root.after(0, lambda: Sounds.play_chat())
             self.root.after(0, lambda: self.speak_response(response))
         except Exception as e:
             error_msg = str(e)

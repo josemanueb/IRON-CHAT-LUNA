@@ -43,26 +43,27 @@ class Audio:
 
     @staticmethod
     def play_beep(freq, duration):
+        sample_rate = 44100
+        n = int(sample_rate * duration / 1000)
+        samples = [int(0.3 * 32767 * math.sin(2 * math.pi * freq * i / sample_rate)) for i in range(n)]
+        buf = io.BytesIO()
+        w = wave.open(buf, 'w')
+        w.setnchannels(1)
+        w.setsampwidth(2)
+        w.setframerate(sample_rate)
+        w.writeframes(struct.pack(f'<{len(samples)}h', *samples))
+        w.close()
+        buf.seek(0)
+
         if _system == "Windows":
             import winsound
-            winsound.Beep(freq, duration)
+            winsound.PlaySound(buf.read(), winsound.SND_ASYNC | winsound.SND_MEMORY)
         else:
             pygame = _ensure_pygame()
-            if not pygame:
-                return
-            sample_rate = 44100
-            n = int(sample_rate * duration)
-            buf = io.BytesIO()
-            w = wave.open(buf, 'w')
-            w.setnchannels(1)
-            w.setsampwidth(2)
-            w.setframerate(sample_rate)
-            samples = [int(0.4 * 32767 * math.sin(2 * math.pi * freq * i / sample_rate)) for i in range(n)]
-            w.writeframes(struct.pack(f'<{len(samples)}h', *samples))
-            w.close()
-            buf.seek(0)
-            sound = pygame.mixer.Sound(buf)
-            sound.play()
+            if pygame:
+                buf.seek(0)
+                sound = pygame.mixer.Sound(buf)
+                sound.play()
 
     @staticmethod
     def play_music(path, loop=True):
