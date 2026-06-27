@@ -18,10 +18,13 @@ class GPT4AllAI:
         print("Cargando modelo (esto puede tomar varios minutos)...")
         self.model = Llama(
             model_path=self.model_path,
-            n_ctx=2048,
+            n_ctx=1024,
             n_threads=4,
             n_gpu_layers=0,
-            verbose=False
+            verbose=False,
+            chat_format="llama-3",
+            use_mmap=True,
+            use_mlock=False
         )
         print("Modelo cargado correctamente")
 
@@ -32,17 +35,7 @@ class GPT4AllAI:
         try:
             ascii_arts_list = ", ".join(ASCIIArt.list_arts())
 
-            history_block = ""
-            if history:
-                for role, text in history:
-                    if role == "user":
-                        history_block += f"<|eot_id|>\n<|start_header_id|>user<|end_header_id|>\n\n{text}"
-                    elif role == "assistant":
-                        history_block += f"<|eot_id|>\n<|start_header_id|>assistant<|end_header_id|>\n\n{text}"
-
-            prompt = f"""<|begin_of_text|><|start_header_id|>system<|end_header_id|>
-
-Eres LUNA, una entrenadora personal y nutricionista profesional. Hablas español con energia y motivacion.
+            system_prompt = f"""Eres LUNA, una entrenadora personal y nutricionista profesional. Hablas español con energia y motivacion.
 
 TUS CONOCIMIENTOS:
 - Creacion de rutinas de ejercicios personalizadas (pesas, cardio, calistenia)
@@ -61,27 +54,29 @@ INSTRUCCIONES:
 - Se profesional pero cercana
 - Si te piden un dibujo o arte ASCII, responde SOLO con el nombre del dibujo entre [ASCII:nombre], por ejemplo: [ASCII:mancuerna]
 - Los dibujos disponibles son: {ascii_arts_list}
-- Recuerda lo que el usuario te ha dicho antes en la conversacion
+- Recuerda lo que el usuario te ha dicho antes en la conversacion"""
 
-{history_block}
-<|eot_id|>
-<|start_header_id|>user<|end_header_id|>
+            messages = [{"role": "system", "content": system_prompt}]
+            
+            if history:
+                for role, text in history:
+                    if role == "user":
+                        messages.append({"role": "user", "content": text})
+                    elif role == "assistant":
+                        messages.append({"role": "assistant", "content": text})
+            
+            messages.append({"role": "user", "content": user_input})
 
-{user_input}
-
-<|eot_id|>
-<|start_header_id|>assistant<|end_header_id|>"""
-
-            response = self.model(
-                prompt,
-                max_tokens=500,
+            response = self.model.create_chat_completion(
+                messages=messages,
+                max_tokens=256,
                 temperature=0.7,
                 top_p=0.9,
                 top_k=40,
                 repeat_penalty=1.1,
-                stop=["<|eot_id|>", "<|end_header_id|>"]
+                stop=["<|eot_id|>"]
             )
-            text = response['choices'][0]['text'].strip()
+            text = response['choices'][0]['message']['content'].strip()
 
             if "[ASCII:" in text:
                 import re

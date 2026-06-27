@@ -1,6 +1,5 @@
 import os
 import threading
-import subprocess
 import platform
 import tempfile
 import re
@@ -38,24 +37,17 @@ class TTS:
             print("⚠️ TTS Windows no disponible")
     
     def _init_linux(self):
-        """Linux: usa Piper TTS real con voz femenina española"""
+        """Linux: usa Piper TTS (paquete Python) con voz femenina española"""
         voices_dir = os.path.join(os.path.dirname(__file__), "voices")
         
-        # Buscar piper-tts real (el que descargamos)
-        piper_paths = [
-            "/usr/local/bin/piper-tts",  # El que acabamos de instalar
-            "/usr/local/bin/piper",       # Por si acaso
-        ]
-        
-        self.piper_bin = None
-        for p in piper_paths:
-            if os.path.exists(p):
-                self.piper_bin = p
-                break
-        
-        if not self.piper_bin:
-            print("⚠️ Piper TTS no encontrado en /usr/local/bin")
+        # Verificar que el paquete Python piper-tts está disponible
+        try:
+            from piper import PiperVoice
+            self.piper_available = True
+        except ImportError:
+            print("⚠️ Paquete piper-tts no instalado en el venv")
             print("⚠️ TTS no disponible, modo texto")
+            self.piper_available = False
             return
         
         # Buscar voz femenina española (preferida) o masculina
@@ -69,8 +61,7 @@ class TTS:
             if os.path.exists(ruta):
                 self.voice_path = ruta
                 self.mode = "piper"
-                print(f"✅ TTS Linux: Piper real con voz {tipo} española ({voz})")
-                print(f"   Binario: {self.piper_bin}")
+                print(f"✅ TTS Linux: Piper (Python) con voz {tipo} española ({voz})")
                 return
         
         print("⚠️ No se encontraron voces Piper en la carpeta voices/")
@@ -112,8 +103,11 @@ class TTS:
             self.engine_w.runAndWait()
     
     def _speak_piper(self, text):
-        """Usa Piper TTS real con voz femenina española"""
+        """Usa Piper TTS (paquete Python) con voz femenina española"""
         try:
+            from piper import PiperVoice
+            import wave
+            
             # Limpiar texto
             texto_limpio = re.sub(r'[^\w\s,;:.!?¡¿áéíóúüñÁÉÍÓÚÜÑ]', ' ', text)
             texto_limpio = re.sub(r'\s+', ' ', texto_limpio).strip()
@@ -121,24 +115,20 @@ class TTS:
             if not texto_limpio:
                 return
             
-            # Generar WAV con Piper TTS
+            # Cargar voz
+            voice = PiperVoice.load(self.voice_path)
+            
+            # Generar WAV en memoria
             wav_file = tempfile.NamedTemporaryFile(delete=False, suffix='.wav')
             wav_path = wav_file.name
             wav_file.close()
             
-            cmd = [
-                self.piper_bin,
-                '--model', self.voice_path,
-                '--output_file', wav_path,
-            ]
-            
-            with subprocess.Popen(
-                cmd,
-                stdin=subprocess.PIPE,
-                stdout=subprocess.DEVNULL,
-                stderr=subprocess.DEVNULL
-            ) as proc:
-                proc.communicate(input=texto_limpio.encode('utf-8'), timeout=60)
+            with wave.open(wav_path, "wb") as wav:
+                wav.setnchannels(1)
+                wav.setsampwidth(2)
+                wav.setframerate(voice.config.sample_rate)
+                for audio_chunk in voice.synthesize(texto_limpio):
+                    wav.writeframes(audio_chunk.audio_int16_bytes)
             
             # Reproducir el WAV
             if os.path.exists(wav_path) and os.path.getsize(wav_path) > 1000:

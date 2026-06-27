@@ -26,15 +26,9 @@ else
     exit 1
 fi
 
-# === 2. PIPER TTS ===
+# === 2. PIPER TTS (Python package, not system binary) ===
 echo ""
-echo "🔊 Instalando Piper TTS..."
-if command -v piper-tts &> /dev/null; then
-    echo "  ✅ Piper TTS ya instalado"
-else
-    echo "  ⏳ Instalando Piper TTS..."
-    sudo apt install -y piper-tts 2>/dev/null && echo "  ✅ Piper instalado" || echo "  ⚠️ No se pudo instalar Piper. TTS no disponible"
-fi
+echo "🔊 Piper TTS se instalará como paquete Python (piper-tts) en el venv"
 
 # === 3. ENTORNO VIRTUAL ===
 echo ""
@@ -55,9 +49,9 @@ pip install --upgrade pip -q
 echo "  ⏳ Instalando llama-cpp-python (sin AVX)..."
 pip install llama-cpp-python -q
 echo "  ✅ llama-cpp-python instalado"
-echo "  ⏳ Instalando pygame, Pillow..."
-pip install pygame Pillow -q
-echo "  ✅ pygame, Pillow instalados"
+echo "  ⏳ Instalando pygame, Pillow, piper-tts..."
+pip install pygame Pillow piper-tts -q
+echo "  ✅ pygame, Pillow, piper-tts instalados"
 
 # === 5. MODELO DE IA (2 GB) ===
 echo ""

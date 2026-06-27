@@ -92,7 +92,7 @@ def main():
     if platform.system() == "Windows":
         deps.append("pyttsx3")
     else:
-        deps.append("pygame")
+        deps.extend(["pygame", "piper-tts"])
     if not pip_install(pip, deps, ", ".join(deps)):
         print("  ⚠️ Error instalando dependencias secundarias.")
         print("     Puedes instalarlas manualmente después.")

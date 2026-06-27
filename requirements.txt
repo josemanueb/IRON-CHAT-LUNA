@@ -1,5 +1,7 @@
 # IRON CHAT - LUNA (CPU sin AVX)
 # pygame solo se necesita en Linux (instalado via apt/sistema)
 # En Windows se usa winsound + pyttsx3 (vienen con Python/systema)
+# piper-tts para TTS en Linux (paquete Python)
 llama-cpp-python
 Pillow
+piper-tts
