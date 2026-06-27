@@ -262,16 +262,41 @@ def main():
     subprocess.run([pip, "install", "--upgrade", "pip"])
 
     # 3a. llama-cpp-python (CRITICO) - con reintento
-    print("  ⏳ Instalando llama-cpp-python...")
-    result = subprocess.run([pip, "install", "llama-cpp-python"])
-    if result.returncode != 0:
+    def _pip_llama(args):
+        return subprocess.run([pip] + args).returncode == 0
+
+    def _install_llama():
+        print("  ⏳ Instalando llama-cpp-python...")
+
+        # En Windows: forzar SOLO binarios, nunca compilar desde fuente
+        if platform.system() == "Windows":
+            # Intentar 1: solo wheels (falla rapido si no hay wheel)
+            print("     Buscando wheel pre-compilado...")
+            if _pip_llama(["install", "llama-cpp-python", "--only-binary", ":all:"]):
+                return True
+            # Intentar 2: desde el repo de wheels CPU
+            cpu_repo = "https://abetlen.github.io/llama-cpp-python/whl/cpu"
+            print(f"     Buscando en {cpu_repo}...")
+            if _pip_llama(["install", "llama-cpp-python", "--only-binary", ":all:",
+                           "--extra-index-url", cpu_repo]):
+                return True
+            return False
+
+        # Linux: puede compilar si no hay wheel
+        if _pip_llama(["install", "llama-cpp-python", "--prefer-binary"]):
+            return True
         print("  ⚠️ Reintentando con --no-cache-dir...")
-        result = subprocess.run([pip, "install", "--no-cache-dir", "llama-cpp-python"])
-    if result.returncode == 0:
+        if _pip_llama(["install", "--no-cache-dir", "--prefer-binary", "llama-cpp-python"]):
+            return True
+        return False
+
+    result_ok = _install_llama()
+
+    if result_ok:
         log("llama-cpp-python instalado")
         if not verify_import(venv_dir, "llama_cpp"):
-            log("llama-cpp-python no se pudo importar. Reintentando...", False)
-            result = subprocess.run([pip, "install", "--force-reinstall", "--no-cache-dir", "llama-cpp-python"])
+            log("No se pudo importar. Forzando reinstall...", False)
+            _pip_llama(["install", "--force-reinstall", "--no-cache-dir", "llama-cpp-python"])
     else:
         log("Error CRITICO: no se pudo instalar llama-cpp-python", False)
         fatal_error = True
@@ -299,14 +324,34 @@ def main():
 
     # 3d. Resumen de dependencias
     if fatal_error:
+        py_ver = f"cp{sys.version_info.major}{sys.version_info.minor}"
+        arch = platform.machine().lower()
+        if arch in ("amd64", "x86_64"):
+            arch = "win_amd64"
+        elif arch == "arm64":
+            arch = "win_arm64"
+        else:
+            arch = "win32"
+        wheel_name = f"llama_cpp_python-*-{py_ver}-{py_ver}-{arch}.whl"
+        wheel_url = f"https://abetlen.github.io/llama-cpp-python/whl/cpu/{wheel_name}"
+
         print("\n  ❌ FALLO CRÍTICO: llama-cpp-python no se instaló correctamente.")
-        print("  🔧 Posibles soluciones:")
-        print("     1. Asegúrate de tener Microsoft Visual C++ Redistributable:")
-        print("        https://aka.ms/vs/17/release/vc_redist.x64.exe")
-        print("     2. Prueba instalarlo manualmente:")
-        print(f"        {pip} install llama-cpp-python")
-        print("     3. Si sigue fallando, descarga el .whl desde:")
-        print("        https://github.com/abetlen/llama-cpp-python/releases")
+        print("  =" * 30)
+        print("  🔧 Para EVITAR instalar Visual C++, usa un wheel pre-compilado:")
+        print()
+        print(f"     Tu Python: {py_ver}, arquitectura: {arch}")
+        print()
+        print("  📥 Opción 1 (automática):")
+        print(f"     {pip} install https://abetlen.github.io/llama-cpp-python/whl/cpu/llama_cpp_python-0.3.4-{py_ver}-{py_ver}-{arch}.whl")
+        print()
+        print("  📥 Opción 2 (manual):")
+        print("     1. Abre: https://abetlen.github.io/llama-cpp-python/whl/cpu/")
+        print(f"     2. Busca el archivo que termine en '{py_ver}-{py_ver}-{arch}.whl'")
+        print("     3. Descárgalo y ejecuta:")
+        print(f"        {pip} install ruta/al/archivo.whl")
+        print()
+        print("  📥 Opción 3 (instalar Visual C++ Build Tools):")
+        print("     https://visualstudio.microsoft.com/visual-cpp-build-tools/")
         print()
         input("\nPresiona Enter para salir...")
         sys.exit(1)

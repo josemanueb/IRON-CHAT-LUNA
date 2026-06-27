@@ -2,3 +2,7 @@ llama-cpp-python
 Pillow
 # Windows: pyttsx3 (se instala con install.py)
 # Linux: piper-tts pygame (se instalan con install.py)
+# En Windows, si pip quiere compilar llama-cpp-python desde fuente:
+#   pip install --only-binary :all: llama-cpp-python
+# Si no hay wheel para tu Python, usa el repo alternativo:
+#   pip install --only-binary :all: --extra-index-url https://abetlen.github.io/llama-cpp-python/whl/cpu llama-cpp-python

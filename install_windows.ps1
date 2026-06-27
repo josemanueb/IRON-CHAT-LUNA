@@ -53,21 +53,48 @@ Write-Host "`n📦 Instalando dependencias Python..." -ForegroundColor Cyan
 & $venvPython -m pip install --upgrade pip | Out-Null
 
 Write-Host "  ⏳ Instalando llama-cpp-python..." -ForegroundColor Yellow
-$result = & $venvPip install llama-cpp-python 2>&1
-if ($LASTEXITCODE -eq 0) {
+$llamaOk = $false
+
+# En Windows: forzar SOLO binarios, nunca compilar desde fuente
+# Intento 1: solo wheels (falla rapido si no hay wheel)
+Write-Host "     Buscando wheel pre-compilado..." -ForegroundColor Yellow
+$result = & $venvPip install --only-binary :all: llama-cpp-python 2>&1
+if ($LASTEXITCODE -eq 0) { $llamaOk = $true }
+
+# Intento 2: desde el repo de wheels CPU
+if (-not $llamaOk) {
+    Write-Host "     Buscando en abetlen.github.io..." -ForegroundColor Yellow
+    $result = & $venvPip install --only-binary :all: --extra-index-url https://abetlen.github.io/llama-cpp-python/whl/cpu llama-cpp-python 2>&1
+    if ($LASTEXITCODE -eq 0) { $llamaOk = $true }
+}
+
+if ($llamaOk) {
     Write-Host "  ✅ llama-cpp-python instalado" -ForegroundColor Green
 } else {
-    Write-Host "  ⚠️ Reintentando con --no-cache-dir..." -ForegroundColor Yellow
-    $result = & $venvPip install --no-cache-dir llama-cpp-python 2>&1
-    if ($LASTEXITCODE -eq 0) {
-        Write-Host "  ✅ llama-cpp-python instalado" -ForegroundColor Green
-    } else {
-        Write-Host "  ❌ Error CRITICO instalando llama-cpp-python" -ForegroundColor Red
-        Write-Host "  🔧 Asegúrate de tener Microsoft Visual C++ Redistributable:" -ForegroundColor Yellow
-        Write-Host "     https://aka.ms/vs/17/release/vc_redist.x64.exe" -ForegroundColor Yellow
-        pause
-        exit 1
-    }
+    $pyVerNum = & $venvPython -c "import sys; print(f'{sys.version_info.major}{sys.version_info.minor}')"
+    $pyVer = "cp$pyVerNum"
+    $arch = if ([Environment]::Is64BitOperatingSystem) { "win_amd64" } else { "win32" }
+    $wheelUrl = "https://abetlen.github.io/llama-cpp-python/whl/cpu/llama_cpp_python-0.3.4-$pyVer-$pyVer-$arch.whl"
+
+    Write-Host "  ❌ Error CRITICO instalando llama-cpp-python" -ForegroundColor Red
+    Write-Host ""
+    Write-Host "  🔧 Para EVITAR instalar Visual C++, usa un wheel pre-compilado:" -ForegroundColor Yellow
+    Write-Host ""
+    Write-Host "     Tu Python: $pyVer, arquitectura: $arch" -ForegroundColor Yellow
+    Write-Host ""
+    Write-Host "  📥 Opción 1 (automática):" -ForegroundColor Yellow
+    Write-Host "     & $venvPip install $wheelUrl" -ForegroundColor Yellow
+    Write-Host ""
+    Write-Host "  📥 Opción 2 (manual):" -ForegroundColor Yellow
+    Write-Host "     1. Abre: https://abetlen.github.io/llama-cpp-python/whl/cpu/" -ForegroundColor Yellow
+    Write-Host "     2. Busca el archivo que termine en '$pyVer-$pyVer-$arch.whl'" -ForegroundColor Yellow
+    Write-Host "     3. Descárgalo y ejecuta:" -ForegroundColor Yellow
+    Write-Host "        & $venvPip install ruta/al/archivo.whl" -ForegroundColor Yellow
+    Write-Host ""
+    Write-Host "  📥 Opción 3 (instalar Visual C++ Build Tools):" -ForegroundColor Yellow
+    Write-Host "     https://visualstudio.microsoft.com/visual-cpp-build-tools/" -ForegroundColor Yellow
+    pause
+    exit 1
 }
 
 Write-Host "  ⏳ Instalando Pillow, pyttsx3, pywin32..." -ForegroundColor Yellow
