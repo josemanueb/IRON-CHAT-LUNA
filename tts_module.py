@@ -36,7 +36,7 @@ class TTS:
                     break
             self.mode = "windows_tts"
             print("✅ TTS Windows listo (voz natural)")
-        except:
+        except Exception:
             print("⚠️ TTS Windows no disponible")
     
     def _init_linux(self):
@@ -45,8 +45,10 @@ class TTS:
         
         # Buscar piper-tts real (el que descargamos)
         piper_paths = [
-            "/usr/local/bin/piper-tts",  # El que acabamos de instalar
-            "/usr/local/bin/piper",       # Por si acaso
+            "/usr/local/bin/piper-tts",
+            "/usr/bin/piper-tts",
+            "/usr/local/bin/piper",
+            "/usr/bin/piper",
         ]
         
         self.piper_bin = None
@@ -113,7 +115,7 @@ class TTS:
             if self.on_finish_callback:
                 try:
                     self.on_finish_callback()
-                except:
+                except Exception:
                     pass
     
     def _speak_windows(self, text):
@@ -159,9 +161,9 @@ class TTS:
             try:
                 if os.path.exists(wav_path):
                     os.unlink(wav_path)
-            except:
+            except Exception:
                 pass
-                
+
         except Exception as e:
             print(f"Error en Piper TTS: {e}")
     

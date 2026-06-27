@@ -100,7 +100,7 @@ class Audio:
                         ['taskkill', '/f', '/t', '/pid', str(Audio._music_process.pid)],
                         stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL
                     )
-                except:
+                except Exception:
                     pass
                 Audio._music_process = None
         else:
@@ -108,7 +108,7 @@ class Audio:
             if pygame:
                 try:
                     pygame.mixer.music.stop()
-                except:
+                except Exception:
                     pass
 
     @staticmethod

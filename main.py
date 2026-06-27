@@ -213,7 +213,7 @@ class ChatbotApp:
                             new_img = new_img.resize((event.width, event.height), Image.LANCZOS)
                             self.canvas.bg_image = ImageTk.PhotoImage(new_img)
                             self.canvas.create_image(0, 0, image=self.canvas.bg_image, anchor='nw', tags="bg")
-                    except:
+                    except Exception:
                         pass
 
                 self.canvas.bind("<Configure>", resize_bg)
@@ -449,7 +449,7 @@ class ChatbotApp:
             self.status_label.config(text=f">> LUNA ESTÁ ESCRIBIENDO{dots[self.animacion_dots]}")
             if self.ai_loaded and self.status_label.cget("text").startswith(">> LUNA"):
                 self.root.after(300, self.animar_escribiendo)
-        except:
+        except Exception:
             pass
 
     def _abrir_ruta(self, ruta):
@@ -726,7 +726,10 @@ class ChatbotApp:
             return
         self._sending = True
         self.send_button.config(state=tk.DISABLED)
-        Sounds.play_send()
+        try:
+            Sounds.play_chat()
+        except Exception:
+            pass
         self.add_message("user", user_input)
         self.mensajes_count += 1
         self.actualizar_contador()
