@@ -131,24 +131,27 @@ def _download_urllib(url, dest, verified=True):
     except Exception:
         return False
 
-def _ps_ok(tmp, dest):
-    """Verifica descarga PowerShell y renombra .tmp a destino"""
-    if os.path.exists(tmp) and os.path.getsize(tmp) > 1024 * 1024:
+def _ps_check(result, tmp, dest):
+    """Verifica código de retorno + archivo > 1 MB y renombra"""
+    if result.returncode == 0 and os.path.exists(tmp) and os.path.getsize(tmp) > 1024 * 1024:
         os.replace(tmp, dest)
         return True
+    if os.path.exists(tmp):
+        sz = os.path.getsize(tmp) / (1024**3)
+        print(f"     ⚠️  PowerShell terminó con código {result.returncode}, parcial: {sz:.2f} GB")
     return False
 
 def download_with_powershell(url, dest):
     """Descarga usando PowerShell WebClient"""
     try:
         tmp = dest + ".tmp"
-        cmd = [
+        result = subprocess.run([
             'powershell', '-NoProfile', '-Command',
             f'$wc = New-Object System.Net.WebClient; $wc.DownloadFile("{url}", "{tmp}")'
-        ]
-        subprocess.run(cmd, capture_output=True, text=True, timeout=7200)
-        return _ps_ok(tmp, dest)
-    except:
+        ], capture_output=True, text=True, timeout=7200)
+        return _ps_check(result, tmp, dest)
+    except Exception as e:
+        print(f"     ⚠️  PowerShell falló: {e}")
         return False
 
 def download_with_powershell_ssl_fallback(url, dest):
@@ -163,38 +166,45 @@ def download_with_powershell_ssl_fallback(url, dest):
             f'$wc = New-Object System.Net.WebClient; '
             f'$wc.DownloadFile("{url}", "{tmp}")'
         )
-        subprocess.run(['powershell', '-NoProfile', '-Command', script],
-                       capture_output=True, text=True, timeout=7200)
-        return _ps_ok(tmp, dest)
-    except:
+        result = subprocess.run(['powershell', '-NoProfile', '-Command', script],
+                                capture_output=True, text=True, timeout=7200)
+        return _ps_check(result, tmp, dest)
+    except Exception as e:
+        print(f"     ⚠️  PowerShell SSL falló: {e}")
         return False
 
 def download_with_bits(url, dest):
     """Descarga usando BITS (Background Intelligent Transfer Service)"""
     try:
         tmp = dest + ".tmp"
-        subprocess.run([
+        result = subprocess.run([
             'powershell', '-NoProfile', '-Command',
             f'Start-BitsTransfer -Source "{url}" -Destination "{tmp}" -Priority High'
         ], capture_output=True, text=True, timeout=7200)
-        return _ps_ok(tmp, dest)
-    except:
+        return _ps_check(result, tmp, dest)
+    except Exception as e:
+        print(f"     ⚠️  BITS falló: {e}")
         return False
 
 def download_model_auto(url, dest, label="Modelo"):
     """Intenta descargar con múltiples métodos y resume automático"""
     tmp = dest + ".tmp"
-    # Limpiar .tmp corrupto (menos de 1 MB) antes de empezar
     if os.path.exists(tmp) and os.path.getsize(tmp) < 1024 * 1024:
         os.remove(tmp)
 
-    methods = [
-        ("urllib (SSL verificado + resume)", lambda: _download_urllib(url, dest, verified=True)),
-        ("urllib (SSL no verificado + resume)", lambda: _download_urllib(url, dest, verified=False)),
-        ("PowerShell WebClient", lambda: download_with_powershell(url, dest)),
-        ("PowerShell (sin verificar SSL)", lambda: download_with_powershell_ssl_fallback(url, dest)),
-        ("BITS (Background Transfer)", lambda: download_with_bits(url, dest)),
-    ]
+    if platform.system() == "Windows":
+        methods = [
+            ("PowerShell WebClient", lambda: download_with_powershell(url, dest)),
+            ("PowerShell (sin verificar SSL)", lambda: download_with_powershell_ssl_fallback(url, dest)),
+            ("BITS (Background Transfer)", lambda: download_with_bits(url, dest)),
+            ("urllib (SSL verificado)", lambda: _download_urllib(url, dest, verified=True)),
+            ("urllib (SSL no verificado)", lambda: _download_urllib(url, dest, verified=False)),
+        ]
+    else:
+        methods = [
+            ("urllib (SSL verificado + resume)", lambda: _download_urllib(url, dest, verified=True)),
+            ("urllib (SSL no verificado + resume)", lambda: _download_urllib(url, dest, verified=False)),
+        ]
 
     for name, method in methods:
         print(f"     🔄 Intentando: {name}...")
@@ -217,90 +227,6 @@ def download_model_auto(url, dest, label="Modelo"):
             log(f"{label} recuperado desde descarga parcial: {size:.2f} GB")
             return True
     return False
-
-def create_shortcut_windows(script_dir):
-    """Crea acceso directo en Windows con múltiples métodos"""
-    shortcut_ok = False
-    desktop = os.path.join(os.path.expanduser("~"), "Desktop")
-    link_path = os.path.join(desktop, "IRON CHAT - LUNA.lnk")
-    target = os.path.join(script_dir, "iron-chat.bat")
-    icon = os.path.join(script_dir, "robot-icon.ico")
-    icon = icon if os.path.exists(icon) else ""
-
-    # Método 1: win32com (requiere pywin32)
-    try:
-        import win32com.client
-        ws = win32com.client.Dispatch("WScript.Shell")
-        desktop_shell = ws.SpecialFolders("Desktop")
-        link = os.path.join(desktop_shell, "IRON CHAT - LUNA.lnk")
-        sc = ws.CreateShortcut(link)
-        sc.TargetPath = target
-        sc.WorkingDirectory = script_dir
-        sc.Description = "Chatbot Inteligente con LUNA - Entrenadora Personal"
-        if icon:
-            sc.IconLocation = icon
-        sc.Save()
-        log("Acceso directo creado (win32com)")
-        return True
-    except Exception as e:
-        log(f"win32com falló: {e}", False)
-
-    # Método 2: PowerShell COM object
-    try:
-        ps_script = f'''
-$ws = New-Object -ComObject WScript.Shell
-$desktop = [Environment]::GetFolderPath("Desktop")
-$link = "$desktop\\IRON CHAT - LUNA.lnk"
-$sc = $ws.CreateShortcut($link)
-$sc.TargetPath = "{target}"
-$sc.WorkingDirectory = "{script_dir}"
-$sc.Description = "Chatbot Inteligente con LUNA - Entrenadora Personal"
-{(f'$sc.IconLocation = "{icon}"' if icon else '')}
-$sc.Save()
-'''
-        subprocess.run(['powershell', '-NoProfile', '-Command', ps_script],
-                       check=True, capture_output=True, timeout=30)
-        if os.path.exists(link_path):
-            log("Acceso directo creado (PowerShell COM)")
-            return True
-    except Exception as e:
-        log(f"PowerShell COM falló: {e}", False)
-
-    # Método 3: VBS fallback
-    try:
-        vbs_path = os.path.join(script_dir, "crear_acceso_windows.vbs")
-        if os.path.exists(vbs_path):
-            subprocess.run(["cscript", "//nologo", vbs_path],
-                           cwd=script_dir, capture_output=True, timeout=30)
-            if os.path.exists(link_path):
-                log("Acceso directo creado (VBS)")
-                return True
-    except Exception as e:
-        log(f"VBS falló: {e}", False)
-
-    # Método 4: Copiar iron-chat.bat al escritorio
-    try:
-        bat_dest = os.path.join(desktop, "IRON CHAT - LUNA.bat")
-        shutil.copy2(target, bat_dest)
-        log("Acceso directo creado (copia de iron-chat.bat en escritorio)")
-        return True
-    except Exception as e:
-        log(f"Copia falló: {e}", False)
-
-    # Método 5: Crear un .bat en escritorio que ejecute main.py desde el venv
-    try:
-        python_exe = os.path.join(script_dir, "venv", "Scripts", "python.exe")
-        bat_dest = os.path.join(desktop, "IRON CHAT - LUNA.bat")
-        with open(bat_dest, "w") as f:
-            f.write(f'@echo off\ncd /d "{script_dir}"\n"{python_exe}" main.py\npause\n')
-        log("Acceso directo creado (.bat generado en escritorio)")
-        return True
-    except Exception as e:
-        log(f"Bat generado falló: {e}", False)
-
-    log("No se pudo crear acceso directo. Hazlo manual: clic derecho en iron-chat.bat → Enviar a Escritorio", False)
-    return False
-
 
 # ============================================================
 
@@ -475,7 +401,60 @@ def main():
     # === 7. ACCESO DIRECTO ===
     section("📌 Acceso directo")
     if platform.system() == "Windows":
-        create_shortcut_windows(SCRIPT_DIR)
+        shortcut_ok = False
+        desktop = os.path.join(os.path.expanduser("~"), "Desktop")
+        link_path = os.path.join(desktop, "IRON CHAT - LUNA.lnk")
+
+        # Método 1: VBS (no necesita pywin32, funciona siempre)
+        try:
+            vbs_path = os.path.join(SCRIPT_DIR, "crear_acceso_windows.vbs")
+            if os.path.exists(vbs_path):
+                result = subprocess.run(["cscript", "//nologo", vbs_path],
+                                        cwd=SCRIPT_DIR, capture_output=True, timeout=30)
+                if result.returncode == 0 and os.path.exists(link_path):
+                    log("Acceso directo creado (VBS)")
+                    shortcut_ok = True
+        except Exception as e:
+            log(f"VBS falló: {e}", False)
+
+        # Método 2: PowerShell COM
+        if not shortcut_ok:
+            try:
+                ps_script = f'''
+$ws = New-Object -ComObject WScript.Shell
+$desktop = [Environment]::GetFolderPath("Desktop")
+$link = "$desktop\\IRON CHAT - LUNA.lnk"
+$sc = $ws.CreateShortcut($link)
+$sc.TargetPath = "{os.path.join(SCRIPT_DIR, 'iron-chat.bat')}"
+$sc.WorkingDirectory = "{SCRIPT_DIR}"
+$sc.Description = "Chatbot Inteligente con LUNA - Entrenadora Personal"
+$icon = "{os.path.join(SCRIPT_DIR, 'robot-icon.ico')}"
+if (Test-Path $icon) {{ $sc.IconLocation = "$icon, 0" }}
+$sc.Save()
+'''
+                subprocess.run(['powershell', '-NoProfile', '-Command', ps_script],
+                               check=True, capture_output=True, timeout=30)
+                if os.path.exists(link_path):
+                    log("Acceso directo creado (PowerShell COM)")
+                    shortcut_ok = True
+            except Exception as e:
+                log(f"PowerShell COM falló: {e}", False)
+
+        # Método 3: Copia de .bat al escritorio
+        if not shortcut_ok:
+            for fname in ["iron-chat.bat", "run.bat"]:
+                src = os.path.join(SCRIPT_DIR, fname)
+                if os.path.exists(src):
+                    try:
+                        shutil.copy2(src, os.path.join(desktop, "IRON CHAT - LUNA.bat"))
+                        log("Acceso directo creado (copia .bat en escritorio)")
+                        shortcut_ok = True
+                        break
+                    except:
+                        pass
+
+        if not shortcut_ok:
+            log("Crea el acceso manual: clic derecho en iron-chat.bat → Enviar a Escritorio", False)
     else:
         desktop = os.path.join(os.path.expanduser("~"), "Desktop")
         if not os.path.exists(desktop):
