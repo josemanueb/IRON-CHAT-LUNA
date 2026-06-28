@@ -1,17 +1,28 @@
 import os
 import random
+import signal
 from ascii_art import ASCIIArt
+
+
+def _sigill_handler(signum, frame):
+    raise RuntimeError("SIGILL: instrucción no soportada por la CPU (probablemente AVX/AVX2 requerido)")
+
+
+try:
+    signal.signal(signal.SIGILL, _sigill_handler)
+except Exception:
+    pass
+
 
 class GPT4AllAI:
     def __init__(self):
         print("Inicializando LUNA - Entrenadora personal...")
 
-        self.model_name = "Llama-3.2-3B-Instruct-Q4_K_M.gguf"
-        self.model_path = os.path.join(os.path.dirname(__file__), "models", self.model_name)
+        self.model_path = self._find_model()
         self.is_offline = False
 
-        if not os.path.exists(self.model_path):
-            print("⚠️ Modelo no encontrado en: " + self.model_path)
+        if not self.model_path or not os.path.exists(self.model_path):
+            print("⚠️ Modelo no encontrado.")
             print("⚠️ Modo OFFLINE activado — respuestas basadas en reglas")
             self.is_offline = True
             self.ascii = ASCIIArt()
@@ -20,18 +31,44 @@ class GPT4AllAI:
         print("Modelo encontrado: " + self.model_path)
 
         from llama_cpp import Llama
+
         print("Cargando modelo (esto puede tomar varios minutos)...")
-        self.model = Llama(
-            model_path=self.model_path,
-            n_ctx=2048,
-            n_threads=4,
-            n_gpu_layers=0,
-            verbose=False
-        )
-        print("Modelo cargado correctamente")
+        try:
+            self.model = Llama(
+                model_path=self.model_path,
+                n_ctx=2048,
+                n_threads=4,
+                n_gpu_layers=0,
+                verbose=False
+            )
+            print("Modelo cargado correctamente")
+        except Exception as e:
+            print(f"⚠️ Error cargando modelo: {e}")
+            print("⚠️ Modo OFFLINE activado")
+            self.is_offline = True
+            self.ascii = ASCIIArt()
+            return
 
         self.ascii = ASCIIArt()
         print("ASCII Art cargado - disponible!")
+
+    def _find_model(self):
+        preferred = ["Llama-3.2-3B-Instruct-Q4_K_M.gguf",
+                     "Llama-3.2-3B-Instruct-Q4_0.gguf",
+                     "Llama-3.2-3B-Instruct.gguf"]
+        models_dir = os.path.join(os.path.dirname(__file__), "models")
+        if not os.path.isdir(models_dir):
+            return None
+        for name in preferred:
+            path = os.path.join(models_dir, name)
+            if os.path.exists(path) and os.path.getsize(path) > 1000000:
+                return path
+        for f in os.listdir(models_dir):
+            if f.endswith(".gguf") and f.lower() not in ("readme.md", "readme.txt"):
+                path = os.path.join(models_dir, f)
+                if os.path.getsize(path) > 1000000:
+                    return path
+        return None
 
     def _offline_response(self, user_input, history=None):
         text = user_input.lower().strip()

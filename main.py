@@ -243,9 +243,9 @@ class ChatbotApp:
         self.input_frame.pack_propagate(False)
         self.input_field = tk.Entry(self.input_frame, font=("Consolas", 12), bg="#1a1a2e", fg="#ECF0F1", insertbackground="#ECF0F1", relief=tk.FLAT, bd=0)
         self.input_field.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=(0, 5))
-        self.input_field.bind("<Return>", lambda e: self.send_message())
-        self.input_field.bind("<Control-Return>", lambda e: self.send_message())
-        self.input_field.bind("<Control-l>", lambda e: self.clear_chat())
+        self.input_field.bind("<Return>", lambda e: self.send_message() or "break")
+        self.input_field.bind("<Control-Return>", lambda e: self.send_message() or "break")
+        self.input_field.bind("<Control-l>", lambda e: self.clear_chat() or "break")
         self.send_button = tk.Button(self.input_frame, text="ENVIAR", font=("Helvetica", 10, "bold"), bg="#FF6B35", fg="white", command=self.send_message, relief=tk.FLAT, padx=12, pady=2, bd=0)
         self.send_button.pack(side=tk.RIGHT)
 
@@ -583,7 +583,14 @@ class ChatbotApp:
             error_msg = str(e)
             print("Error: " + error_msg)
             logging.error(f"Error cargando IA: {error_msg}")
-            self.root.after(0, lambda: self.on_ai_error(error_msg))
+            self.ai = None
+            try:
+                self.tts = TTS()
+            except Exception:
+                self.tts = None
+            self.ai_loaded = True
+            self.root.after(0, lambda: self.add_message("system", f"⚠️ Error: {error_msg}. Usando modo offline."))
+            self.root.after(0, lambda: self.status_label.config(text=">> MODO OFFLINE", fg="#FF6B35"))
 
     def on_ai_loaded(self):
         self.progress_bar.stop()
@@ -714,7 +721,7 @@ class ChatbotApp:
 
     def send_message(self):
         if not self.ai_loaded:
-            messagebox.showwarning("ESPERA", "EL MODELO AUN SE ESTA CARGANDO...")
+            self.add_message("system", "⏳ Modelo aún cargándose, espera unos segundos...")
             return
         if self._sending:
             return
@@ -748,6 +755,7 @@ class ChatbotApp:
             logging.error(f"Error en get_response: {error_msg}")
             self.root.after(0, lambda: self.add_message("system", "❌ ERROR: " + error_msg))
             self.root.after(0, lambda: self.status_label.config(text=">> ERROR", fg="#E74C3C"))
+            self.root.after(0, self._finish_sending)
 
     def _on_response(self, response):
         self.add_message("ai", response)
@@ -801,7 +809,7 @@ class ChatbotApp:
                 messagebox.showwarning("⏱️", "Introduce un número válido.")
         tk.Button(dialog, text="INICIAR", font=("Helvetica", 11, "bold"), bg="#27AE60", fg="white",
                  command=start_custom, relief=tk.FLAT, width=15, bd=0).pack(pady=10)
-        dialog.bind("<Return>", lambda e: start_custom())
+        dialog.bind("<Return>", lambda e: start_custom() or "break")
 
     def timer_start(self, seconds):
         if self.timer_running:
