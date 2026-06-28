@@ -510,18 +510,24 @@ def main():
             print("  ║   DESCARGA MANUAL REQUERIDA                ║")
             print("  ╚══════════════════════════════════════════════╝")
             print()
-            print("  1. Abre este enlace en tu navegador:")
-            print(f"     {model_url}")
+            print("  🔷 Opción recomendada (más rápida):")
             print()
-            print("  2. Espera a que descargue (~2 GB)")
+            print("     1. Presiona Ctrl+C y pega este enlace en tu navegador:")
+            print(f"        {model_url}")
             print()
-            print(f"  3. Copia el archivo descargado AQUÍ:")
-            print(f"     {model_dir}")
-            print(f"     El nombre debe ser: Llama-3.2-3B-Instruct-Q4_K_M.gguf")
+            print("     2. Espera a que descargue (~2 GB)")
             print()
-            print("  4. Una vez colocado, ejecuta install.bat otra vez")
+            print(f"     3. Copia el archivo AQUÍ:")
+            print(f"        {model_dir}")
+            print(f"        NOMBRE EXACTO: Llama-3.2-3B-Instruct-Q4_K_M.gguf")
             print()
-            input("     Presiona Enter cuando hayas colocado el modelo...")
+            print(f"     4. Luego ejecuta install.bat OTRA VEZ")
+            print()
+            print("  🔷 O intenta descargar con este comando en PowerShell (como Administrador):")
+            print()
+            print(f'        curl -L "{model_url}" -o "{model_path}"')
+            print()
+            input("     Presiona Enter cuando hayas puesto el modelo...")
             if os.path.exists(model_path):
                 size = os.path.getsize(model_path) / (1024**3)
                 if size >= 1.0:
@@ -578,58 +584,42 @@ def main():
     if platform.system() == "Windows":
         shortcut_ok = False
         desktop = os.path.join(os.path.expanduser("~"), "Desktop")
-        link_path = os.path.join(desktop, "IRON CHAT - LUNA.lnk")
+        if not os.path.exists(desktop):
+            desktop = os.path.join(os.path.expanduser("~"), "OneDrive", "Desktop")
 
-        # Método 1: VBS (no necesita pywin32, funciona siempre)
+        # Método 1: crear .bat directamente desde Python (más fiable)
+        bat_desktop = os.path.join(desktop, "IRON CHAT - LUNA.bat")
         try:
-            vbs_path = os.path.join(SCRIPT_DIR, "crear_acceso_windows.vbs")
-            if os.path.exists(vbs_path):
-                result = subprocess.run(["cscript", "//nologo", vbs_path],
-                                        cwd=SCRIPT_DIR, capture_output=True, timeout=30)
-                if result.returncode == 0 and os.path.exists(link_path):
-                    log("Acceso directo creado (VBS)")
-                    shortcut_ok = True
+            with open(bat_desktop, "w") as f:
+                f.write(f'@echo off\n')
+                f.write(f'cd /d "{SCRIPT_DIR}"\n')
+                f.write(f'"%CD%\\venv\\Scripts\\python.exe" main.py\n')
+                f.write('pause\n')
+            if os.path.exists(bat_desktop):
+                log("Acceso directo creado (.bat en escritorio)")
+                shortcut_ok = True
         except Exception as e:
-            log(f"VBS falló: {e}", False)
+            log(f".bat falló: {e}", False)
 
-        # Método 2: PowerShell COM
+        # Método 2: VBS (si no está bloqueado por Windows)
         if not shortcut_ok:
             try:
-                ps_script = f'''
-$ws = New-Object -ComObject WScript.Shell
-$desktop = [Environment]::GetFolderPath("Desktop")
-$link = "$desktop\\IRON CHAT - LUNA.lnk"
-$sc = $ws.CreateShortcut($link)
-$sc.TargetPath = "{os.path.join(SCRIPT_DIR, 'iron-chat.bat')}"
-$sc.WorkingDirectory = "{SCRIPT_DIR}"
-$sc.Description = "Chatbot Inteligente con LUNA - Entrenadora Personal"
-$icon = "{os.path.join(SCRIPT_DIR, 'robot-icon.ico')}"
-if (Test-Path $icon) {{ $sc.IconLocation = "$icon, 0" }}
-$sc.Save()
-'''
-                subprocess.run(['powershell', '-NoProfile', '-Command', ps_script],
-                               check=True, capture_output=True, timeout=30)
-                if os.path.exists(link_path):
-                    log("Acceso directo creado (PowerShell COM)")
-                    shortcut_ok = True
-            except Exception as e:
-                log(f"PowerShell COM falló: {e}", False)
-
-        # Método 3: Copia de .bat al escritorio
-        if not shortcut_ok:
-            for fname in ["iron-chat.bat", "run.bat"]:
-                src = os.path.join(SCRIPT_DIR, fname)
-                if os.path.exists(src):
-                    try:
-                        shutil.copy2(src, os.path.join(desktop, "IRON CHAT - LUNA.bat"))
-                        log("Acceso directo creado (copia .bat en escritorio)")
+                vbs_path = os.path.join(SCRIPT_DIR, "crear_acceso_windows.vbs")
+                if os.path.exists(vbs_path):
+                    result = subprocess.run(["cscript", "//nologo", vbs_path],
+                                            cwd=SCRIPT_DIR, capture_output=True, timeout=30)
+                    if result.returncode == 0:
+                        log("Acceso directo creado (VBS)")
                         shortcut_ok = True
-                        break
-                    except Exception:
-                        pass
+            except Exception as e:
+                log(f"VBS falló: {e}", False)
 
         if not shortcut_ok:
-            log("Crea el acceso manual: clic derecho en iron-chat.bat → Enviar a Escritorio", False)
+            print("     ⚠️ No se pudo crear acceso directo automáticamente.")
+            print(f"     Para crearlo manualmente:")
+            print(f"       1. Abre la carpeta: {SCRIPT_DIR}")
+            print(f"       2. Clic derecho en 'iron-chat.bat'")
+            print(f"       3. → Enviar a → Escritorio")
     else:
         desktop = os.path.join(os.path.expanduser("~"), "Desktop")
         if not os.path.exists(desktop):
