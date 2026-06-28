@@ -53,21 +53,30 @@ class GPT4AllAI:
         print("ASCII Art cargado - disponible!")
 
     def _find_model(self):
-        preferred = ["Llama-3.2-3B-Instruct-Q4_K_M.gguf",
-                     "Llama-3.2-3B-Instruct-Q4_0.gguf",
-                     "Llama-3.2-3B-Instruct.gguf"]
+        preferred = [
+            "qwen2.5-3b-instruct-q4_k_m.gguf",
+            "Qwen2.5-3B-Instruct-Q4_K_M.gguf",
+            "Llama-3.2-3B-Instruct-Q4_K_M.gguf",
+            "Llama-3.2-3B-Instruct-Q4_0.gguf",
+            "Llama-3.2-3B-Instruct.gguf"
+        ]
         models_dir = os.path.join(os.path.dirname(__file__), "models")
         if not os.path.isdir(models_dir):
             return None
         for name in preferred:
             path = os.path.join(models_dir, name)
             if os.path.exists(path) and os.path.getsize(path) > 1000000:
+                self.model_type = "qwen" if "qwen" in name.lower() else "llama"
+                print(f"📦 Modelo detectado: {self.model_type.upper()} ({name})")
                 return path
         for f in os.listdir(models_dir):
             if f.endswith(".gguf") and f.lower() not in ("readme.md", "readme.txt"):
                 path = os.path.join(models_dir, f)
                 if os.path.getsize(path) > 1000000:
+                    self.model_type = "qwen" if "qwen" in f.lower() else "llama"
+                    print(f"📦 Modelo detectado: {self.model_type.upper()} ({f})")
                     return path
+        self.model_type = "llama"
         return None
 
     def _offline_response(self, user_input, history=None):
@@ -219,6 +228,44 @@ class GPT4AllAI:
         ]
         return random.choice(responses)
 
+    def _system_prompt(self):
+        sys = ("Eres LUNA, una entrenadora personal y nutricionista profesional. Hablas español con energia y motivacion.\n\n"
+               "TUS CONOCIMIENTOS:\n"
+               "- Creacion de rutinas de ejercicios personalizadas (pesas, cardio, calistenia)\n"
+               "- Nutricion deportiva y planes de alimentacion\n"
+               "- Consejos de suplementacion\n"
+               "- Anatomia y biomecanica\n"
+               "- Lesiones y recuperacion\n"
+               "- Motivacion y disciplina\n\n"
+               "INSTRUCCIONES:\n"
+               "- Responde SIEMPRE en español\n"
+               "- Se motivadora y usa emojis como 💪🔥🏋️🥗\n"
+               "- Da respuestas detalladas y utiles\n"
+               "- Si te piden una rutina, crea una completa con ejercicios, series y repeticiones\n"
+               "- Si te piden dieta, da opciones de comidas especificas\n"
+               "- Se profesional pero cercana\n"
+               "- Si te piden un dibujo o arte ASCII, responde SOLO con el nombre del dibujo entre [ASCII:nombre], por ejemplo: [ASCII:mancuerna]\n"
+               f"- Los dibujos disponibles son: {', '.join(ASCIIArt.list_arts())}\n"
+               "- Recuerda lo que el usuario te ha dicho antes en la conversacion\n")
+        if getattr(self, 'model_type', 'llama') == "qwen":
+            return f"<|im_start|>system\n{sys}<|im_end|>\n"
+        return f"<|begin_of_text|><|start_header_id|>system<|end_header_id|>\n\n{sys}<|eot_id|>\n"
+
+    def _user_turn(self, text):
+        if getattr(self, 'model_type', 'llama') == "qwen":
+            return f"<|im_start|>user\n{text}<|im_end|>\n"
+        return f"<|start_header_id|>user<|end_header_id|>\n\n{text}<|eot_id|>\n"
+
+    def _assistant_turn(self, text=""):
+        if getattr(self, 'model_type', 'llama') == "qwen":
+            return f"<|im_start|>assistant\n{text}"
+        return f"<|start_header_id|>assistant<|end_header_id|>\n\n{text}"
+
+    def _stop_tokens(self):
+        if getattr(self, 'model_type', 'llama') == "qwen":
+            return ["<|im_end|>", "<|im_start|>"]
+        return ["<|eot_id|>", "<|end_header_id|>"]
+
     def get_response(self, user_input, history=None):
         try:
             if self.is_offline:
@@ -230,41 +277,11 @@ class GPT4AllAI:
             if history:
                 for role, text in history:
                     if role == "user":
-                        history_block += f"<|eot_id|>\n<|start_header_id|>user<|end_header_id|>\n\n{text}"
+                        history_block += self._user_turn(text)
                     elif role == "assistant":
-                        history_block += f"<|eot_id|>\n<|start_header_id|>assistant<|end_header_id|>\n\n{text}"
+                        history_block += self._assistant_turn(text)
 
-            prompt = f"""<|begin_of_text|><|start_header_id|>system<|end_header_id|>
-
-Eres LUNA, una entrenadora personal y nutricionista profesional. Hablas español con energia y motivacion.
-
-TUS CONOCIMIENTOS:
-- Creacion de rutinas de ejercicios personalizadas (pesas, cardio, calistenia)
-- Nutricion deportiva y planes de alimentacion
-- Consejos de suplementacion
-- Anatomia y biomecanica
-- Lesiones y recuperacion
-- Motivacion y disciplina
-
-INSTRUCCIONES:
-- Responde SIEMPRE en español
-- Se motivadora y usa emojis como 💪🔥🏋️🥗
-- Da respuestas detalladas y utiles
-- Si te piden una rutina, crea una completa con ejercicios, series y repeticiones
-- Si te piden dieta, da opciones de comidas especificas
-- Se profesional pero cercana
-- Si te piden un dibujo o arte ASCII, responde SOLO con el nombre del dibujo entre [ASCII:nombre], por ejemplo: [ASCII:mancuerna]
-- Los dibujos disponibles son: {ascii_arts_list}
-- Recuerda lo que el usuario te ha dicho antes en la conversacion
-
-{history_block}
-<|eot_id|>
-<|start_header_id|>user<|end_header_id|>
-
-{user_input}
-
-<|eot_id|>
-<|start_header_id|>assistant<|end_header_id|>"""
+            prompt = self._system_prompt() + history_block + self._user_turn(user_input) + self._assistant_turn("")
 
             response = self.model(
                 prompt,
@@ -273,7 +290,7 @@ INSTRUCCIONES:
                 top_p=0.9,
                 top_k=40,
                 repeat_penalty=1.1,
-                stop=["<|eot_id|>", "<|end_header_id|>"]
+                stop=self._stop_tokens()
             )
             text = response['choices'][0]['text'].strip()
 

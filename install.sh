@@ -66,12 +66,26 @@ fi
 
 # === 5. MODELO DE IA (2 GB) ===
 echo ""
-echo "🤖 Descargando modelo de IA (Llama 3.2 3B, ~2 GB)..."
+echo "🤖 Selecciona el modelo de IA:"
+echo "     1) Qwen 2.5 3B Instruct (RECOMENDADO — Apache 2.0, mejor español)"
+echo "     2) Llama 3.2 3B Instruct (Meta, requiere aceptar licencia)"
+read -p "     Selecciona [1/2] (default 1): " MODEL_CHOICE
+
+if [ "$MODEL_CHOICE" = "2" ]; then
+    MODEL_NAME="Llama-3.2-3B-Instruct-Q4_K_M.gguf"
+    MODEL_URL="https://huggingface.co/bartowski/Llama-3.2-3B-Instruct-GGUF/resolve/main/Llama-3.2-3B-Instruct-Q4_K_M.gguf"
+    echo "     ℹ️ Llama 3.2 requiere aceptar licencia de Meta en huggingface.co"
+else
+    MODEL_NAME="qwen2.5-3b-instruct-q4_k_m.gguf"
+    MODEL_URL="https://huggingface.co/Qwen/Qwen2.5-3B-Instruct-GGUF/resolve/main/qwen2.5-3b-instruct-q4_k_m.gguf"
+fi
+
 MODEL_DIR="$SCRIPT_DIR/models"
-MODEL_PATH="$MODEL_DIR/Llama-3.2-3B-Instruct-Q4_K_M.gguf"
-MODEL_URL="https://huggingface.co/bartowski/Llama-3.2-3B-Instruct-GGUF/resolve/main/Llama-3.2-3B-Instruct-Q4_K_M.gguf"
+MODEL_PATH="$MODEL_DIR/$MODEL_NAME"
+MODEL_OK=false
 mkdir -p "$MODEL_DIR"
 
+echo "🤖 Descargando $MODEL_NAME (~2 GB)..."
 if [ -f "$MODEL_PATH" ]; then
     SIZE=$(du -h "$MODEL_PATH" | cut -f1)
     echo "  ✅ Modelo ya existe: $SIZE"
@@ -116,7 +130,7 @@ else
         echo ""
         echo "  3. Copia el archivo descargado AQUÍ:"
         echo "     $MODEL_DIR"
-        echo "     El nombre debe ser: Llama-3.2-3B-Instruct-Q4_K_M.gguf"
+        echo "     El nombre debe ser: $MODEL_NAME"
         echo ""
         echo "  4. Una vez colocado, ejecuta install.sh otra vez"
         echo ""

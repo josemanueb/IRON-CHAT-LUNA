@@ -506,18 +506,34 @@ def main():
     # === 4. MODELO DE IA ===
     section("🤖 Modelo de IA")
     model_dir = os.path.join(SCRIPT_DIR, "models")
-    model_path = os.path.join(model_dir, "Llama-3.2-3B-Instruct-Q4_K_M.gguf")
     os.makedirs(model_dir, exist_ok=True)
 
-    if os.path.exists(model_path):
+    # Detectar si ya existe algún modelo
+    modelos_existentes = [f for f in os.listdir(model_dir) if f.endswith(".gguf") and os.path.getsize(os.path.join(model_dir, f)) > 1000000]
+    if modelos_existentes:
+        model_name = modelos_existentes[0]
+        model_path = os.path.join(model_dir, model_name)
         size = os.path.getsize(model_path) / (1024**3)
-        log(f"Modelo ya existe: {size:.2f} GB")
+        log(f"Modelo ya existe: {model_name} ({size:.2f} GB)")
         if size < 1.0:
             print("     ⚠️ El archivo parece muy pequeño, puede estar corrupto.")
             print("     Elimínalo y vuelve a ejecutar el instalador.")
     else:
-        model_url = "https://huggingface.co/bartowski/Llama-3.2-3B-Instruct-GGUF/resolve/main/Llama-3.2-3B-Instruct-Q4_K_M.gguf"
-        print("  ⏳ Descargando modelo (2 GB, puede tomar varios minutos)...")
+        # Elegir modelo
+        print("     Modelos disponibles:")
+        print("     1) Qwen 2.5 3B Instruct (RECOMENDADO — Apache 2.0, mejor español)")
+        print("     2) Llama 3.2 3B Instruct (Meta, requiere aceptar licencia)")
+        choice = input("     Selecciona [1/2] (default 1): ").strip()
+        if choice == "2":
+            model_name = "Llama-3.2-3B-Instruct-Q4_K_M.gguf"
+            model_url = "https://huggingface.co/bartowski/Llama-3.2-3B-Instruct-GGUF/resolve/main/Llama-3.2-3B-Instruct-Q4_K_M.gguf"
+            print("     ℹ️ Llama 3.2 requiere aceptar licencia de Meta en huggingface.co")
+        else:
+            model_name = "qwen2.5-3b-instruct-q4_k_m.gguf"
+            model_url = "https://huggingface.co/Qwen/Qwen2.5-3B-Instruct-GGUF/resolve/main/qwen2.5-3b-instruct-q4_k_m.gguf"
+
+        model_path = os.path.join(model_dir, model_name)
+        print(f"  ⏳ Descargando {model_name} (2 GB, puede tomar varios minutos)...")
         print("     ⚠️  NO CIERRES ESTA VENTANA hasta que termine!")
         print()
 
@@ -532,11 +548,12 @@ def main():
             print("     1. Presiona Ctrl+C y pega este enlace en tu navegador:")
             print(f"        {model_url}")
             print()
+            print()
             print("     2. Espera a que descargue (~2 GB)")
             print()
             print(f"     3. Copia el archivo AQUÍ:")
             print(f"        {model_dir}")
-            print(f"        NOMBRE EXACTO: Llama-3.2-3B-Instruct-Q4_K_M.gguf")
+            print(f"        NOMBRE EXACTO: {model_name}")
             print()
             print(f"     4. Luego ejecuta install.bat OTRA VEZ")
             print()
