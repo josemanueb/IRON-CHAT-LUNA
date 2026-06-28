@@ -242,6 +242,23 @@ def main():
     print("╚══════════════════════════════════════╝")
     print(f"\n📂 Directorio: {SCRIPT_DIR}")
 
+    # Verificar carpetas protegidas en Windows
+    if platform.system() == "Windows":
+        protected = [os.path.expanduser("~\\Desktop"), os.path.expanduser("~\\Downloads"),
+                     os.path.expanduser("~\\Documents"), os.path.expanduser("~\\OneDrive")]
+        in_protected = any(SCRIPT_DIR.lower().startswith(p.lower()) for p in protected if os.path.exists(p))
+        if in_protected:
+            print("\n  ⚠️  ATENCIÓN: Estás instalando dentro de una carpeta protegida")
+            print("     (Desktop, Downloads, etc.). Windows Defender puede BLOQUEAR")
+            print("     la descarga del modelo y la creación del acceso directo.")
+            print()
+            print("  ✅ Recomendación: Mueve la carpeta a:")
+            print("     C:\\IRON-CHAT-LUNA\\")
+            print("     y ejecuta install.bat desde allí.")
+            print()
+            input("     Presiona Enter para continuar de todas formas...")
+            print()
+
     # === 1. PYTHON ===
     section("🔍 Python")
     log(f"Python {sys.version.split()[0]}")

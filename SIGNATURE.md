@@ -26,8 +26,8 @@ Queda prohibida la redistribución comercial sin autorización expresa del autor
 
 ### 🔐 VERIFICACION
 ```
-SHA256: a0b63f1e27e009102b7e1da48eb1172afd9c0efb69025bbcd18acb3eac330b02
-Fecha: 2026-06-28 16:35:06
+SHA256: b9cc5fd7f62d822c193c35852bad5048aec6288327f22d4d68b6096d93940d72
+Fecha: 2026-06-28 16:35:50
 ```
 
 ### 🆕 v2.1 — Mejoras

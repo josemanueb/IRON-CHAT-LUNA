@@ -6,10 +6,35 @@ $SCRIPT_DIR = Split-Path -Parent $MyInvocation.MyCommand.Path
 $ErrorActionPreference = "Stop"
 
 Write-Host "╔══════════════════════════════════════╗" -ForegroundColor Cyan
-Write-Host "║   INSTALADOR IRON CHAT - LUNA v2.1   ║" -ForegroundColor Cyan
+Write-Host "║   INSTALADOR IRON CHAT - LUNA v2.0   ║" -ForegroundColor Cyan
+Write-Host "║   PARA WINDOWS                       ║" -ForegroundColor Cyan
 Write-Host "╚══════════════════════════════════════╝" -ForegroundColor Cyan
+Write-Host ""
+Write-Host "📂 Directorio: $SCRIPT_DIR" -ForegroundColor Cyan
 
-Write-Host "\n🔍 Detectando Python..." -ForegroundColor Cyan
+# Verificar carpetas protegidas
+$protectedPaths = @(
+    [Environment]::GetFolderPath("Desktop"),
+    [Environment]::GetFolderPath("MyDocuments"),
+    [Environment]::GetFolderPath("UserProfile") + "\Downloads"
+)
+$inProtected = $false
+foreach ($p in $protectedPaths) {
+    if ($SCRIPT_DIR.ToLower().StartsWith($p.ToLower())) { $inProtected = $true; break }
+}
+if ($inProtected) {
+    Write-Host ""
+    Write-Host "  ⚠️  ATENCIÓN: Estás instalando en una carpeta protegida" -ForegroundColor Yellow
+    Write-Host "     (Desktop, Downloads, etc.). Windows Defender puede BLOQUEAR" -ForegroundColor Yellow
+    Write-Host "     la descarga del modelo y el acceso directo." -ForegroundColor Yellow
+    Write-Host ""
+    Write-Host "  ✅ Recomendación: Mueve la carpeta a C:\IRON-CHAT-LUNA\" -ForegroundColor Green
+    Write-Host "     y ejecuta este instalador desde allí." -ForegroundColor Green
+    Write-Host ""
+    pause
+}
+
+Write-Host "`n🔍 Detectando Python..." -ForegroundColor Cyan
 
 $pythonCmd = $null
 try {
