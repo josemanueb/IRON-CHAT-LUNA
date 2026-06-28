@@ -51,7 +51,6 @@ REM Assets (imagenes y sonidos)
 copy "%SCRIPT_DIR%robot-icon.ico" "%BACKUP_DIR%\" >nul
 copy "%SCRIPT_DIR%robot-icon.png" "%BACKUP_DIR%\" >nul
 copy "%SCRIPT_DIR%robot.jpeg" "%BACKUP_DIR%\" >nul
-copy "%SCRIPT_DIR%gym.jpeg" "%BACKUP_DIR%\" >nul
 copy "%SCRIPT_DIR%gymp.jpeg" "%BACKUP_DIR%\" >nul
 copy "%SCRIPT_DIR%iniciodesesion.wav" "%BACKUP_DIR%\" >nul
 
@@ -59,7 +58,7 @@ echo.
 echo ✅ Respaldo completado en:
 echo    %BACKUP_DIR%
 echo.
-echo Archivos: 28
+echo Archivos: 27
 echo Tamaño: ~1 MB (sin modelo ni venv)
 echo.
 echo ⚡ JMbirner ⚡
