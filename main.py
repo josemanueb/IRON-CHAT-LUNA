@@ -496,9 +496,21 @@ class ChatbotApp:
             self.add_message("system", f"❌ ERROR AL EXPORTAR: {e}")
             logging.error(f"Error exportando: {e}")
 
+    def _modelo_nombre(self):
+        if hasattr(self, 'ai') and self.ai:
+            if getattr(self.ai, 'is_offline', False):
+                return "OFFLINE (reglas)"
+            tipo = getattr(self.ai, 'model_type', '')
+            if tipo == "qwen":
+                return "Qwen 2.5 3B Instruct"
+            elif tipo == "llama":
+                return "Llama 3.2 3B Instruct"
+        return "—"
+
     def show_info(self):
-        info = ("💪 IRON CHAT v2.0\n\n"
-                "🤖 MODELO: Llama 3.2 3B\n"
+        modelo = self._modelo_nombre()
+        info = ("💪 IRON CHAT v2.1\n\n"
+                f"🤖 MODELO: {modelo}\n"
                 "🔊 TTS: Piper real + pyttsx3\n"
                 "🎨 DISEÑO: Gym Style\n"
                 "🎨 ASCII ART: 26 dibujos!\n"
@@ -611,15 +623,16 @@ class ChatbotApp:
                 self.btn_tts.config(text="🔇 TTS: OFF", bg="#E74C3C")
             self.add_message("system", "🔇 TTS no disponible — desactivado automáticamente")
 
+        modelo = self._modelo_nombre()
         if self.ai and getattr(self.ai, 'is_offline', False):
             self.status_label.config(text=">> MODO OFFLINE - RESPUESTAS LIMITADAS", fg="#FF6B35")
-            self.add_message("system", "⚠️ MODO OFFLINE: El modelo de IA no está disponible.")
-            self.add_message("system", "📥 Ejecuta install.bat o install.py para descargar el modelo.")
+            self.add_message("system", f"⚠️ MODO OFFLINE ({modelo}). El modelo de IA no está disponible.")
+            self.add_message("system", "📥 Ejecuta install.py o install.sh para descargar el modelo.")
             self.add_message("system", "💬 Mientras tanto, LUNA responde con conocimientos básicos.")
             logging.info("Modelo en modo offline")
         else:
-            self.status_label.config(text=">> MODELO CARGADO - LISTO!", fg="#27AE60")
-            self.add_message("system", "✅ MODELO CARGADO! PUEDES EMPEZAR A CHATEAR.")
+            self.status_label.config(text=f">> {modelo} - LISTO!", fg="#27AE60")
+            self.add_message("system", f"✅ {modelo} CARGADO! PUEDES EMPEZAR A CHATEAR.")
             logging.info("Modelo listo!")
 
     def on_ai_error(self, error):
@@ -685,7 +698,8 @@ class ChatbotApp:
             return True
         elif cmd == "/stats":
             tema_nombre = self.colores[self.tema_actual]["nombre"]
-            stats = f"📊 ESTADISTICAS:\nMensajes: {self.mensajes_count}\nTTS: {'ON' if self.tts_enabled else 'OFF'}\nTema: {tema_nombre}\nModelo: {'CARGADO' if self.ai_loaded else 'CARGANDO'}"
+            modelo = self._modelo_nombre()
+            stats = f"📊 ESTADISTICAS:\nMensajes: {self.mensajes_count}\nTTS: {'ON' if self.tts_enabled else 'OFF'}\nTema: {tema_nombre}\nModelo: {modelo}"
             messagebox.showinfo("📊 ESTADISTICAS", stats)
             return True
         elif cmd.startswith("/dieta"):
@@ -1013,19 +1027,20 @@ class ChatbotApp:
         messagebox.showinfo("📊 ESTADÍSTICAS", "".join(lines))
 
     def show_credits(self):
+        modelo = self._modelo_nombre()
         credits = (
             "╔════════════════════════════════╗\n"
-            "║    IRON CHAT - LUNA v2.0       ║\n"
+            "║    IRON CHAT - LUNA v2.1       ║\n"
             "╠════════════════════════════════╣\n"
             "║ 👨\u200d💻 CREADOR: ⚡ JMbirner ⚡     ║\n"
             "║ 🤖 ASISTENTE: UOS AI           ║\n"
             "╠════════════════════════════════╣\n"
+            f"║ {modelo:<28}║\n"
             "║ 🏋\ufe0f Fitness + Nutricion + IA   ║\n"
             "║ 🎨 ASCII Art + TTS + Animacion ║\n"
             "╠════════════════════════════════╣\n"
-            "║  A100--80G--NVIDIA tesla Deep  ║\n"
-            "║  CPU Intel corei7-14700k       ║\n"
-            "║        ¡SIN AVX! 🐉🔥           ║\n"
+            "║  CPU Intel i7-14700K           ║\n"
+            "║  ¡SIN AVX! 🐉🔥                ║\n"
             "╚════════════════════════════════╝"
         )
         messagebox.showinfo("🏆 CREDITOS", credits)

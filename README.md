@@ -12,7 +12,7 @@
 
 | Función | Descripción |
 |---------|-------------|
-| 🤖 **IA local** | Llama 3.2 3B (GGUF Q4_K_M) — sin internet necesaria |
+| 🤖 **IA local** | Qwen 2.5 3B / Llama 3.2 3B (GGUF Q4_K_M) — sin internet necesaria |
 | 🧠 **Memoria** | Recuerda los últimos 5 mensajes de la conversación |
 | 🔊 **TTS real** | Piper TTS (Linux) / pyttsx3 (Windows) — voz femenina española, velocidad ajustable ⚡ |
 | 🎨 **Cara animada** | Robot que se balancea al hablar |
@@ -62,8 +62,11 @@ pip install llama-cpp-python pygame Pillow
 # 4. Instalar Piper TTS
 sudo apt install -y piper-tts
 
-# 5. Descargar el modelo
-# Colocá Llama-3.2-3B-Instruct-Q4_K_M.gguf en models/
+# 5. Descargar el modelo (elige uno):
+#    Opción A (recomendada): Qwen 2.5 3B Instruct
+#    wget https://huggingface.co/Qwen/Qwen2.5-3B-Instruct-GGUF/resolve/main/qwen2.5-3b-instruct-q4_k_m.gguf -P models/
+#    Opción B: Llama 3.2 3B Instruct
+#    wget https://huggingface.co/bartowski/Llama-3.2-3B-Instruct-GGUF/resolve/main/Llama-3.2-3B-Instruct-Q4_K_M.gguf -P models/
 
 # 6. Ejecutar
 python3 main.py
@@ -257,11 +260,14 @@ Dibujos disponibles: `mancuerna`, `pesa`, `musculo`, `trofeo`, `fuego`, `corazon
 
 ## 🧠 Modelo de IA
 
-Descargá el modelo desde Hugging Face y ponelo en `models/`:
+Soporta dos modelos (elige uno al instalar o descarga manual):
 
-```
-https://huggingface.co/bartowski/Llama-3.2-3B-Instruct-GGUF/resolve/main/Llama-3.2-3B-Instruct-Q4_K_M.gguf
-```
+| Modelo | Licencia | Enlace |
+|--------|----------|--------|
+| **Qwen 2.5 3B Instruct** (recomendado) | Apache 2.0 | `https://huggingface.co/Qwen/Qwen2.5-3B-Instruct-GGUF/resolve/main/qwen2.5-3b-instruct-q4_k_m.gguf` |
+| **Llama 3.2 3B Instruct** | Meta License (requiere aceptación) | `https://huggingface.co/bartowski/Llama-3.2-3B-Instruct-GGUF/resolve/main/Llama-3.2-3B-Instruct-Q4_K_M.gguf` |
+
+Colocá el archivo `.gguf` en `models/` y la app lo detecta automáticamente.
 
 **Configuración actual:**
 - Contexto: 2048 tokens
@@ -311,7 +317,7 @@ Probado en:
 |-----|--------|
 | 👨‍💻 **Creador** | ⚡ JMbirner ⚡ |
 | 🤖 **Asistente** | UOS AI / OpenCode |
-| 📅 **Versión** | IRON CHAT v2.0 |
+| 📅 **Versión** | IRON CHAT v2.1 |
 | 📜 **Licencia** | Educativa y personal |
 
 ---
