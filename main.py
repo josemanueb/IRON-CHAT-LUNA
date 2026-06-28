@@ -410,6 +410,12 @@ class ChatbotApp:
     def toggle_tts(self):
         self.tts_enabled = not self.tts_enabled
         if self.tts_enabled:
+            tts_mode = getattr(self.tts, 'mode', 'none') if hasattr(self, 'tts') and self.tts else 'none'
+            if tts_mode in ("none", "offline"):
+                self.tts_enabled = False
+                self.btn_tts.config(text="🔇 TTS: OFF", bg="#E74C3C")
+                self.add_message("system", "🔇 TTS no disponible — instala Piper y voces en voices/")
+                return
             self.btn_tts.config(text="🔊 TTS: ON", bg="#27AE60")
             self.add_message("system", "🔊 TTS ACTIVADO")
         else:
@@ -591,10 +597,20 @@ class ChatbotApp:
             self.ai_loaded = True
             self.root.after(0, lambda: self.add_message("system", f"⚠️ Error: {error_msg}. Usando modo offline."))
             self.root.after(0, lambda: self.status_label.config(text=">> MODO OFFLINE", fg="#FF6B35"))
+            self.root.after(0, self.on_ai_loaded)
 
     def on_ai_loaded(self):
         self.progress_bar.stop()
         self.progress_bar.pack_forget()
+
+        # Auto desactivar TTS si no hay voces/sintetizador disponible
+        tts_mode = getattr(self.tts, 'mode', 'none') if hasattr(self, 'tts') and self.tts else 'none'
+        if tts_mode in ("none", "offline"):
+            self.tts_enabled = False
+            if hasattr(self, 'btn_tts'):
+                self.btn_tts.config(text="🔇 TTS: OFF", bg="#E74C3C")
+            self.add_message("system", "🔇 TTS no disponible — desactivado automáticamente")
+
         if self.ai and getattr(self.ai, 'is_offline', False):
             self.status_label.config(text=">> MODO OFFLINE - RESPUESTAS LIMITADAS", fg="#FF6B35")
             self.add_message("system", "⚠️ MODO OFFLINE: El modelo de IA no está disponible.")
@@ -759,7 +775,9 @@ class ChatbotApp:
 
     def _on_response(self, response):
         self.add_message("ai", response)
-        Sounds.play_notification()
+        tts_activo = self.tts_enabled and hasattr(self, 'tts') and self.tts and self.tts.mode not in ("none", "offline")
+        if not tts_activo:
+            Sounds.play_notification()
         self.speak_response(response)
 
     def _finish_sending(self):
