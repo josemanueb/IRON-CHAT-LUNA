@@ -77,37 +77,59 @@ def install_package(name):
     return False
 
 
-def download_model_auto(force_qwen=True):
-    """Descarga modelo sin interacción."""
+def _hf_url(filename, token=""):
+    repo_qwen = "Qwen/Qwen2.5-3B-Instruct-GGUF"
+    repo_llama = "bartowski/Llama-3.2-3B-Instruct-GGUF"
+    if "Llama" in filename:
+        return f"https://huggingface.co/{repo_llama}/resolve/main/{filename}"
+    return f"https://huggingface.co/{repo_qwen}/resolve/main/{filename}"
+
+
+def _descargar_con_token(url, dest, token="", reporthook=None):
+    import ssl
+    ctx = ssl.create_default_context()
+    opener = urllib.request.build_opener(urllib.request.HTTPSHandler(context=ctx))
+    if token:
+        opener.addheaders = [("Authorization", f"Bearer {token}")]
+    else:
+        opener.addheaders = [("User-Agent", "IRON-CHAT-LUNA/2.1")]
+    urllib.request.install_opener(opener)
+    urllib.request.urlretrieve(url, dest, reporthook)
+
+
+def download_model_auto(force_qwen=True, token=""):
+    """Descarga modelo."""
     model_dir = os.path.join(SCRIPT_DIR, "models")
     os.makedirs(model_dir, exist_ok=True)
 
-    if force_qwen:
-        name = "qwen2.5-3b-instruct-q4_k_m.gguf"
-        url = ("https://huggingface.co/Qwen/"
-               "Qwen2.5-3B-Instruct-GGUF/resolve/main/"
-               "qwen2.5-3b-instruct-q4_k_m.gguf")
-    else:
-        name = "Llama-3.2-3B-Instruct-Q4_K_M.gguf"
-        url = ("https://huggingface.co/bartowski/"
-               "Llama-3.2-3B-Instruct-GGUF/resolve/main/"
-               "Llama-3.2-3B-Instruct-Q4_K_M.gguf")
-
+    name = "qwen2.5-3b-instruct-q4_k_m.gguf" if force_qwen else "Llama-3.2-3B-Instruct-Q4_K_M.gguf"
+    url = _hf_url(name)
     path = os.path.join(model_dir, name)
+
     if os.path.exists(path) and os.path.getsize(path) > 1000000:
         return True
 
+    if not token and os.environ.get("HF_TOKEN"):
+        token = os.environ["HF_TOKEN"]
+
     print(f"     Descargando {name} (~2 GB)...")
     try:
-        urllib.request.urlretrieve(url, path + ".tmp")
+        _descargar_con_token(url, path + ".tmp", token)
+        if os.path.getsize(path + ".tmp") < 1000000:
+            raise RuntimeError("Archivo demasiado pequeño (corrupto)")
         os.rename(path + ".tmp", path)
         sz = os.path.getsize(path) / (1024**3)
         log(f"{name} descargado ({sz:.2f} GB)", True)
         return True
+    except urllib.error.HTTPError as e:
+        if e.code in (401, 403):
+            print(f"     {FAIL} Acceso denegado. Usá --token 'hf_...' o variable HF_TOKEN")
+        else:
+            print(f"     {FAIL} Error HTTP {e.code}")
     except Exception as e:
         print(f"     {FAIL} Error: {e}")
-        print(f"     Descargá manualmente de:\n            {url}")
-        return False
+    print(f"     Descargá manualmente de:\n            {url}")
+    return False
 
 
 def download_voice_auto():
@@ -161,7 +183,7 @@ def check_packages(auto_install=False):
     return all_ok
 
 
-def check_models(auto_download=False, force_qwen=True):
+def check_models(auto_download=False, force_qwen=True, hf_token=""):
     section("Modelo de IA")
     model_dir = os.path.join(SCRIPT_DIR, "models")
     os.makedirs(model_dir, exist_ok=True)
@@ -178,7 +200,7 @@ def check_models(auto_download=False, force_qwen=True):
 
     log("Ningún modelo encontrado", False)
     if auto_download:
-        return download_model_auto(force_qwen)
+        return download_model_auto(force_qwen, token=hf_token)
     else:
         print(f"     {INFO} Ejecutá con --download-model o:\n"
               "            python3 install.py")
@@ -226,7 +248,7 @@ def check_venv():
 
 
 def main(auto_install=False, download_model=False, download_voice=False,
-         force_qwen=True):
+         force_qwen=True, hf_token=""):
     print(f"\n{'='*55}")
     print(f"  🔍 CHECK DEPS — IRON CHAT LUNA")
     print(f"  {platform.system()} | Python {sys.version.split()[0]}")
@@ -238,7 +260,7 @@ def main(auto_install=False, download_model=False, download_voice=False,
     results.append(("Entorno virtual", check_venv()))
     results.append(("pip", check_pip()))
     results.append(("Paquetes", check_packages(auto_install)))
-    results.append(("Modelo IA", check_models(download_model, force_qwen)))
+    results.append(("Modelo IA", check_models(download_model, force_qwen, hf_token=hf_token)))
     if platform.system() == "Linux":
         results.append(("Voces TTS", check_voices(download_voice)))
 
@@ -273,6 +295,8 @@ if __name__ == "__main__":
                         help="Descargar voz Piper")
     parser.add_argument("--llama", action="store_true",
                         help="Usar Llama 3.2 3B en vez de Qwen")
+    parser.add_argument("--token", type=str, default="",
+                        help="Token de HuggingFace (hf_...) para modelos que requieran auth")
     parser.add_argument("--all", action="store_true",
                         help="Equivalente a --yes --download-model --download-voice")
     args = parser.parse_args()
@@ -285,5 +309,6 @@ if __name__ == "__main__":
     ok = main(auto_install=args.yes,
               download_model=args.download_model,
               download_voice=args.download_voice,
-              force_qwen=not args.llama)
+              force_qwen=not args.llama,
+              hf_token=args.token or os.environ.get("HF_TOKEN", ""))
     sys.exit(0 if ok else 1)

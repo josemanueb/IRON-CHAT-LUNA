@@ -683,25 +683,49 @@ class ChatbotApp:
                 self.root.after(0, lambda p=pct, s=sent, t=total: self.status_label.config(
                     text=f">> DESCARGANDO MODELO... {p}% ({s//1024**3}/{t//1024**3} GB)", fg="#FFD700"))
 
-    def _download_opener(self):
-        import ssl
-        try:
-            ctx = ssl.create_default_context()
-            urllib.request.urlopen("https://huggingface.co", timeout=5, context=ctx)
-        except Exception:
-            ctx = ssl._create_unverified_context()
-        opener = urllib.request.build_opener(
-            urllib.request.HTTPSHandler(context=ctx))
-        opener.addheaders = [("User-Agent", "IRON-CHAT-LUNA/2.1")]
-        return opener
+    def _pedir_token(self):
+        dialog = tk.Toplevel(self.root)
+        dialog.title("🔑 Token de HuggingFace")
+        dialog.geometry("500x200")
+        dialog.configure(bg="#1a1a2e")
+        dialog.resizable(False, False)
+        dialog.transient(self.root)
+        dialog.grab_set()
+        tk.Label(dialog, text="🔑 HuggingFace Token", font=("Helvetica", 12, "bold"),
+                 bg="#1a1a2e", fg="#FFD700").pack(pady=(15, 5))
+        tk.Label(dialog, text="Algunos modelos requieren autenticación.\nCreá un token gratis en: https://huggingface.co/settings/tokens",
+                 font=("Helvetica", 9), bg="#1a1a2e", fg="#ECF0F1", wraplength=450, justify=tk.LEFT).pack(pady=5)
+        entry = tk.Entry(dialog, font=("Consolas", 10), width=60, show="*", bg="#0d0d1a", fg="#ECF0F1",
+                         insertbackground="#FFD700", relief=tk.FLAT, bd=5)
+        entry.pack(pady=10, padx=15, fill=tk.X)
+        tk.Label(dialog, text="Dejalo vacío para descarga sin token (modelos abiertos)",
+                 font=("Helvetica", 8), bg="#1a1a2e", fg="#7F8C8D").pack()
+        resultado = []
+        def aceptar():
+            resultado.append(entry.get().strip())
+            dialog.destroy()
+        def saltar():
+            resultado.append("")
+            dialog.destroy()
+        frame = tk.Frame(dialog, bg="#1a1a2e")
+        frame.pack(pady=15)
+        tk.Button(frame, text="✅ ACEPTAR", font=("Helvetica", 10, "bold"), bg="#27AE60", fg="white",
+                  command=aceptar, relief=tk.FLAT, width=12, bd=0).pack(side=tk.LEFT, padx=5)
+        tk.Button(frame, text="⏭ SALTAR", font=("Helvetica", 10, "bold"), bg="#2C3E50", fg="white",
+                  command=saltar, relief=tk.FLAT, width=12, bd=0).pack(side=tk.LEFT, padx=5)
+        self.root.wait_window(dialog)
+        return resultado[0] if resultado else ""
+
+    def _download_model_url(self, token=""):
+        repo = "Qwen/Qwen2.5-3B-Instruct-GGUF"
+        filename = "qwen2.5-3b-instruct-q4_k_m.gguf"
+        url = f"https://huggingface.co/{repo}/resolve/main/{filename}"
+        return url, filename
 
     def download_model(self):
         model_dir = os.path.join(self.project_dir, "models")
         os.makedirs(model_dir, exist_ok=True)
-        name = "qwen2.5-3b-instruct-q4_k_m.gguf"
-        url = ("https://huggingface.co/Qwen/"
-               "Qwen2.5-3B-Instruct-GGUF/resolve/main/"
-               "qwen2.5-3b-instruct-q4_k_m.gguf")
+        url, name = self._download_model_url()
         path = os.path.join(model_dir, name)
 
         if os.path.exists(path) and os.path.getsize(path) > 1000000:
@@ -709,24 +733,38 @@ class ChatbotApp:
             threading.Thread(target=self._reload_ai_after_download, daemon=True).start()
             return
 
+        hf_token = self._pedir_token()
         self.add_message("system", "📥 Descargando modelo Qwen 2.5 3B (~2 GB)...")
         self.menu_sistema.entryconfig(self.menu_download_idx, state='disabled')
 
         def _do():
-            opener = self._download_opener()
-            urllib.request.install_opener(opener)
+            import ssl
             tmp = path + ".tmp"
             try:
+                ctx = ssl.create_default_context()
+                opener = urllib.request.build_opener(
+                    urllib.request.HTTPSHandler(context=ctx))
+                if hf_token:
+                    opener.addheaders = [("Authorization", f"Bearer {hf_token}")]
+                else:
+                    opener.addheaders = [("User-Agent", "IRON-CHAT-LUNA/2.1")]
+                urllib.request.install_opener(opener)
                 urllib.request.urlretrieve(url, tmp, self._download_progress)
                 if os.path.getsize(tmp) < 1000000:
-                    raise RuntimeError("Archivo descargado demasiado pequeño (probablemente corrupto)")
+                    raise RuntimeError("Archivo demasiado pequeño (probablemente corrupto)")
                 os.rename(tmp, path)
                 self.root.after(0, self._model_downloaded)
             except urllib.error.HTTPError as e:
-                self.root.after(0, lambda: self.add_message("system",
-                    f"❌ Error HTTP {e.code} — el servidor rechazó la descarga"))
+                if e.code in (401, 403):
+                    self.root.after(0, lambda: self.add_message("system",
+                        "❌ Acceso denegado. El modelo requiere token de HuggingFace."))
+                    self.root.after(0, lambda: self.add_message("system",
+                        "🌐 Creá un token gratis en: https://huggingface.co/settings/tokens"))
+                else:
+                    self.root.after(0, lambda: self.add_message("system",
+                        f"❌ Error HTTP {e.code}"))
             except urllib.error.URLError as e:
-                err = str(e.reason)
+                err = str(e.reason) if hasattr(e, 'reason') else str(e)
                 if "certificate" in err.lower() or "ssl" in err.lower():
                     self.root.after(0, lambda: self.add_message("system",
                         "❌ Error SSL — ejecutá: python -m pip install --upgrade certifi"))
@@ -747,6 +785,11 @@ class ChatbotApp:
                         os.remove(tmp)
                     except Exception:
                         pass
+                if not os.path.exists(path):
+                    self.root.after(0, lambda: self.add_message("system",
+                        "📥 Descargá manualmente:\n"
+                        f"   {url}\n"
+                        f"   y guardalo en: {model_dir}/"))
 
         threading.Thread(target=_do, daemon=True).start()
 
