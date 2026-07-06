@@ -9,6 +9,7 @@ import re
 import logging
 import platform as _platform
 import subprocess
+import sys as _sys
 import urllib.request
 from audio import Audio
 from PIL import Image, ImageTk
@@ -269,45 +270,56 @@ class ChatbotApp:
         # Cara animada
         self.face = AnimatedFace(self.right_panel, x=35, y=10, size=280, project_dir=self.project_dir)
 
-        # Tools
-        self.tools_frame = tk.Frame(self.right_panel, bg="#1a1a2e", height=280)
+        # Tools — menú compacto
+        self.tools_frame = tk.Frame(self.right_panel, bg="#1a1a2e", height=120)
         self.tools_frame.pack(side=tk.BOTTOM, fill=tk.X, pady=(0, 10))
         self.tools_frame.pack_propagate(False)
-        self.tools_title = tk.Label(self.tools_frame, text="⚙️ HERRAMIENTAS", font=("Helvetica", 11, "bold"), bg="#1a1a2e", fg="#FFD700")
-        self.tools_title.pack(pady=(5, 8))
-        self.btn_frame = tk.Frame(self.tools_frame, bg="#1a1a2e")
-        self.btn_frame.pack(expand=True)
+        self.tools_title = tk.Label(self.tools_frame, text="⚙️ MENÚ", font=("Helvetica", 11, "bold"), bg="#1a1a2e", fg="#FFD700")
+        self.tools_title.pack(pady=(5, 5))
+        self.menu_frame = tk.Frame(self.tools_frame, bg="#1a1a2e")
+        self.menu_frame.pack(expand=True)
 
-        # Botones
-        self.btn_clear = tk.Button(self.btn_frame, text="🗑️ LIMPIAR", font=("Helvetica", 9, "bold"), bg="#2C3E50", fg="white", command=self.clear_chat, relief=tk.FLAT, width=12, height=1, bd=0)
-        self.btn_clear.grid(row=0, column=0, padx=5, pady=3)
-        self.btn_tts = tk.Button(self.btn_frame, text="🔊 TTS: ON", font=("Helvetica", 9, "bold"), bg="#27AE60", fg="white", command=self.toggle_tts, relief=tk.FLAT, width=12, height=1, bd=0)
-        self.btn_tts.grid(row=0, column=1, padx=5, pady=3)
-        self.btn_export = tk.Button(self.btn_frame, text="📤 EXPORTAR", font=("Helvetica", 9, "bold"), bg="#2C3E50", fg="white", command=self.export_chat, relief=tk.FLAT, width=12, height=1, bd=0)
-        self.btn_export.grid(row=1, column=0, padx=5, pady=3)
-        self.btn_info = tk.Button(self.btn_frame, text="ℹ️ INFO", font=("Helvetica", 9, "bold"), bg="#2C3E50", fg="white", command=self.show_info, relief=tk.FLAT, width=12, height=1, bd=0)
-        self.btn_info.grid(row=1, column=1, padx=5, pady=3)
-        self.btn_theme = tk.Button(self.btn_frame, text="🌙 MODO OSCURO", font=("Helvetica", 9, "bold"), bg="#2C3E50", fg="white", command=self.toggle_theme, relief=tk.FLAT, width=12, height=1, bd=0)
-        self.btn_theme.grid(row=2, column=0, padx=5, pady=3)
-        self.btn_notes = tk.Button(self.btn_frame, text="📝 NOTAS", font=("Helvetica", 9, "bold"), bg="#2C3E50", fg="white", command=self.open_notes, relief=tk.FLAT, width=12, height=1, bd=0)
-        self.btn_notes.grid(row=2, column=1, padx=5, pady=3)
-        self.btn_music = tk.Button(self.btn_frame, text="🎵 MÚSICA OFF", font=("Helvetica", 9, "bold"), bg="#2C3E50", fg="white", command=self.toggle_music, relief=tk.FLAT, width=12, height=1, bd=0)
-        self.btn_music.grid(row=3, column=0, padx=5, pady=3)
-        self.btn_music_folder = tk.Button(self.btn_frame, text="📂 MP3", font=("Helvetica", 9, "bold"), bg="#2C3E50", fg="white", command=self.open_music_folder, relief=tk.FLAT, width=12, height=1, bd=0)
-        self.btn_music_folder.grid(row=3, column=1, padx=5, pady=3)
-        self.btn_routine = tk.Button(self.btn_frame, text="🏋️ RUTINA", font=("Helvetica", 9, "bold"), bg="#2C3E50", fg="white", command=self.show_routines, relief=tk.FLAT, width=12, height=1, bd=0)
-        self.btn_routine.grid(row=4, column=0, padx=5, pady=3)
-        self.btn_progress = tk.Button(self.btn_frame, text="📊 PROGRESO", font=("Helvetica", 9, "bold"), bg="#2C3E50", fg="white", command=self.show_progress, relief=tk.FLAT, width=12, height=1, bd=0)
-        self.btn_progress.grid(row=4, column=1, padx=5, pady=3)
-        self.btn_ayuda = tk.Button(self.btn_frame, text="❓ AYUDA", font=("Helvetica", 9, "bold"), bg="#2C3E50", fg="white", command=self.show_help, relief=tk.FLAT, width=12, height=1, bd=0)
-        self.btn_ayuda.grid(row=5, column=0, padx=5, pady=3)
-        self.btn_credits = tk.Button(self.btn_frame, text="🏆 CRÉDITOS", font=("Helvetica", 9, "bold"), bg="#2C3E50", fg="white", command=self.show_credits, relief=tk.FLAT, width=12, height=1, bd=0)
-        self.btn_credits.grid(row=5, column=1, padx=5, pady=3)
-        self.btn_download = tk.Button(self.btn_frame, text="📥 DESC. MODELO", font=("Helvetica", 9, "bold"), bg="#E67E22", fg="white", command=self.download_model, relief=tk.FLAT, width=12, height=1, bd=0)
-        self.btn_download.grid(row=6, column=0, padx=5, pady=3)
-        self.btn_download.grid_remove()
-        self.btn_desktop = tk.Button(self.btn_frame, text="🖥️ ACCESO ESCR.", font=("Helvetica", 9, "bold"), bg="#2C3E50", fg="white", command=self.crear_acceso_escritorio, relief=tk.FLAT, width=12, height=1, bd=0)
-        self.btn_desktop.grid(row=6, column=1, padx=5, pady=3)
+        self.menu_bar = tk.Menu(self.menu_frame, tearoff=0, bg="#2C3E50", fg="white", font=("Helvetica", 10), activebackground="#34495E", activeforeground="white")
+        self.menubtn = tk.Menubutton(self.menu_frame, text="☰ MENÚ", menu=self.menu_bar, font=("Helvetica", 11, "bold"), bg="#2C3E50", fg="white", relief=tk.RAISED, bd=2, padx=20, pady=6, cursor="hand2")
+        self.menubtn.pack()
+
+        m = self.menu_bar
+        menu_bg = "#2C3E50"
+
+        # 💬 Chat
+        sub = tk.Menu(m, tearoff=0, bg=menu_bg, fg="white", font=("Helvetica", 10), activebackground="#34495E", activeforeground="white")
+        m.add_cascade(label="💬 Chat", menu=sub)
+        sub.add_command(label="🗑️ Limpiar chat", command=self.clear_chat)
+        sub.add_command(label="📤 Exportar chat", command=self.export_chat)
+
+        # 🔊 Audio
+        self.menu_audio = tk.Menu(m, tearoff=0, bg=menu_bg, fg="white", font=("Helvetica", 10), activebackground="#34495E", activeforeground="white")
+        m.add_cascade(label="🔊 Audio", menu=self.menu_audio)
+        self.menu_audio.add_command(label="🔊 TTS: ON", command=self.toggle_tts)
+        self.menu_audio.add_command(label="🎵 Música OFF", command=self.toggle_music)
+        self.menu_audio.add_command(label="📂 Carpeta MP3", command=self.open_music_folder)
+
+        # 🏋️ Entrenamiento
+        sub = tk.Menu(m, tearoff=0, bg=menu_bg, fg="white", font=("Helvetica", 10), activebackground="#34495E", activeforeground="white")
+        m.add_cascade(label="🏋️ Entrenamiento", menu=sub)
+        sub.add_command(label="📝 Notas", command=self.open_notes)
+        sub.add_command(label="🏋️ Rutina", command=self.show_routines)
+        sub.add_command(label="📊 Progreso", command=self.show_progress)
+
+        # ℹ️ App
+        self.menu_app = tk.Menu(m, tearoff=0, bg=menu_bg, fg="white", font=("Helvetica", 10), activebackground="#34495E", activeforeground="white")
+        m.add_cascade(label="ℹ️ App", menu=self.menu_app)
+        self.menu_app.add_command(label="ℹ️ Info", command=self.show_info)
+        self.menu_app.add_command(label="🌙 Oscuro", command=self.toggle_theme)
+        self.menu_app.add_command(label="❓ Ayuda", command=self.show_help)
+        self.menu_app.add_command(label="🏆 Créditos", command=self.show_credits)
+
+        # ⚙️ Sistema
+        self.menu_sistema = tk.Menu(m, tearoff=0, bg=menu_bg, fg="white", font=("Helvetica", 10), activebackground="#34495E", activeforeground="white")
+        m.add_cascade(label="⚙️ Sistema", menu=self.menu_sistema)
+        self.menu_download_idx = 0
+        self.menu_sistema.add_command(label="📥 Descargar Modelo", command=self.download_model)
+        self.menu_sistema.add_command(label="🖥️ Acceso Escritorio", command=self.crear_acceso_escritorio)
 
         # === 5. COLORES ===
         self.tema_actual = 0
@@ -419,16 +431,16 @@ class ChatbotApp:
             tts_mode = getattr(self.tts, 'mode', 'none') if hasattr(self, 'tts') and self.tts else 'none'
             if tts_mode in ("none", "offline"):
                 self.tts_enabled = False
-                self.btn_tts.config(text="🔇 TTS: OFF", bg="#E74C3C")
+                self.menu_audio.entryconfig(0, label="🔇 TTS: OFF")
                 self.add_message("system", "🔇 TTS no disponible — instala Piper y voces en voices/")
                 return
-            self.btn_tts.config(text="🔊 TTS: ON", bg="#27AE60")
+            self.menu_audio.entryconfig(0, label="🔊 TTS: ON")
             self.add_message("system", "🔊 TTS ACTIVADO")
         else:
             if hasattr(self, 'tts'):
                 self.tts.stop()
                 self.face.set_speaking(False)
-            self.btn_tts.config(text="🔇 TTS: OFF", bg="#E74C3C")
+            self.menu_audio.entryconfig(0, label="🔇 TTS: OFF")
             self.add_message("system", "🔇 TTS DESACTIVADO")
 
     def cambiar_volumen(self, val):
@@ -451,7 +463,9 @@ class ChatbotApp:
     def toggle_theme(self):
         self.tema_actual = (self.tema_actual + 1) % len(self.colores)
         self.aplicar_tema()
-        self.add_message("system", f"{self.colores[self.tema_actual]['nombre']} ACTIVADO")
+        nombre = self.colores[self.tema_actual]['nombre']
+        self.menu_app.entryconfig(1, label=nombre)
+        self.add_message("system", f"{nombre} ACTIVADO")
 
     def animar_escribiendo(self):
         """Animación de puntitos mientras escribe"""
@@ -575,19 +589,19 @@ class ChatbotApp:
                 mp3s = glob.glob(os.path.join(music_path, "*.mp3")) + glob.glob(os.path.join(music_path, "*.wav"))
                 if mp3s:
                     Audio.play_music(mp3s[0])
-                    self.btn_music.config(text="🎵 MÚSICA ON", bg="#27AE60")
+                    self.menu_audio.entryconfig(1, label="🎵 Música ON")
                     self.add_message("system", f"🎵 REPRODUCIENDO: {os.path.basename(mp3s[0])}")
                 else:
                     self.music_playing = False
                     self.add_message("system", "⚠️ No hay musica en la carpeta 'musica/'")
-                    self.btn_music.config(text="🎵 MÚSICA OFF", bg="#2C3E50")
+                    self.menu_audio.entryconfig(1, label="🎵 Música OFF")
             except Exception as e:
                 self.music_playing = False
                 self.add_message("system", f"❌ ERROR: {e}")
-                self.btn_music.config(text="🎵 MÚSICA OFF", bg="#2C3E50")
+                self.menu_audio.entryconfig(1, label="🎵 Música OFF")
         else:
             Audio.stop_music()
-            self.btn_music.config(text="🎵 MÚSICA OFF", bg="#2C3E50")
+            self.menu_audio.entryconfig(1, label="🎵 Música OFF")
             self.add_message("system", "🎵 MUSICA DESACTIVADA")
 
     def load_ai(self):
@@ -621,29 +635,24 @@ class ChatbotApp:
         self.progress_bar.stop()
         self.progress_bar.pack_forget()
 
-        # Auto desactivar TTS si no hay voces/sintetizador disponible
         tts_mode = getattr(self.tts, 'mode', 'none') if hasattr(self, 'tts') and self.tts else 'none'
         if tts_mode in ("none", "offline"):
             self.tts_enabled = False
-            if hasattr(self, 'btn_tts'):
-                self.btn_tts.config(text="🔇 TTS: OFF", bg="#E74C3C")
+            self.menu_audio.entryconfig(0, label="🔇 TTS: OFF")
             self.add_message("system", "🔇 TTS no disponible — desactivado automáticamente")
 
         modelo = self._modelo_nombre()
-        modelo_ausente = (
-            self.ai is None or
-            getattr(self.ai, 'is_offline', False)
-        )
+        modelo_ausente = self.ai is None or getattr(self.ai, 'is_offline', False)
         if modelo_ausente:
             self.status_label.config(text=">> MODO OFFLINE - RESPUESTAS LIMITADAS", fg="#FF6B35")
             self.add_message("system", f"⚠️ MODO OFFLINE ({modelo}). El modelo de IA no está disponible.")
             self.add_message("system", "💬 Mientras tanto, LUNA responde con conocimientos básicos.")
-            self.btn_download.grid()
+            self.menu_sistema.entryconfig(self.menu_download_idx, state='normal')
             logging.info("Modelo en modo offline")
         else:
             self.status_label.config(text=f">> {modelo} - LISTO!", fg="#27AE60")
             self.add_message("system", f"✅ {modelo} CARGADO! PUEDES EMPEZAR A CHATEAR.")
-            self.btn_download.grid_remove()
+            self.menu_sistema.entryconfig(self.menu_download_idx, state='disabled')
             logging.info("Modelo listo!")
 
     def on_ai_error(self, error):
@@ -669,9 +678,24 @@ class ChatbotApp:
 
     def _download_progress(self, block, sent, total):
         if total > 0:
-            pct = min(100, int(sent * 100 / total))
-            self.root.after(0, lambda: self.status_label.config(
-                text=f">> DESCARGANDO MODELO... {pct}% ({sent//1024**3}/{total//1024**3} GB)", fg="#FFD700"))
+            pct = int(sent * 100 / total)
+            last = getattr(self, '_last_pct', -1)
+            if pct >= last + 2 or pct == 100:
+                self._last_pct = pct
+                self.root.after(0, lambda p=pct, s=sent, t=total: self.status_label.config(
+                    text=f">> DESCARGANDO MODELO... {p}% ({s//1024**3}/{t//1024**3} GB)", fg="#FFD700"))
+
+    def _download_opener(self):
+        import ssl
+        try:
+            ctx = ssl.create_default_context()
+            urllib.request.urlopen("https://huggingface.co", timeout=5, context=ctx)
+        except Exception:
+            ctx = ssl._create_unverified_context()
+        opener = urllib.request.build_opener(
+            urllib.request.HTTPSHandler(context=ctx))
+        opener.addheaders = [("User-Agent", "IRON-CHAT-LUNA/2.1")]
+        return opener
 
     def download_model(self):
         model_dir = os.path.join(self.project_dir, "models")
@@ -688,61 +712,122 @@ class ChatbotApp:
             return
 
         self.add_message("system", "📥 Descargando modelo Qwen 2.5 3B (~2 GB)...")
-        self.btn_download.config(state=tk.DISABLED, text="⏳ DESCARGANDO...")
+        self.menu_sistema.entryconfig(self.menu_download_idx, state='disabled')
 
         def _do():
+            opener = self._download_opener()
+            urllib.request.install_opener(opener)
+            tmp = path + ".tmp"
             try:
-                urllib.request.urlretrieve(url, path + ".tmp", self._download_progress)
-                os.rename(path + ".tmp", path)
+                urllib.request.urlretrieve(url, tmp, self._download_progress)
+                if os.path.getsize(tmp) < 1000000:
+                    raise RuntimeError("Archivo descargado demasiado pequeño (probablemente corrupto)")
+                os.rename(tmp, path)
                 self.root.after(0, self._model_downloaded)
+            except urllib.error.HTTPError as e:
+                self.root.after(0, lambda: self.add_message("system",
+                    f"❌ Error HTTP {e.code} — el servidor rechazó la descarga"))
+            except urllib.error.URLError as e:
+                err = str(e.reason)
+                if "certificate" in err.lower() or "ssl" in err.lower():
+                    self.root.after(0, lambda: self.add_message("system",
+                        "❌ Error SSL — ejecutá: python -m pip install --upgrade certifi"))
+                elif "timed out" in err.lower():
+                    self.root.after(0, lambda: self.add_message("system",
+                        "❌ Timeout — revisá tu conexión a internet"))
+                else:
+                    self.root.after(0, lambda: self.add_message("system", f"❌ Error de red: {err}"))
             except Exception as e:
                 self.root.after(0, lambda: self.add_message("system", f"❌ Error descargando: {e}"))
-                self.root.after(0, lambda: self.btn_download.config(state=tk.NORMAL, text="📥 DESC. MODELO"))
             finally:
+                self.root.after(0, lambda: self.menu_sistema.entryconfig(
+                    self.menu_download_idx, state='normal'))
                 self.root.after(0, lambda: self.status_label.config(
-                    text=">> MODELO LISTO" if os.path.exists(path) else ">> ERROR DESCARGA", fg="#27AE60"))
+                    text=">> ERROR DESCARGA" if not os.path.exists(path) else ">> MODELO LISTO", fg="#E74C3C"))
+                if os.path.exists(tmp):
+                    try:
+                        os.remove(tmp)
+                    except Exception:
+                        pass
 
         threading.Thread(target=_do, daemon=True).start()
 
+    def _desktop_path(self):
+        for folder in ["Desktop", "Escritorio"]:
+            p = os.path.join(os.path.expanduser("~"), folder)
+            if os.path.exists(p):
+                return p
+        return None
+
+    def _pythonw_path(self):
+        e = getattr(_sys, 'executable', None)
+        if e and e.lower().endswith('python.exe'):
+            w = e[:-4] + 'w.exe'
+            if os.path.exists(w):
+                return w
+        return e or 'pythonw.exe'
+
     def crear_acceso_escritorio(self):
-        desktop = os.path.join(os.path.expanduser("~"), "Desktop")
-        if not os.path.exists(desktop):
-            desktop = os.path.join(os.path.expanduser("~"), "Escritorio")
-        if not os.path.exists(desktop):
+        desktop = self._desktop_path()
+        if not desktop:
             self.add_message("system", "⚠️ No se encontró la carpeta de escritorio")
             return
 
-        sistema = _platform.system()
-        main_py = os.path.join(self.project_dir, "main.py")
-        icono = os.path.join(self.project_dir, "robot-icon.ico" if sistema == "Windows" else "robot-icon.png")
         nombre = "IRON CHAT - LUNA"
+        main_py = os.path.join(self.project_dir, "main.py")
+        icon_png = os.path.join(self.project_dir, "robot-icon.png")
+        icon_ico = os.path.join(self.project_dir, "robot-icon.ico")
 
-        if sistema == "Windows":
+        if _platform.system() == "Windows":
+            target_exe = self._pythonw_path()
+            lnk_path = os.path.join(desktop, f"{nombre}.lnk")
             bat_path = os.path.join(desktop, f"{nombre}.bat")
-            content = f'@echo off\nstart "" /B pythonw "{main_py}"\nexit\n'
-            if _platform.release() == "10" or _platform.release() == "11":
-                ps_path = os.path.join(desktop, f"{nombre}.ps1")
-                ps_content = f'Start-Process -WindowStyle Hidden -FilePath pythonw -ArgumentList "{main_py}"'
-                with open(ps_path, "w", encoding="utf-8") as f:
-                    f.write(ps_content)
+
+            # .lnk via VBS (funciona sin win32com)
+            vbs = os.path.join(self.project_dir, "_crear_lnk_tmp.vbs")
+            icono = icon_ico if os.path.exists(icon_ico) else target_exe
+            with open(vbs, "w", encoding="utf-8") as f:
+                f.write(
+                    f'Set o = WScript.CreateObject("WScript.Shell")\n'
+                    f'Set s = o.CreateShortcut("{lnk_path}")\n'
+                    f's.TargetPath = "{target_exe}"\n'
+                    f's.Arguments = "{main_py}"\n'
+                    f's.WorkingDirectory = "{self.project_dir}"\n'
+                    f's.IconLocation = "{icono}"\n'
+                    f's.WindowStyle = 7\n'
+                    f's.Description = "{nombre}"\n'
+                    f's.Save\n'
+                )
+            try:
+                subprocess.run(["cscript", "/nologo", vbs], capture_output=True, timeout=15)
+            except Exception:
+                pass
+            finally:
+                try:
+                    os.remove(vbs)
+                except Exception:
+                    pass
+
+            # .bat de respaldo
             with open(bat_path, "w", encoding="utf-8") as f:
-                f.write(content)
-            self.add_message("system", f"🖥️ Acceso directo creado en el escritorio")
+                f.write(f'@echo off\nstart "" /B "{target_exe}" "{main_py}"\nexit\n')
+
+            self.add_message("system", "🖥️ Acceso directo creado en el escritorio (.lnk + .bat)")
         else:
             desk_path = os.path.join(desktop, f"{nombre}.desktop")
-            content = (
-                "[Desktop Entry]\n"
-                "Type=Application\n"
-                f"Name={nombre}\n"
-                f"Exec=python3 \"{main_py}\"\n"
-                f"Icon={icono}\n"
-                "Terminal=false\n"
-                "Categories=Utility;\n"
-            )
+            icono = icon_png if os.path.exists(icon_png) else ""
             with open(desk_path, "w", encoding="utf-8") as f:
-                f.write(content)
+                f.write(
+                    "[Desktop Entry]\n"
+                    "Type=Application\n"
+                    f"Name={nombre}\n"
+                    f"Exec=python3 \"{main_py}\"\n"
+                    f"Icon={icono}\n"
+                    "Terminal=false\n"
+                    "Categories=Utility;\n"
+                )
             os.chmod(desk_path, 0o755)
-            self.add_message("system", f"🖥️ Acceso directo creado en el escritorio")
+            self.add_message("system", "🖥️ Acceso directo creado en el escritorio")
 
     def _get_conversation_context(self, max_exchanges=5):
         exchanges = []
