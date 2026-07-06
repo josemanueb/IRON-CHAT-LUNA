@@ -268,40 +268,36 @@ class ChatbotApp:
         self.menu_frame = tk.Frame(self.tools_frame, bg="#1a1a2e")
         self.menu_frame.pack(expand=True)
 
-        menu_bg = "#2C3E50"
-        menu_fg = "white"
-        menu_font = ("Helvetica", 10)
-        menu_active = "#34495E"
-        menu_kw = dict(tearoff=0, bg=menu_bg, fg=menu_fg, font=menu_font, activebackground=menu_active, activeforeground=menu_fg)
-
-        self.menu_bar = tk.Menu(self.menu_frame, **menu_kw)
+        self.menu_bar = tk.Menu(self.menu_frame, tearoff=0)
         self.menubtn = tk.Button(self.menu_frame, text="☰ MENÚ", font=("Helvetica", 11, "bold"), bg="#2C3E50", fg="white", relief=tk.RAISED, bd=2, padx=20, pady=6, cursor="hand2", command=self._abrir_menu)
         self.menubtn.pack()
 
         m = self.menu_bar
 
+        mkw = dict(tearoff=0)
+
         # 💬 Chat
-        sub = tk.Menu(m, **menu_kw)
+        sub = tk.Menu(m, **mkw)
         m.add_cascade(label="💬 Chat", menu=sub)
         sub.add_command(label="🗑️ Limpiar chat", command=self.clear_chat)
         sub.add_command(label="📤 Exportar chat", command=self.export_chat)
 
         # 🔊 Audio
-        self.menu_audio = tk.Menu(m, **menu_kw)
+        self.menu_audio = tk.Menu(m, **mkw)
         m.add_cascade(label="🔊 Audio", menu=self.menu_audio)
         self.menu_audio.add_command(label="🔊 TTS: ON", command=self.toggle_tts)
         self.menu_audio.add_command(label="🎵 Música OFF", command=self.toggle_music)
         self.menu_audio.add_command(label="📂 Carpeta MP3", command=self.open_music_folder)
 
         # 🏋️ Entrenamiento
-        sub = tk.Menu(m, **menu_kw)
+        sub = tk.Menu(m, **mkw)
         m.add_cascade(label="🏋️ Entrenamiento", menu=sub)
         sub.add_command(label="📝 Notas", command=self.open_notes)
         sub.add_command(label="🏋️ Rutina", command=self.show_routines)
         sub.add_command(label="📊 Progreso", command=self.show_progress)
 
         # ℹ️ App
-        self.menu_app = tk.Menu(m, **menu_kw)
+        self.menu_app = tk.Menu(m, **mkw)
         m.add_cascade(label="ℹ️ App", menu=self.menu_app)
         self.menu_app.add_command(label="ℹ️ Info", command=self.show_info)
         self.menu_app.add_command(label="🌙 Oscuro", command=self.toggle_theme)
@@ -309,7 +305,7 @@ class ChatbotApp:
         self.menu_app.add_command(label="🏆 Créditos", command=self.show_credits)
 
         # ⚙️ Sistema
-        self.menu_sistema = tk.Menu(m, **menu_kw)
+        self.menu_sistema = tk.Menu(m, **mkw)
         m.add_cascade(label="⚙️ Sistema", menu=self.menu_sistema)
         self.menu_download_idx = 0
         self.menu_sistema.add_command(label="📥 Descargar Modelo", command=self.download_model)
@@ -981,10 +977,16 @@ class ChatbotApp:
         if not tts_activo:
             Sounds.play_notification()
         self.speak_response(response)
+        self.root.after(120000, self._finish_sending)
 
     def _finish_sending(self):
+        if not self._sending:
+            return
         self._sending = False
-        self.send_button.config(state=tk.NORMAL)
+        try:
+            self.send_button.config(state=tk.NORMAL)
+        except Exception:
+            pass
 
     def speak_response(self, response):
         texto_limpio = re.sub(r"[^\w\s,;:.!?¡¿áéíóúüñÁÉÍÓÚÜÑ]", " ", response)
@@ -993,9 +995,18 @@ class ChatbotApp:
             self.status_label.config(text=">> LISTO", fg="#27AE60")
             self._finish_sending()
             return
+        tts = getattr(self, 'tts', None)
+        if not tts or not hasattr(tts, 'speak'):
+            self._finish_sending()
+            return
         self.face.set_speaking(True)
         self.status_label.config(text=">> HABLANDO...", fg="#FF6B35")
-        self.tts.speak(texto_limpio if texto_limpio else response, on_finish=lambda: self.root.after(0, self.on_tts_finish))
+        def _on_done():
+            self.root.after(0, self.on_tts_finish)
+        try:
+            tts.speak(texto_limpio if texto_limpio else response, on_finish=_on_done)
+        except Exception:
+            self._finish_sending()
 
     def on_tts_finish(self):
         self.face.set_speaking(False)
