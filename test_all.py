@@ -161,7 +161,7 @@ def main_methods_exist():
         "download_model", "crear_acceso_escritorio",
         "_model_downloaded", "_reload_ai_after_download",
         "_download_progress", "_modelo_nombre",
-        "_desktop_path", "_pythonw_path",
+        "_desktop_path", "_pythonw_path", "_abrir_menu",
     ]
     for method in required:
         assert hasattr(m.ChatbotApp, method), f"Falta método: {method}"

@@ -268,35 +268,40 @@ class ChatbotApp:
         self.menu_frame = tk.Frame(self.tools_frame, bg="#1a1a2e")
         self.menu_frame.pack(expand=True)
 
-        self.menu_bar = tk.Menu(self.menu_frame, tearoff=0, bg="#2C3E50", fg="white", font=("Helvetica", 10), activebackground="#34495E", activeforeground="white")
-        self.menubtn = tk.Menubutton(self.menu_frame, text="☰ MENÚ", menu=self.menu_bar, font=("Helvetica", 11, "bold"), bg="#2C3E50", fg="white", relief=tk.RAISED, bd=2, padx=20, pady=6, cursor="hand2")
+        menu_bg = "#2C3E50"
+        menu_fg = "white"
+        menu_font = ("Helvetica", 10)
+        menu_active = "#34495E"
+        menu_kw = dict(tearoff=0, bg=menu_bg, fg=menu_fg, font=menu_font, activebackground=menu_active, activeforeground=menu_fg)
+
+        self.menu_bar = tk.Menu(self.menu_frame, **menu_kw)
+        self.menubtn = tk.Button(self.menu_frame, text="☰ MENÚ", font=("Helvetica", 11, "bold"), bg="#2C3E50", fg="white", relief=tk.RAISED, bd=2, padx=20, pady=6, cursor="hand2", command=self._abrir_menu)
         self.menubtn.pack()
 
         m = self.menu_bar
-        menu_bg = "#2C3E50"
 
         # 💬 Chat
-        sub = tk.Menu(m, tearoff=0, bg=menu_bg, fg="white", font=("Helvetica", 10), activebackground="#34495E", activeforeground="white")
+        sub = tk.Menu(m, **menu_kw)
         m.add_cascade(label="💬 Chat", menu=sub)
         sub.add_command(label="🗑️ Limpiar chat", command=self.clear_chat)
         sub.add_command(label="📤 Exportar chat", command=self.export_chat)
 
         # 🔊 Audio
-        self.menu_audio = tk.Menu(m, tearoff=0, bg=menu_bg, fg="white", font=("Helvetica", 10), activebackground="#34495E", activeforeground="white")
+        self.menu_audio = tk.Menu(m, **menu_kw)
         m.add_cascade(label="🔊 Audio", menu=self.menu_audio)
         self.menu_audio.add_command(label="🔊 TTS: ON", command=self.toggle_tts)
         self.menu_audio.add_command(label="🎵 Música OFF", command=self.toggle_music)
         self.menu_audio.add_command(label="📂 Carpeta MP3", command=self.open_music_folder)
 
         # 🏋️ Entrenamiento
-        sub = tk.Menu(m, tearoff=0, bg=menu_bg, fg="white", font=("Helvetica", 10), activebackground="#34495E", activeforeground="white")
+        sub = tk.Menu(m, **menu_kw)
         m.add_cascade(label="🏋️ Entrenamiento", menu=sub)
         sub.add_command(label="📝 Notas", command=self.open_notes)
         sub.add_command(label="🏋️ Rutina", command=self.show_routines)
         sub.add_command(label="📊 Progreso", command=self.show_progress)
 
         # ℹ️ App
-        self.menu_app = tk.Menu(m, tearoff=0, bg=menu_bg, fg="white", font=("Helvetica", 10), activebackground="#34495E", activeforeground="white")
+        self.menu_app = tk.Menu(m, **menu_kw)
         m.add_cascade(label="ℹ️ App", menu=self.menu_app)
         self.menu_app.add_command(label="ℹ️ Info", command=self.show_info)
         self.menu_app.add_command(label="🌙 Oscuro", command=self.toggle_theme)
@@ -304,7 +309,7 @@ class ChatbotApp:
         self.menu_app.add_command(label="🏆 Créditos", command=self.show_credits)
 
         # ⚙️ Sistema
-        self.menu_sistema = tk.Menu(m, tearoff=0, bg=menu_bg, fg="white", font=("Helvetica", 10), activebackground="#34495E", activeforeground="white")
+        self.menu_sistema = tk.Menu(m, **menu_kw)
         m.add_cascade(label="⚙️ Sistema", menu=self.menu_sistema)
         self.menu_download_idx = 0
         self.menu_sistema.add_command(label="📥 Descargar Modelo", command=self.download_model)
@@ -448,6 +453,14 @@ class ChatbotApp:
         self.vol_speed_num_label.config(text=display)
         if hasattr(self, 'tts'):
             self.tts.set_speed(speed)
+
+    def _abrir_menu(self):
+        x = self.menubtn.winfo_rootx()
+        y = self.menubtn.winfo_rooty() + self.menubtn.winfo_height()
+        try:
+            self.menu_bar.tk_popup(x, y)
+        finally:
+            self.menu_bar.grab_release()
 
     def toggle_theme(self):
         self.tema_actual = (self.tema_actual + 1) % len(self.colores)
