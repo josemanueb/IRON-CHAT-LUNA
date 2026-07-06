@@ -135,18 +135,9 @@ class ChatbotApp:
         self.right_panel.configure(bg=c["bg"])
         self.tools_frame.configure(bg=c["bg"])
         self.tools_title.configure(bg=c["bg"], fg=c["acento"])
-        self.btn_frame.configure(bg=c["bg"])
-
+        self.menu_frame.configure(bg=c["bg"])
+        self.menubtn.configure(bg=c["btn_bg"])
         btn_bg = c["btn_bg"]
-        self.btn_clear.configure(bg=btn_bg)
-        self.btn_export.configure(bg=btn_bg)
-        self.btn_info.configure(bg=btn_bg)
-        self.btn_notes.configure(bg=btn_bg)
-        self.btn_routine.configure(bg=btn_bg)
-        self.btn_progress.configure(bg=btn_bg)
-        self.btn_ayuda.configure(bg=btn_bg)
-        self.btn_credits.configure(bg=btn_bg)
-        self.btn_music_folder.configure(bg=btn_bg)
         self.timer_frame.configure(bg=c["bg"])
         self.timer_label.configure(bg=c["bg"], fg=c["acento"])
         for btn in self.timer_buttons:
@@ -169,8 +160,6 @@ class ChatbotApp:
             self.face.canvas.configure(bg=c["face_bg"])
         except Exception:
             pass
-
-        self.btn_theme.config(text=c["nombre"], bg=c["btn_bg"])
 
     def init_ui(self):
         # === 1. HEADER ===
@@ -1232,9 +1221,18 @@ class ChatbotApp:
         messagebox.showinfo("🏆 CREDITOS", credits)
 
 def main():
-    root = tk.Tk()
-    app = ChatbotApp(root)
-    root.mainloop()
+    try:
+        root = tk.Tk()
+        app = ChatbotApp(root)
+        root.mainloop()
+    except Exception as e:
+        import traceback
+        err = traceback.format_exc()
+        logging.critical("Error de inicio:\n" + err)
+        try:
+            messagebox.showerror("ERROR", f"Error al iniciar:\n{e}\n\nVer el log: iron_chat.log")
+        except Exception:
+            print("ERROR:", err)
 
 if __name__ == "__main__":
     main()
