@@ -1,9 +1,14 @@
 venv/
 __pycache__/
 *.pyc
+*.pyo
 *.log
 *.tmp
+*.temp
+*.bak
+*.backup
 *.whl
+*.db
 historial.json
 notas_entreno.txt
 progreso.db
@@ -16,3 +21,8 @@ voices/
 run.bat
 vc_redist.*
 backup-*/
+.DS_Store
+Thumbs.db
+dist/
+build/
+*.egg-info/

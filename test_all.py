@@ -154,6 +154,26 @@ def face_animation_import():
     assert hasattr(F, "set_speaking")
 
 
+def main_methods_exist():
+    import inspect
+    import main as m
+    required = [
+        "download_model", "crear_acceso_escritorio",
+        "_model_downloaded", "_reload_ai_after_download",
+        "_download_progress", "_modelo_nombre"
+    ]
+    for method in required:
+        assert hasattr(m.ChatbotApp, method), f"Falta método: {method}"
+
+
+def luna_sh_syntax():
+    path = os.path.join(DIR, "luna.sh")
+    with open(path) as f:
+        lines = f.readlines()
+    assert len(lines) >= 2, "luna.sh muy corto"
+    assert lines[0].startswith("#!/"), "luna.sh falta shebang"
+
+
 if __name__ == "__main__":
     print(f"\n{'='*50}")
     print("  PRUEBAS DE ESTABILIDAD - IRON CHAT LUNA")
@@ -171,6 +191,8 @@ if __name__ == "__main__":
     test("check_deps: módulo se importa", check_deps_imports_ok)
     test("Verificar firma: módulo se importa", verificar_firma_syntax)
     test("Sounds: _gen_wav genera RIFF válido", sounds_generate_wav)
+    test("Main: métodos nuevos existen", main_methods_exist)
+    test("luna.sh: sintaxis válida", luna_sh_syntax)
 
     print(f"\n{'='*50}")
     print(f"  RESULTADO: {PASS} pasaron, {FAIL} fallaron")
