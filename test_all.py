@@ -115,6 +115,12 @@ def signature_files_match():
         assert os.path.exists(os.path.join(DIR, a)), f"Falta archivo: {a}"
 
 
+def check_deps_imports_ok():
+    import check_deps
+    assert hasattr(check_deps, "main")
+    assert hasattr(check_deps, "check_python")
+    assert hasattr(check_deps, "check_packages")
+
 def install_imports_ok():
     import install
     assert hasattr(install, "download_model_auto")
@@ -162,6 +168,7 @@ if __name__ == "__main__":
     test("FaceAnimation: métodos existen", face_animation_import)
     test("generar_firma == verificar_firma (mismos archivos)", signature_files_match)
     test("Install: módulo se importa", install_imports_ok)
+    test("check_deps: módulo se importa", check_deps_imports_ok)
     test("Verificar firma: módulo se importa", verificar_firma_syntax)
     test("Sounds: _gen_wav genera RIFF válido", sounds_generate_wav)
 

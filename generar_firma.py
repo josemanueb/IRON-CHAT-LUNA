@@ -11,7 +11,7 @@ archivos = [
     "uninstall.bat", "uninstall.sh", "crear_acceso_windows.vbs",
     "iron-chat.bat", "backup.bat",
     "generar_firma.py", "verificar_firma.py",
-    ".gitignore", "requirements.txt"
+    ".gitignore", "requirements.txt", "check_deps.py"
 ]
 
 hash_total = hashlib.sha256()
