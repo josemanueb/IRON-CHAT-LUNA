@@ -9,6 +9,7 @@ import re
 import logging
 import platform as _platform
 import subprocess
+import urllib.request
 from audio import Audio
 from PIL import Image, ImageTk
 from ai_module import GPT4AllAI
@@ -302,6 +303,11 @@ class ChatbotApp:
         self.btn_ayuda.grid(row=5, column=0, padx=5, pady=3)
         self.btn_credits = tk.Button(self.btn_frame, text="🏆 CRÉDITOS", font=("Helvetica", 9, "bold"), bg="#2C3E50", fg="white", command=self.show_credits, relief=tk.FLAT, width=12, height=1, bd=0)
         self.btn_credits.grid(row=5, column=1, padx=5, pady=3)
+        self.btn_download = tk.Button(self.btn_frame, text="📥 DESC. MODELO", font=("Helvetica", 9, "bold"), bg="#E67E22", fg="white", command=self.download_model, relief=tk.FLAT, width=12, height=1, bd=0)
+        self.btn_download.grid(row=6, column=0, padx=5, pady=3)
+        self.btn_download.grid_remove()
+        self.btn_desktop = tk.Button(self.btn_frame, text="🖥️ ACCESO ESCR.", font=("Helvetica", 9, "bold"), bg="#2C3E50", fg="white", command=self.crear_acceso_escritorio, relief=tk.FLAT, width=12, height=1, bd=0)
+        self.btn_desktop.grid(row=6, column=1, padx=5, pady=3)
 
         # === 5. COLORES ===
         self.tema_actual = 0
@@ -624,15 +630,20 @@ class ChatbotApp:
             self.add_message("system", "🔇 TTS no disponible — desactivado automáticamente")
 
         modelo = self._modelo_nombre()
-        if self.ai and getattr(self.ai, 'is_offline', False):
+        modelo_ausente = (
+            self.ai is None or
+            getattr(self.ai, 'is_offline', False)
+        )
+        if modelo_ausente:
             self.status_label.config(text=">> MODO OFFLINE - RESPUESTAS LIMITADAS", fg="#FF6B35")
             self.add_message("system", f"⚠️ MODO OFFLINE ({modelo}). El modelo de IA no está disponible.")
-            self.add_message("system", "📥 Ejecuta install.py o install.sh para descargar el modelo.")
             self.add_message("system", "💬 Mientras tanto, LUNA responde con conocimientos básicos.")
+            self.btn_download.grid()
             logging.info("Modelo en modo offline")
         else:
             self.status_label.config(text=f">> {modelo} - LISTO!", fg="#27AE60")
             self.add_message("system", f"✅ {modelo} CARGADO! PUEDES EMPEZAR A CHATEAR.")
+            self.btn_download.grid_remove()
             logging.info("Modelo listo!")
 
     def on_ai_error(self, error):
@@ -642,6 +653,96 @@ class ChatbotApp:
         self.add_message("system", "❌ ERROR AL CARGAR EL MODELO: " + error)
         logging.error(f"Error modelo: {error}")
         messagebox.showerror("ERROR", "NO SE PUDO CARGAR EL MODELO:\n" + error)
+
+    def _model_downloaded(self):
+        self.add_message("system", "✅ Modelo descargado. Recargando...")
+        self.status_label.config(text=">> RECARGANDO MODELO...", fg="#FFD700")
+        self.root.update()
+        threading.Thread(target=self._reload_ai_after_download, daemon=True).start()
+
+    def _reload_ai_after_download(self):
+        try:
+            self.ai = GPT4AllAI()
+            self.root.after(0, self.on_ai_loaded)
+        except Exception as e:
+            self.root.after(0, lambda: self.add_message("system", f"⚠️ Error recargando: {e}"))
+
+    def _download_progress(self, block, sent, total):
+        if total > 0:
+            pct = min(100, int(sent * 100 / total))
+            self.root.after(0, lambda: self.status_label.config(
+                text=f">> DESCARGANDO MODELO... {pct}% ({sent//1024**3}/{total//1024**3} GB)", fg="#FFD700"))
+
+    def download_model(self):
+        model_dir = os.path.join(self.project_dir, "models")
+        os.makedirs(model_dir, exist_ok=True)
+        name = "qwen2.5-3b-instruct-q4_k_m.gguf"
+        url = ("https://huggingface.co/Qwen/"
+               "Qwen2.5-3B-Instruct-GGUF/resolve/main/"
+               "qwen2.5-3b-instruct-q4_k_m.gguf")
+        path = os.path.join(model_dir, name)
+
+        if os.path.exists(path) and os.path.getsize(path) > 1000000:
+            self.add_message("system", "✅ El modelo ya existe. Recargando...")
+            threading.Thread(target=self._reload_ai_after_download, daemon=True).start()
+            return
+
+        self.add_message("system", "📥 Descargando modelo Qwen 2.5 3B (~2 GB)...")
+        self.btn_download.config(state=tk.DISABLED, text="⏳ DESCARGANDO...")
+
+        def _do():
+            try:
+                urllib.request.urlretrieve(url, path + ".tmp", self._download_progress)
+                os.rename(path + ".tmp", path)
+                self.root.after(0, self._model_downloaded)
+            except Exception as e:
+                self.root.after(0, lambda: self.add_message("system", f"❌ Error descargando: {e}"))
+                self.root.after(0, lambda: self.btn_download.config(state=tk.NORMAL, text="📥 DESC. MODELO"))
+            finally:
+                self.root.after(0, lambda: self.status_label.config(
+                    text=">> MODELO LISTO" if os.path.exists(path) else ">> ERROR DESCARGA", fg="#27AE60"))
+
+        threading.Thread(target=_do, daemon=True).start()
+
+    def crear_acceso_escritorio(self):
+        desktop = os.path.join(os.path.expanduser("~"), "Desktop")
+        if not os.path.exists(desktop):
+            desktop = os.path.join(os.path.expanduser("~"), "Escritorio")
+        if not os.path.exists(desktop):
+            self.add_message("system", "⚠️ No se encontró la carpeta de escritorio")
+            return
+
+        sistema = _platform.system()
+        main_py = os.path.join(self.project_dir, "main.py")
+        icono = os.path.join(self.project_dir, "robot-icon.ico" if sistema == "Windows" else "robot-icon.png")
+        nombre = "IRON CHAT - LUNA"
+
+        if sistema == "Windows":
+            bat_path = os.path.join(desktop, f"{nombre}.bat")
+            content = f'@echo off\nstart "" /B pythonw "{main_py}"\nexit\n'
+            if _platform.release() == "10" or _platform.release() == "11":
+                ps_path = os.path.join(desktop, f"{nombre}.ps1")
+                ps_content = f'Start-Process -WindowStyle Hidden -FilePath pythonw -ArgumentList "{main_py}"'
+                with open(ps_path, "w", encoding="utf-8") as f:
+                    f.write(ps_content)
+            with open(bat_path, "w", encoding="utf-8") as f:
+                f.write(content)
+            self.add_message("system", f"🖥️ Acceso directo creado en el escritorio")
+        else:
+            desk_path = os.path.join(desktop, f"{nombre}.desktop")
+            content = (
+                "[Desktop Entry]\n"
+                "Type=Application\n"
+                f"Name={nombre}\n"
+                f"Exec=python3 \"{main_py}\"\n"
+                f"Icon={icono}\n"
+                "Terminal=false\n"
+                "Categories=Utility;\n"
+            )
+            with open(desk_path, "w", encoding="utf-8") as f:
+                f.write(content)
+            os.chmod(desk_path, 0o755)
+            self.add_message("system", f"🖥️ Acceso directo creado en el escritorio")
 
     def _get_conversation_context(self, max_exchanges=5):
         exchanges = []
