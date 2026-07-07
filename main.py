@@ -22,12 +22,15 @@ from progress_tracker import ProgressTracker
 
 # === LOGGING ===
 log_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "iron_chat.log")
-logging.basicConfig(
-    filename=log_path,
-    level=logging.INFO,
-    format="%(asctime)s - %(levelname)s - %(message)s",
-    datefmt="%H:%M:%S"
-)
+try:
+    logging.basicConfig(
+        filename=log_path,
+        level=logging.INFO,
+        format="%(asctime)s - %(levelname)s - %(message)s",
+        datefmt="%H:%M:%S"
+    )
+except Exception:
+    print("⚠ No se pudo crear iron_chat.log, se usará salida estándar")
 logging.info("🚀 IRON CHAT iniciado")
 
 class ChatbotApp:
@@ -47,7 +50,15 @@ class ChatbotApp:
         self.timer_remaining = 0
         self.timer_job = None
         self._sending = False
-        self.progress = ProgressTracker(os.path.join(self.project_dir, "progreso.db"))
+        self._sending_timeout = None
+        self.FONT_MONO = ("Consolas", 12) if _platform.system() == "Windows" else ("monospace", 12)
+        self.FONT_MONO_SM = ("Consolas", 10) if _platform.system() == "Windows" else ("monospace", 10)
+        self.FONT_MONO_LG = ("Consolas", 14) if _platform.system() == "Windows" else ("monospace", 14)
+        try:
+            self.progress = ProgressTracker(os.path.join(self.project_dir, "progreso.db"))
+        except Exception:
+            logging.warning("No se pudo inicializar ProgressTracker, progreso deshabilitado")
+            self.progress = None
         self.init_ui()
         self.ai = None
         self.ai_loaded = False
@@ -62,10 +73,6 @@ class ChatbotApp:
             path = os.path.join(self.project_dir, name)
             if os.path.exists(path):
                 return path
-        for ext in ['*.jpeg', '*.jpg', '*.png']:
-            files = glob.glob(os.path.join(self.project_dir, ext))
-            if files:
-                return files[0]
         return None
 
     def cargar_historial(self):
@@ -219,7 +226,7 @@ class ChatbotApp:
         self.text_frame.place(relx=0.02, rely=0.02, relwidth=0.96, relheight=0.78)
 
         # Área de texto del chat
-        self.chat_area = tk.Text(self.text_frame, font=("Consolas", 12), bg="#0d0d1a", fg="#ECF0F1", insertbackground="#ECF0F1", wrap=tk.WORD, relief=tk.FLAT, bd=0, padx=5, pady=5)
+        self.chat_area = tk.Text(self.text_frame, font=self.FONT_MONO, bg="#0d0d1a", fg="#ECF0F1", insertbackground="#ECF0F1", wrap=tk.WORD, relief=tk.FLAT, bd=0, padx=5, pady=5)
         self.chat_area.tag_config("user_msg", background="#1a3a5e", lmargin1=10, lmargin2=10, rmargin=10, spacing1=3, spacing3=3)
         self.chat_area.tag_config("ai_msg", background="#1a3a2e", lmargin1=10, lmargin2=10, rmargin=10, spacing1=3, spacing3=3)
         self.chat_area.tag_config("system_msg", background="#0d0d1a", spacing1=2, spacing3=2)
@@ -232,7 +239,7 @@ class ChatbotApp:
         self.input_frame = tk.Frame(self.overlay, bg="#0d0d1a", height=35)
         self.input_frame.place(relx=0.02, rely=0.83, relwidth=0.96)
         self.input_frame.pack_propagate(False)
-        self.input_field = tk.Entry(self.input_frame, font=("Consolas", 12), bg="#1a1a2e", fg="#ECF0F1", insertbackground="#ECF0F1", relief=tk.FLAT, bd=0)
+        self.input_field = tk.Entry(self.input_frame, font=self.FONT_MONO, bg="#1a1a2e", fg="#ECF0F1", insertbackground="#ECF0F1", relief=tk.FLAT, bd=0)
         self.input_field.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=(0, 5))
         self.input_field.bind("<Return>", lambda e: self.send_message() or "break")
         self.input_field.bind("<Control-Return>", lambda e: self.send_message() or "break")
@@ -695,7 +702,7 @@ class ChatbotApp:
                  bg="#1a1a2e", fg="#FFD700").pack(pady=(15, 5))
         tk.Label(dialog, text="Algunos modelos requieren autenticación.\nCreá un token gratis en: https://huggingface.co/settings/tokens",
                  font=("Helvetica", 9), bg="#1a1a2e", fg="#ECF0F1", wraplength=450, justify=tk.LEFT).pack(pady=5)
-        entry = tk.Entry(dialog, font=("Consolas", 10), width=60, show="*", bg="#0d0d1a", fg="#ECF0F1",
+        entry = tk.Entry(dialog, font=self.FONT_MONO_SM, width=60, show="*", bg="#0d0d1a", fg="#ECF0F1",
                          insertbackground="#FFD700", relief=tk.FLAT, bd=5)
         entry.pack(pady=10, padx=15, fill=tk.X)
         tk.Label(dialog, text="Dejalo vacío para descarga sin token (modelos abiertos)",
@@ -1019,13 +1026,20 @@ class ChatbotApp:
         tts_activo = self.tts_enabled and hasattr(self, 'tts') and self.tts and self.tts.mode not in ("none", "offline")
         if not tts_activo:
             Sounds.play_notification()
+        self._sending_timeout = self.root.after(120000, self._finish_sending)
         self.speak_response(response)
-        self.root.after(120000, self._finish_sending)
 
     def _finish_sending(self):
         if not self._sending:
             return
         self._sending = False
+        timeout = getattr(self, '_sending_timeout', None)
+        if timeout:
+            try:
+                self.root.after_cancel(timeout)
+            except Exception:
+                pass
+            self._sending_timeout = None
         try:
             self.send_button.config(state=tk.NORMAL)
         except Exception:
@@ -1066,7 +1080,7 @@ class ChatbotApp:
         dialog.configure(bg="#1a1a2e")
         dialog.resizable(False, False)
         tk.Label(dialog, text="Minutos:", font=("Helvetica", 11, "bold"), bg="#1a1a2e", fg="#FFD700").pack(pady=(15, 5))
-        entry = tk.Entry(dialog, font=("Consolas", 14), bg="#1a1a2e", fg="#ECF0F1", insertbackground="#ECF0F1", relief=tk.FLAT, width=10, justify=tk.CENTER)
+        entry = tk.Entry(dialog, font=self.FONT_MONO_LG, bg="#1a1a2e", fg="#ECF0F1", insertbackground="#ECF0F1", relief=tk.FLAT, width=10, justify=tk.CENTER)
         entry.pack(pady=5)
         entry.insert(0, "1")
         entry.select_range(0, tk.END)
@@ -1181,19 +1195,23 @@ class ChatbotApp:
         row = 0
         for key, label in labels.items():
             tk.Label(form, text=label, font=("Helvetica", 10), bg="#1a1a2e", fg="#ECF0F1").grid(row=row, column=0, sticky="w", pady=3)
-            entry = tk.Entry(form, font=("Consolas", 10), bg="#1a1a2e", fg="#ECF0F1", insertbackground="#ECF0F1", relief=tk.FLAT, width=10)
+            entry = tk.Entry(form, font=self.FONT_MONO_SM, bg="#1a1a2e", fg="#ECF0F1", insertbackground="#ECF0F1", relief=tk.FLAT, width=10)
             entry.grid(row=row, column=1, padx=10, pady=3)
             fields[key] = entry
             row += 1
         tk.Label(form, text="Notas", font=("Helvetica", 10), bg="#1a1a2e", fg="#ECF0F1").grid(row=row, column=0, sticky="w", pady=3)
-        notes_entry = tk.Entry(form, font=("Consolas", 10), bg="#1a1a2e", fg="#ECF0F1", insertbackground="#ECF0F1", relief=tk.FLAT, width=10)
+        notes_entry = tk.Entry(form, font=self.FONT_MONO_SM, bg="#1a1a2e", fg="#ECF0F1", insertbackground="#ECF0F1", relief=tk.FLAT, width=10)
         notes_entry.grid(row=row, column=1, padx=10, pady=3)
 
         def save():
             vals = {}
             for key, entry in fields.items():
                 v = entry.get().strip()
-                vals[key] = float(v) if v else None
+                try:
+                    vals[key] = float(v) if v else None
+                except ValueError:
+                    self.add_message("system", f"⚠ Valor inválido para {key}, ingresa un número")
+                    return
             self.progress.add_entry(**vals, notes=notes_entry.get().strip())
             self.add_message("system", "📊 MEDICIÓN GUARDADA!")
             dialog.destroy()
@@ -1212,7 +1230,7 @@ class ChatbotApp:
         tk.Label(dialog, text="📈 HISTORIAL DE PROGRESO", font=("Helvetica", 12, "bold"), bg="#1a1a2e", fg="#FFD700").pack(pady=10)
         text_frame = tk.Frame(dialog, bg="#0d0d1a")
         text_frame.pack(fill=tk.BOTH, expand=True, padx=10, pady=5)
-        text_area = tk.Text(text_frame, font=("Consolas", 10), bg="#0d0d1a", fg="#ECF0F1", wrap=tk.NONE, relief=tk.FLAT, bd=0)
+        text_area = tk.Text(text_frame, font=self.FONT_MONO_SM, bg="#0d0d1a", fg="#ECF0F1", wrap=tk.NONE, relief=tk.FLAT, bd=0)
         text_area.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
         scroll = tk.Scrollbar(text_frame, command=text_area.yview, bg="#34495E", troughcolor="#1a1a2e")
         scroll.pack(fill=tk.Y, side=tk.RIGHT)

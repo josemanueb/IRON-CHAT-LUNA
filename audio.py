@@ -25,7 +25,7 @@ def _get_pygame():
                 pygame.mixer.init(frequency=44100)
             _pygame = pygame
             return pygame
-        except ImportError:
+        except Exception:
             _pygame = False
             return None
 
