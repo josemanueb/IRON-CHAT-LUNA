@@ -40,7 +40,7 @@ copy "%SCRIPT_DIR%iron-chat.bat" "%BACKUP_DIR%\" >nul
 copy "%SCRIPT_DIR%luna.sh" "%BACKUP_DIR%\" >nul
 copy "%SCRIPT_DIR%uninstall.bat" "%BACKUP_DIR%\" >nul
 copy "%SCRIPT_DIR%uninstall.sh" "%BACKUP_DIR%\" >nul
-copy "%SCRIPT_DIR%crear_acceso_windows.vbs" "%BACKUP_DIR%\" >nul
+
 copy "%SCRIPT_DIR%backup.bat" "%BACKUP_DIR%\" >nul
 
 REM === Documentacion ===
