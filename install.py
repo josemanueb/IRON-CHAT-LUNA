@@ -613,6 +613,39 @@ def main():
     os.makedirs(music_dir, exist_ok=True)
     log("Carpeta musica/ creada (mete tus MP3 ahí)")
 
+    # === 7. ACCESO DIRECTO (solo Linux) ===
+    if platform.system() != "Windows":
+        section("📌 Acceso directo")
+        desktop = os.path.join(os.path.expanduser("~"), "Desktop")
+        if not os.path.exists(desktop):
+            alt = os.path.join(os.path.expanduser("~"), "Escritorio")
+            if os.path.exists(alt):
+                desktop = alt
+        os.makedirs(desktop, exist_ok=True)
+        desktop_file = os.path.join(desktop, "IRON-CHAT-LUNA.desktop")
+        python_path = os.path.join(venv_dir, "bin", "python3")
+        icon_path = os.path.join(SCRIPT_DIR, "robot-icon.png")
+        if not os.path.exists(icon_path):
+            icon_path = os.path.join(SCRIPT_DIR, "robot.jpeg")
+        content = f"""[Desktop Entry]
+Name=IRON CHAT - LUNA
+Comment=Chatbot con IA - Entrenadora personal
+Exec={python_path} {os.path.join(SCRIPT_DIR, "main.py")}
+Icon={icon_path}
+Path={SCRIPT_DIR}
+Terminal=false
+Type=Application
+Categories=Utility;AI;
+"""
+        with open(desktop_file, "w", encoding="utf-8") as f:
+            f.write(content)
+        os.chmod(desktop_file, 0o755)
+        log("Acceso directo creado en el escritorio")
+        apps_dir = os.path.join(os.path.expanduser("~"), ".local", "share", "applications")
+        os.makedirs(apps_dir, exist_ok=True)
+        shutil.copy2(desktop_file, os.path.join(apps_dir, "IRON-CHAT-LUNA.desktop"))
+        log("Acceso directo registrado en aplicaciones")
+
     # === RUN.BAT ===
     if platform.system() == "Windows":
         bat_path = os.path.join(SCRIPT_DIR, "run.bat")
@@ -620,7 +653,7 @@ def main():
             f.write('@echo off\ncd /d "%~dp0"\ncall venv\\Scripts\\activate.bat\npython main.py\npause\n')
         log("run.bat creado")
 
-    # === 7. RESUMEN ===
+    # === 8. RESUMEN ===
     print("\n╔══════════════════════════════════════╗")
     print("║   INSTALACIÓN COMPLETADA            ║")
     print("╚══════════════════════════════════════╝")
@@ -629,11 +662,13 @@ def main():
         print("     - Doble clic en 'run.bat'")
         print("     - O doble clic en 'iron-chat.bat'")
     else:
-        print("     - En terminal:")
+        print("     - Menú de aplicaciones → IRON CHAT - LUNA")
+        print("     - O doble clic en el icono del escritorio")
+        print("     - O en terminal:")
         print(f"        cd {SCRIPT_DIR}")
         print(f"        source venv/bin/activate")
         print(f"        python3 main.py")
-    print("\n  💡 Luego abre la app y usa ☰ Menú → Acceso Escritorio")
+    print("\n  💡 También puedes crear acceso desde la app: ☰ Menú → Acceso Escritorio")
     print("\n  ⚡ JMbirner ⚡\n")
 
     input("\nPresiona Enter para salir...")

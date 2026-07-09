@@ -195,19 +195,57 @@ echo "🎵 Creando carpeta de música..."
 mkdir -p "$SCRIPT_DIR/musica"
 echo "  ✅ Carpeta musica/ creada (mete tus MP3 ahí)"
 
-# === 8. RESUMEN ===
+# === 8. ACCESO DIRECTO (solo Linux) ===
+echo ""
+echo "📌 Creando acceso directo..."
+DESKTOP_FILE="$HOME/Desktop/IRON-CHAT-LUNA.desktop"
+DESKTOP_DIR="$HOME/Desktop"
+
+if [ ! -d "$DESKTOP_DIR" ]; then
+    if [ -d "$HOME/Escritorio" ]; then
+        DESKTOP_DIR="$HOME/Escritorio"
+        DESKTOP_FILE="$DESKTOP_DIR/IRON-CHAT-LUNA.desktop"
+    fi
+fi
+
+if [ ! -d "$DESKTOP_DIR" ]; then
+    mkdir -p "$DESKTOP_DIR"
+fi
+
+cat > "$DESKTOP_FILE" << DESKTOP
+[Desktop Entry]
+Name=IRON CHAT - LUNA
+Comment=Chatbot con IA - Entrenadora personal
+Exec=$SCRIPT_DIR/venv/bin/python3 $SCRIPT_DIR/main.py
+Icon=$SCRIPT_DIR/robot-icon.png
+Path=$SCRIPT_DIR
+Terminal=false
+Type=Application
+Categories=Utility;AI;
+DESKTOP
+chmod +x "$DESKTOP_FILE"
+echo "  ✅ Acceso directo creado en: $DESKTOP_FILE"
+
+APPS_DIR="$HOME/.local/share/applications"
+mkdir -p "$APPS_DIR"
+cp "$DESKTOP_FILE" "$APPS_DIR/IRON-CHAT-LUNA.desktop"
+echo "  ✅ Acceso directo registrado en aplicaciones"
+
+# === 9. RESUMEN ===
 echo ""
 echo "╔══════════════════════════════════════╗"
 echo "║   INSTALACIÓN COMPLETADA            ║"
 echo "╚══════════════════════════════════════╝"
 echo ""
 echo "  🚀 Ejecutar:"
-echo "     - En terminal:"
+echo "     - Menú de aplicaciones → IRON CHAT - LUNA"
+echo "     - O doble clic en el icono del escritorio"
+echo "     - O en terminal:"
 echo "        cd $SCRIPT_DIR"
 echo "        source venv/bin/activate"
 echo "        python3 main.py"
 echo ""
-echo "  💡 Luego abre la app y usa ☰ Menú → Acceso Escritorio"
+echo "  💡 También puedes crear acceso desde la app: ☰ Menú → Acceso Escritorio"
 echo ""
 echo "  ⚡ JMbirner ⚡"
 echo ""
