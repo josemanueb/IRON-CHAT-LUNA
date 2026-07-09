@@ -1369,17 +1369,21 @@ class ChatbotApp:
         modelo = self._modelo_nombre()
         credits = (
             "╔════════════════════════════════╗\n"
-            "║    IRON CHAT - LUNA v2.1       ║\n"
+            "║    IRON CHAT - LUNA v2.2       ║\n"
             "╠════════════════════════════════╣\n"
-            "║ 👨\u200d💻 CREADOR: ⚡ JMbirner ⚡     ║\n"
-            "║ 🤖 ASISTENTE: UOS AI           ║\n"
+            "║  👨‍💻 CREADOR: ⚡ JMbirner ⚡    ║\n"
             "╠════════════════════════════════╣\n"
-            f"║ {modelo:<28}║\n"
-            "║ 🏋\ufe0f Fitness + Nutricion + IA   ║\n"
+            f"║ 🤖 {modelo:<26}║\n"
+            "║ 📝 Python + Tkinter            ║\n"
+            "║ 🧠 llama-cpp-python (CPU)      ║\n"
+            "╠════════════════════════════════╣\n"
+            "║ 🏋️ Fitness + Nutricion + IA    ║\n"
             "║ 🎨 ASCII Art + TTS + Animacion ║\n"
+            "║ 🎵 Musica + Temporizador       ║\n"
             "╠════════════════════════════════╣\n"
-            "║  CPU Intel i7-14700K           ║\n"
-            "║  ¡SIN AVX! 🐉🔥                ║\n"
+            "║  💻 Python 3.10+               ║\n"
+            "║  🐧 Linux / 🪟 Windows         ║\n"
+            "║  🔥 Hecho con dedicacion       ║\n"
             "╚════════════════════════════════╝"
         )
         messagebox.showinfo("🏆 CREDITOS", credits)
