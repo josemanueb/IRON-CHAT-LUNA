@@ -165,7 +165,8 @@ def download_voice_auto():
 def check_packages(auto_install=False):
     section("Paquetes Python")
     pkgs = [("llama-cpp-python", "llama_cpp"),
-            ("Pillow", "PIL")]
+            ("Pillow", "PIL"),
+            ("ttkbootstrap", "ttkbootstrap")]
     if platform.system() == "Linux":
         pkgs.append(("pygame", "pygame"))
     elif platform.system() == "Windows":

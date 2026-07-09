@@ -1,9 +1,8 @@
 import tkinter as tk
-from tkinter import messagebox, ttk
+from tkinter import messagebox
 import threading
 from datetime import datetime
 import os
-import glob
 import json
 import re
 import logging
@@ -19,6 +18,19 @@ from face_animation import AnimatedFace
 from ascii_art import ASCIIArt
 from sounds import Sounds
 from progress_tracker import ProgressTracker
+
+try:
+    import ttkbootstrap as tb
+    _HAS_TTB = True
+except ImportError:
+    import tkinter.ttk as ttk
+    _HAS_TTB = False
+
+if _HAS_TTB:
+    ttk = tb
+    THEME_NAME = "darkly"
+else:
+    from tkinter import ttk
 
 # === LOGGING ===
 log_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "iron_chat.log")
@@ -892,19 +904,25 @@ class ChatbotApp:
         exchanges.reverse()
         return exchanges
 
-    def add_message(self, sender, message):
+    def add_message(self, sender, message, streamed=False):
         self.chat_area.config(state=tk.NORMAL)
         timestamp = datetime.now().strftime("%H:%M")
         if sender == "user":
             formatted = f"[{timestamp}] 🏋️ TÚ: {message}\n"
             tag = "user_msg"
         elif sender == "ai":
-            formatted = f"[{timestamp}] 💪 IRON: {message}\n"
-            tag = "ai_msg"
+            if streamed:
+                self.chat_area.delete(self._stream_start_index, tk.END)
+                formatted = f"[{timestamp}] 💪 IRON: {message}\n"
+                tag = "ai_msg"
+            else:
+                formatted = f"[{timestamp}] 💪 IRON: {message}\n"
+                tag = "ai_msg"
         else:
             formatted = f">> {message}\n"
             tag = "system_msg"
-        self.chat_area.insert(tk.END, formatted, tag)
+        if not (sender == "ai" and streamed):
+            self.chat_area.insert(tk.END, formatted, tag)
         self.chat_history.append(formatted.strip())
         self.guardar_historial()
         self.chat_area.config(state=tk.DISABLED)
@@ -996,6 +1014,7 @@ class ChatbotApp:
         if self.procesar_comando(user_input):
             return
         self._sending = True
+        self._last_user_input = user_input
         self.send_button.config(state=tk.DISABLED)
         try:
             Sounds.play_chat()
@@ -1012,14 +1031,72 @@ class ChatbotApp:
         try:
             self.root.after(0, lambda: self.status_label.config(text=">> PENSANDO...", fg="#3498DB"))
             history = self._get_conversation_context(5)
-            response = self.ai.get_response(user_input, history=history)
-            self.root.after(0, lambda r=response: self._on_response(r))
+            use_stream = hasattr(self.ai, 'stream_response') and not self.ai.is_offline
+            if use_stream:
+                self._stream_response(user_input, history)
+            else:
+                response = self.ai.get_response(user_input, history=history)
+                self.root.after(0, lambda r=response: self._on_response(r))
         except Exception as e:
             error_msg = str(e)
             logging.error(f"Error en get_response: {error_msg}")
             self.root.after(0, lambda: self.add_message("system", "❌ ERROR: " + error_msg))
             self.root.after(0, lambda: self.status_label.config(text=">> ERROR", fg="#E74C3C"))
             self.root.after(0, self._finish_sending)
+
+    def _stream_response(self, user_input, history):
+        self.root.after(0, lambda: self._start_stream_ui())
+        full_text = ""
+        first_token = True
+        try:
+            for partial in self.ai.stream_response(user_input, history=history):
+                full_text = partial
+                if first_token:
+                    self.root.after(0, lambda t=full_text: self._update_stream_ui(t))
+                    first_token = False
+                else:
+                    self.root.after(0, lambda t=full_text: self._update_stream_ui(t))
+            final = self.ai._post_process(full_text.strip()) if hasattr(self.ai, '_post_process') else full_text.strip()
+            self.root.after(0, lambda r=final: self._on_stream_done(r))
+        except Exception as e:
+            logging.error(f"Error en stream: {e}")
+            self.root.after(0, lambda: self.status_label.config(text=">> ERROR", fg="#E74C3C"))
+            self.root.after(0, self._finish_sending)
+
+    def _start_stream_ui(self):
+        self.chat_area.config(state=tk.NORMAL)
+        timestamp = datetime.now().strftime("%H:%M")
+        self.chat_area.insert(tk.END, f"[{timestamp}] 🤖 LUNA: ")
+        self.chat_area.see(tk.END)
+        self.chat_area.config(state=tk.DISABLED)
+        self._stream_start_index = self.chat_area.index(tk.END + "-1c")
+        self.status_label.config(text=">> GENERANDO...", fg="#3498DB")
+
+    def _update_stream_ui(self, text):
+        self.chat_area.config(state=tk.NORMAL)
+        self.chat_area.delete(self._stream_start_index, tk.END)
+        self.chat_area.insert(tk.END, text)
+        self.chat_area.see(tk.END)
+        self.chat_area.config(state=tk.DISABLED)
+
+    def _recordar_conversacion(self, user_input, response):
+        if not hasattr(self.ai, 'recordar'):
+            return
+        try:
+            resumen = f"El usuario preguntó: '{user_input[:80]}' | LUNA respondió sobre: '{response[:80]}'"
+            self.ai.recordar(resumen)
+        except Exception:
+            pass
+
+    def _on_stream_done(self, response):
+        self.add_message("ai", response, streamed=True)
+        tts_activo = self.tts_enabled and hasattr(self, 'tts') and self.tts and self.tts.mode not in ("none", "offline")
+        if not tts_activo:
+            Sounds.play_notification()
+        self._sending_timeout = self.root.after(120000, self._finish_sending)
+        self.speak_response(response)
+        # Save memory of this exchange
+        self._recordar_conversacion(self._last_user_input, response)
 
     def _on_response(self, response):
         self.add_message("ai", response)
@@ -1028,6 +1105,8 @@ class ChatbotApp:
             Sounds.play_notification()
         self._sending_timeout = self.root.after(120000, self._finish_sending)
         self.speak_response(response)
+        # Save memory of this exchange
+        self._recordar_conversacion(self._last_user_input, response)
 
     def _finish_sending(self):
         if not self._sending:
@@ -1307,7 +1386,10 @@ class ChatbotApp:
 
 def main():
     try:
-        root = tk.Tk()
+        if _HAS_TTB:
+            root = tb.Window(themename=THEME_NAME)
+        else:
+            root = tk.Tk()
         app = ChatbotApp(root)
         root.mainloop()
     except Exception as e:

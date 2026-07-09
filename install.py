@@ -449,7 +449,7 @@ def main():
         fatal_error = True
 
     # 3b. Otras dependencias
-    deps = ["Pillow"]
+    deps = ["Pillow", "ttkbootstrap"]
     if platform.system() == "Windows":
         deps.extend(["pyttsx3", "pywin32"])
     else:

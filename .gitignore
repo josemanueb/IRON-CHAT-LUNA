@@ -10,6 +10,7 @@ __pycache__/
 *.whl
 *.db
 historial.json
+memorias.json
 notas_entreno.txt
 progreso.db
 musica/

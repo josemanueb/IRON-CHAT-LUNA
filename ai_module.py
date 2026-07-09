@@ -1,6 +1,7 @@
 import os
 import random
 import signal
+import json
 from ascii_art import ASCIIArt
 
 
@@ -50,7 +51,39 @@ class GPT4AllAI:
             return
 
         self.ascii = ASCIIArt()
+        self._memorias = []
+        self._memorias_path = os.path.join(os.path.dirname(__file__), "memorias.json")
+        self._cargar_memorias()
         print("ASCII Art cargado - disponible!")
+
+    def _cargar_memorias(self):
+        if os.path.exists(self._memorias_path):
+            try:
+                with open(self._memorias_path, "r", encoding="utf-8") as f:
+                    self._memorias = json.load(f)
+                print(f"🧠 Memorias cargadas: {len(self._memorias)} sesiones")
+            except Exception:
+                self._memorias = []
+
+    def _guardar_memorias(self):
+        try:
+            with open(self._memorias_path, "w", encoding="utf-8") as f:
+                json.dump(self._memorias[-20:], f, ensure_ascii=False, indent=2)
+        except Exception:
+            pass
+
+    def recordar(self, resumen):
+        self._memorias.append({"rol": "usuario", "resumen": resumen})
+        self._guardar_memorias()
+
+    def _build_memory_context(self):
+        if not self._memorias:
+            return ""
+        ctx = "\nMEMORIA DE CONVERSACIONES ANTERIORES:\n"
+        for m in self._memorias[-5:]:
+            ctx += f"- {m['resumen']}\n"
+        ctx += "\n"
+        return ctx
 
     def _find_model(self):
         preferred = [
@@ -229,6 +262,7 @@ class GPT4AllAI:
         return random.choice(responses)
 
     def _system_prompt(self):
+        memoria = self._build_memory_context()
         sys = ("Eres LUNA, una entrenadora personal y nutricionista profesional. Hablas español con energia y motivacion.\n\n"
                "TUS CONOCIMIENTOS:\n"
                "- Creacion de rutinas de ejercicios personalizadas (pesas, cardio, calistenia)\n"
@@ -246,7 +280,7 @@ class GPT4AllAI:
                "- Se profesional pero cercana\n"
                "- Si te piden un dibujo o arte ASCII, responde SOLO con el nombre del dibujo entre [ASCII:nombre], por ejemplo: [ASCII:mancuerna]\n"
                f"- Los dibujos disponibles son: {', '.join(ASCIIArt.list_arts())}\n"
-               "- Recuerda lo que el usuario te ha dicho antes en la conversacion\n")
+               "- Recuerda lo que el usuario te ha dicho antes en la conversacion\n") + memoria
         if getattr(self, 'model_type', 'llama') == "qwen":
             return f"<|im_start|>system\n{sys}<|im_end|>\n"
         return f"<|begin_of_text|><|start_header_id|>system<|end_header_id|>\n\n{sys}<|eot_id|>\n"
@@ -266,23 +300,32 @@ class GPT4AllAI:
             return ["<|im_end|>", "<|im_start|>"]
         return ["<|eot_id|>", "<|end_header_id|>"]
 
+    def _build_prompt(self, user_input, history=None):
+        history_block = ""
+        if history:
+            for role, text in history:
+                if role == "user":
+                    history_block += self._user_turn(text)
+                elif role == "assistant":
+                    history_block += self._assistant_turn(text)
+        return self._system_prompt() + history_block + self._user_turn(user_input) + self._assistant_turn("")
+
+    def _post_process(self, text):
+        if "[ASCII:" in text:
+            import re
+            match = re.search(r'\[ASCII:(\w+)\]', text)
+            if match:
+                art_name = match.group(1)
+                art = ASCIIArt.get_art(art_name)
+                text = text.replace(f"[ASCII:{art_name}]", f"\n```\n{art}\n```\n")
+        return text
+
     def get_response(self, user_input, history=None):
         try:
             if self.is_offline:
                 return self._offline_response(user_input, history)
 
-            ascii_arts_list = ", ".join(ASCIIArt.list_arts())
-
-            history_block = ""
-            if history:
-                for role, text in history:
-                    if role == "user":
-                        history_block += self._user_turn(text)
-                    elif role == "assistant":
-                        history_block += self._assistant_turn(text)
-
-            prompt = self._system_prompt() + history_block + self._user_turn(user_input) + self._assistant_turn("")
-
+            prompt = self._build_prompt(user_input, history)
             response = self.model(
                 prompt,
                 max_tokens=500,
@@ -293,16 +336,36 @@ class GPT4AllAI:
                 stop=self._stop_tokens()
             )
             text = response['choices'][0]['text'].strip()
-
-            if "[ASCII:" in text:
-                import re
-                match = re.search(r'\[ASCII:(\w+)\]', text)
-                if match:
-                    art_name = match.group(1)
-                    art = ASCIIArt.get_art(art_name)
-                    text = text.replace(f"[ASCII:{art_name}]", f"\n```\n{art}\n```\n")
-
-            return text
+            return self._post_process(text)
         except Exception as e:
             print("Error al generar respuesta: " + str(e))
             return self._offline_response(user_input, history)
+
+    def stream_response(self, user_input, history=None):
+        try:
+            if self.is_offline:
+                yield self._offline_response(user_input, history)
+                return
+
+            prompt = self._build_prompt(user_input, history)
+            accumulated = ""
+            for chunk in self.model(
+                prompt,
+                max_tokens=500,
+                temperature=0.7,
+                top_p=0.9,
+                top_k=40,
+                repeat_penalty=1.1,
+                stop=self._stop_tokens(),
+                stream=True
+            ):
+                token = chunk['choices'][0]['text']
+                if not token:
+                    continue
+                accumulated += token
+                yield accumulated
+
+            yield self._post_process(accumulated.strip())
+        except Exception as e:
+            print("Error en stream_response: " + str(e))
+            yield self._offline_response(user_input, history)

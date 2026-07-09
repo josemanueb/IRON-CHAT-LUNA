@@ -1,10 +1,11 @@
-# IRON CHAT - LUNA v2.0 (CPU sin AVX)
+# IRON CHAT - LUNA v2.2 (CPU sin AVX)
 # Instalar con: pip install -r requirements.txt
 # En Linux: sudo apt install -y piper-tts (para TTS)
 #
 # Dependencias base (cross-platform):
 llama-cpp-python
 Pillow
+ttkbootstrap
 #
 # Windows: descomentar para TTS
 # pyttsx3
