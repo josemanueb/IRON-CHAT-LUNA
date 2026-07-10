@@ -1,7 +1,7 @@
 #!/bin/bash
 # ============================================================
 #  INSTALADOR DE IRON CHAT - LUNA v2.0 PARA LINUX
-#  Descarga automatica de modelo + voz + acceso directo
+#  Descarga automatica de modelo + acceso directo
 #  Creado por: ⚡ JMbirner ⚡
 # ============================================================
 

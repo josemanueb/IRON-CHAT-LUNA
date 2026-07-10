@@ -60,18 +60,7 @@ if [[ "$BORRAR_MODELO" =~ ^[Ss]$ ]]; then
     fi
 fi
 
-# === 5. PREGUNTAR POR VOCES ===
-echo ""
-echo "⚠️  ¿Quieres eliminar las voces Piper?"
-read -p "   (s/N): " -r BORRAR_VOCES
-if [[ "$BORRAR_VOCES" =~ ^[Ss]$ ]]; then
-    if [ -d "$SCRIPT_DIR/voices" ]; then
-        rm -rf "$SCRIPT_DIR/voices"
-        echo "  ✅ Voces eliminadas"
-    fi
-fi
-
-# === 6. PREGUNTAR POR CARPETA MUSICA ===
+# === 5. PREGUNTAR POR CARPETA MÚSICA ===
 echo ""
 echo "⚠️  ¿Quieres eliminar la carpeta de música?"
 read -p "   (s/N): " -r BORRAR_MUSICA
@@ -82,7 +71,7 @@ if [[ "$BORRAR_MUSICA" =~ ^[Ss]$ ]]; then
     fi
 fi
 
-# === 7. LIMPIAR CACHÉ DE pygame (Linux) ===
+# === 6. LIMPIAR CACHÉ DE pygame (Linux) ===
 echo ""
 echo "🧹 Limpiando cachés..."
 PIP_CACHE="$HOME/.cache/pip"

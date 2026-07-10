@@ -14,7 +14,7 @@
 |---------|-------------|
 | 🤖 **IA local** | Qwen 2.5 3B / Llama 3.2 3B (GGUF Q4_K_M) — sin internet necesaria |
 | 🧠 **Memoria** | Recuerda los últimos 5 mensajes de la conversación |
-| 🔊 **TTS real** | Piper TTS (Linux) / pyttsx3 (Windows) — voz femenina española, velocidad ajustable ⚡ |
+| 🔊 **TTS real** | espeak-ng (Linux) / pyttsx3 (Windows) — voz femenina española, velocidad ajustable ⚡ |
 | 🎨 **Cara animada** | Robot que se balancea al hablar |
 | 🖼️ **26 dibujos ASCII** | Mancuerna, pesa, musculo, flexión, sentadilla y más |
 | ⏱️ **Temporizador** | Cuenta atrás para descanso entre series (30s/60s/90s/120s/personalizado) |
@@ -36,7 +36,7 @@
 
 - **CPU**: Cualquiera (compatible sin AVX)
 - **RAM**: 8 GB (mínimo 4 GB)
-- **Disco**: ~3 GB libres (modelo + voces)
+- **Disco**: ~2.5 GB libres (modelo GGUF)
 - **SO**: Linux (Deepin, Ubuntu, Debian) o Windows 10/11
 - **Python**: 3.12
 
@@ -59,8 +59,8 @@ source venv/bin/activate
 pip install --upgrade pip
 pip install llama-cpp-python pygame Pillow
 
-# 4. Instalar Piper TTS
-sudo apt install -y piper-tts
+# 4. Instalar TTS (espeak-ng)
+sudo apt install -y espeak-ng
 
 # 5. Descargar el modelo (elige uno):
 #    Opción A (recomendada): Qwen 2.5 3B Instruct
@@ -98,7 +98,6 @@ IRON-CHAT-LUNA/
 ├── progress_tracker.py     # Seguimiento de progreso SQLite
 ├── requirements.txt        # Dependencias Python
 ├── install_windows.ps1     # Instalador para Windows
-├── crear_acceso_windows.vbs # Acceso directo Windows
 ├── robot-icon.ico          # Icono para Windows
 ├── robot-icon.png          # Icono para Linux
 ├── robot.jpeg              # Imagen del robot
@@ -108,7 +107,6 @@ IRON-CHAT-LUNA/
 ├── verificar_firma.py      # Verificador de integridad
 ├── SIGNATURE.md            # Certificado de autenticidad
 ├── models/                 # Modelo GGUF (no incluido)
-├── voices/                 # Voces Piper (no incluidas)
 ├── musica/                 # Tus MP3 motivacionales
 └── venv/                   # Entorno virtual
 ```
@@ -278,16 +276,10 @@ Colocá el archivo `.gguf` en `models/` y la app lo detecta automáticamente.
 
 ---
 
-## 🔊 Voces TTS
+## 🔊 TTS
 
-### Linux (Piper)
-Descargá las voces desde Hugging Face y ponelas en `voices/`:
-
-- **Femenina (recomendada):** `es_ES-sharvard-medium.onnx`
-- **Masculina:** `es_ES-carlfm-x_low.onnx`
-
-### Windows (pyttsx3)
-Usa las voces SAPI5 del sistema automáticamente.
+- **Linux**: usa `espeak-ng` (se instala con `sudo apt install espeak-ng`)
+- **Windows**: usa `pyttsx3` con las voces SAPI5 del sistema
 
 ---
 
@@ -316,8 +308,8 @@ Probado en:
 | Rol | Nombre |
 |-----|--------|
 | 👨‍💻 **Creador** | ⚡ JMbirner ⚡ |
-| 🤖 **Asistente** | UOS AI / OpenCode |
-| 📅 **Versión** | IRON CHAT v2.1 |
+| 🤖 **Asistente** | OpenCode |
+| 📅 **Versión** | IRON CHAT v2.2 |
 | 📜 **Licencia** | Educativa y personal |
 
 ---

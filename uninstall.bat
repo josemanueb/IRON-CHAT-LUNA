@@ -54,18 +54,7 @@ if /i "%BORRAR_MODELO%"=="S" (
     )
 )
 
-REM === 5. PREGUNTAR POR VOCES ===
-echo.
-echo ⚠️ ¿Quieres eliminar las voces Piper?
-set /p BORRAR_VOCES="   (S/N): "
-if /i "%BORRAR_VOCES%"=="S" (
-    if exist "%SCRIPT_DIR%voices" (
-        rmdir /s /q "%SCRIPT_DIR%voices"
-        echo   ✅ Voces eliminadas
-    )
-)
-
-REM === 6. PREGUNTAR POR CARPETA MUSICA ===
+REM === 5. PREGUNTAR POR CARPETA MÚSICA ===
 echo.
 echo ⚠️ ¿Quieres eliminar la carpeta de música?
 set /p BORRAR_MUSICA="   (S/N): "

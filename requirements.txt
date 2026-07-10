@@ -1,6 +1,6 @@
 # IRON CHAT - LUNA v2.2 (CPU sin AVX)
 # Instalar con: pip install -r requirements.txt
-# En Linux: sudo apt install -y piper-tts (para TTS)
+# En Linux: sudo apt install -y espeak-ng python3-tk (para TTS y GUI)
 #
 # Dependencias base (cross-platform):
 llama-cpp-python

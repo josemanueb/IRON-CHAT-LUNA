@@ -18,6 +18,7 @@ from face_animation import AnimatedFace
 from ascii_art import ASCIIArt
 from sounds import Sounds
 from progress_tracker import ProgressTracker
+import glob
 
 try:
     import ttkbootstrap as tb
@@ -50,8 +51,9 @@ class ChatbotApp:
         self.root = root
         self.root.title("IRON CHAT - Gym Assistant")
         self.root.geometry("850x650")
+        self.root.minsize(850, 650)
         self.root.configure(bg="#1a1a2e")
-        self.root.resizable(False, False)
+        self.root.resizable(True, True)
         self.tts_enabled = True
         self.project_dir = os.path.dirname(os.path.abspath(__file__))
         self.historial_file = os.path.join(self.project_dir, "historial.json")
@@ -121,6 +123,7 @@ class ChatbotApp:
 
         self.root.configure(bg=c["bg"])
         self.header.configure(bg=c["bg"])
+        self.header_sep.configure(bg=c["naranja"])
         self.title_label.configure(bg=c["bg"], fg=c["acento"])
         self.subtitle.configure(bg=c["bg"], fg=c["naranja"])
         self.reloj_label.configure(bg=c["bg"], fg=c["fg"])
@@ -146,21 +149,26 @@ class ChatbotApp:
 
         self.scrollbar.configure(bg=c["scroll"], troughcolor=c["bg"])
         self.input_frame.configure(bg=c["chat_bg"])
+        self.input_sep.configure(bg=c["scroll"])
         self.input_field.configure(bg=c["input_bg"], fg=c["fg"], insertbackground=c["fg"])
-        self.send_button.configure(bg=c["naranja"])
+        if not _HAS_TTB:
+            self.send_button.configure(bg=c["naranja"])
         self.status_bar.configure(bg=c["chat_bg"])
         self.status_label.configure(bg=c["chat_bg"])
         self.contador_label.configure(bg=c["chat_bg"], fg=c["acento"])
         self.right_panel.configure(bg=c["bg"])
         self.tools_frame.configure(bg=c["bg"])
+        self.tools_sep.configure(bg=c["scroll"])
         self.tools_title.configure(bg=c["bg"], fg=c["acento"])
         self.menu_frame.configure(bg=c["bg"])
-        self.menubtn.configure(bg=c["btn_bg"])
+        if not _HAS_TTB:
+            self.menubtn.configure(bg=c["btn_bg"])
         btn_bg = c["btn_bg"]
         self.timer_frame.configure(bg=c["bg"])
         self.timer_label.configure(bg=c["bg"], fg=c["acento"])
-        for btn in self.timer_buttons:
-            btn.configure(bg=btn_bg)
+        if not _HAS_TTB:
+            for btn in self.timer_buttons:
+                btn.configure(bg=btn_bg)
 
         self.vol_frame.configure(bg=c["bg"])
         self.vol_label.configure(bg=c["bg"], fg=c["fg"])
@@ -185,10 +193,13 @@ class ChatbotApp:
         self.header = tk.Frame(self.root, bg="#1a1a2e", height=60)
         self.header.pack(fill=tk.X)
         self.header.pack_propagate(False)
-        self.title_label = tk.Label(self.header, text="💪  IRON CHAT  🏋️", font=("Helvetica", 22, "bold"), bg="#1a1a2e", fg="#FFD700")
-        self.title_label.pack(side=tk.LEFT, padx=15, pady=10)
-        self.subtitle = tk.Label(self.header, text="GYM ASSISTANT PRO", font=("Helvetica", 9, "bold"), bg="#1a1a2e", fg="#FF6B35")
-        self.subtitle.pack(side=tk.LEFT, padx=5, pady=15)
+        # Separator line at bottom of header
+        self.header_sep = tk.Frame(self.header, height=2, bg="#FF6B35")
+        self.header_sep.place(relx=0, rely=1.0, relwidth=1)
+        self.title_label = tk.Label(self.header, text="💪 IRON CHAT 🏋️", font=("Helvetica", 20, "bold"), bg="#1a1a2e", fg="#FFD700")
+        self.title_label.pack(side=tk.LEFT, padx=(15, 5), pady=10)
+        self.subtitle = tk.Label(self.header, text="GYM ASSISTANT PRO", font=("Helvetica", 8, "bold"), bg="#1a1a2e", fg="#FF6B35")
+        self.subtitle.pack(side=tk.LEFT, padx=(0, 5), pady=15)
         self.reloj_label = tk.Label(self.header, text="", font=("Helvetica", 10, "bold"), bg="#1a1a2e", fg="#ECF0F1")
         self.reloj_label.pack(side=tk.RIGHT, padx=15, pady=10)
 
@@ -238,29 +249,34 @@ class ChatbotApp:
         self.text_frame.place(relx=0.02, rely=0.02, relwidth=0.96, relheight=0.78)
 
         # Área de texto del chat
-        self.chat_area = tk.Text(self.text_frame, font=self.FONT_MONO, bg="#0d0d1a", fg="#ECF0F1", insertbackground="#ECF0F1", wrap=tk.WORD, relief=tk.FLAT, bd=0, padx=5, pady=5)
-        self.chat_area.tag_config("user_msg", background="#1a3a5e", lmargin1=10, lmargin2=10, rmargin=10, spacing1=3, spacing3=3)
-        self.chat_area.tag_config("ai_msg", background="#1a3a2e", lmargin1=10, lmargin2=10, rmargin=10, spacing1=3, spacing3=3)
-        self.chat_area.tag_config("system_msg", background="#0d0d1a", spacing1=2, spacing3=2)
+        self.chat_area = tk.Text(self.text_frame, font=self.FONT_MONO, bg="#0d0d1a", fg="#ECF0F1", insertbackground="#ECF0F1", wrap=tk.WORD, relief=tk.FLAT, bd=0, padx=8, pady=8)
+        self.chat_area.tag_config("user_msg", background="#1a3a5e", foreground="#FFFFFF", lmargin1=10, lmargin2=10, rmargin=10, spacing1=4, spacing3=4)
+        self.chat_area.tag_config("ai_msg", background="#1a3a2e", foreground="#E8F5E9", lmargin1=10, lmargin2=10, rmargin=10, spacing1=4, spacing3=4)
+        self.chat_area.tag_config("system_msg", background="#0d0d1a", foreground="#7F8C8D", spacing1=2, spacing3=2)
         self.chat_area.pack(fill=tk.BOTH, expand=True, side=tk.LEFT)
         self.scrollbar = tk.Scrollbar(self.text_frame, command=self.chat_area.yview, bg="#34495E", troughcolor="#1a1a2e")
         self.scrollbar.pack(fill=tk.Y, side=tk.RIGHT)
         self.chat_area.config(yscrollcommand=self.scrollbar.set)
 
         # Input
-        self.input_frame = tk.Frame(self.overlay, bg="#0d0d1a", height=35)
+        self.input_frame = tk.Frame(self.overlay, bg="#0d0d1a", height=40)
         self.input_frame.place(relx=0.02, rely=0.83, relwidth=0.96)
         self.input_frame.pack_propagate(False)
-        self.input_field = tk.Entry(self.input_frame, font=self.FONT_MONO, bg="#1a1a2e", fg="#ECF0F1", insertbackground="#ECF0F1", relief=tk.FLAT, bd=0)
+        self.input_sep = tk.Frame(self.input_frame, height=1, bg="#2C3E50")
+        self.input_sep.pack(side=tk.TOP, fill=tk.X)
+        self.input_field = tk.Entry(self.input_frame, font=self.FONT_MONO, bg="#1a1a2e", fg="#ECF0F1", insertbackground="#ECF0F1", relief=tk.SUNKEN, bd=1)
         self.input_field.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=(0, 5))
         self.input_field.bind("<Return>", lambda e: self.send_message() or "break")
         self.input_field.bind("<Control-Return>", lambda e: self.send_message() or "break")
         self.input_field.bind("<Control-l>", lambda e: self.clear_chat() or "break")
-        self.send_button = tk.Button(self.input_frame, text="ENVIAR", font=("Helvetica", 10, "bold"), bg="#FF6B35", fg="white", command=self.send_message, relief=tk.FLAT, padx=12, pady=2, bd=0)
+        if _HAS_TTB:
+            self.send_button = tb.Button(self.input_frame, text="ENVIAR", style="warning.TButton", command=self.send_message)
+        else:
+            self.send_button = tk.Button(self.input_frame, text="ENVIAR", font=("Helvetica", 10, "bold"), bg="#FF6B35", fg="white", command=self.send_message, relief=tk.FLAT, padx=12, pady=2, bd=0)
         self.send_button.pack(side=tk.RIGHT)
 
         # Status bar
-        self.status_bar = tk.Frame(self.overlay, bg="#0d0d1a", height=25)
+        self.status_bar = tk.Frame(self.overlay, bg="#0d0d1a", height=26)
         self.status_bar.place(relx=0.02, rely=0.93, relwidth=0.96)
         self.status_label = tk.Label(self.status_bar, text=">> CARGANDO MODELO...", font=("Helvetica", 9, "bold"), bg="#0d0d1a", fg="#FFD700", anchor='w')
         self.status_label.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
@@ -269,6 +285,9 @@ class ChatbotApp:
         self.progress_bar = ttk.Progressbar(self.status_bar, mode='indeterminate', length=80)
         self.progress_bar.pack(side=tk.RIGHT, padx=(0, 5))
         self.progress_bar.start()
+        self.dl_dialog = None
+        self.dl_progress_bar = None
+        self.dl_pct_label = None
 
         # === 4. RIGHT PANEL (DERECHA) ===
         self.right_panel = tk.Frame(self.main_container, bg="#1a1a2e", width=350)
@@ -282,13 +301,18 @@ class ChatbotApp:
         self.tools_frame = tk.Frame(self.right_panel, bg="#1a1a2e", height=120)
         self.tools_frame.pack(side=tk.BOTTOM, fill=tk.X, pady=(0, 10))
         self.tools_frame.pack_propagate(False)
+        self.tools_sep = tk.Frame(self.tools_frame, height=1, bg="#2C3E50")
+        self.tools_sep.pack(side=tk.TOP, fill=tk.X)
         self.tools_title = tk.Label(self.tools_frame, text="⚙️ MENÚ", font=("Helvetica", 11, "bold"), bg="#1a1a2e", fg="#FFD700")
         self.tools_title.pack(pady=(5, 5))
         self.menu_frame = tk.Frame(self.tools_frame, bg="#1a1a2e")
         self.menu_frame.pack(expand=True)
 
         self.menu_bar = tk.Menu(self.menu_frame, tearoff=0)
-        self.menubtn = tk.Button(self.menu_frame, text="☰ MENÚ", font=("Helvetica", 11, "bold"), bg="#2C3E50", fg="white", relief=tk.RAISED, bd=2, padx=20, pady=6, cursor="hand2", command=self._abrir_menu)
+        if _HAS_TTB:
+            self.menubtn = tb.Button(self.menu_frame, text="☰ MENÚ", style="secondary.TButton", command=self._abrir_menu)
+        else:
+            self.menubtn = tk.Button(self.menu_frame, text="☰ MENÚ", font=("Helvetica", 11, "bold"), bg="#2C3E50", fg="white", relief=tk.RAISED, bd=2, padx=20, pady=6, cursor="hand2", command=self._abrir_menu)
         self.menubtn.pack()
 
         m = self.menu_bar
@@ -387,14 +411,24 @@ class ChatbotApp:
         timer_btn_frame.pack(side=tk.LEFT)
         self.timer_buttons = []
         for secs, label in [(30, "30s"), (60, "60s"), (90, "90s"), (120, "120s")]:
-            btn = tk.Button(timer_btn_frame, text=label, font=("Helvetica", 8, "bold"), bg="#2C3E50", fg="white",
-                           command=lambda s=secs: self.timer_start(s), relief=tk.FLAT, width=4, height=1, bd=0)
+            if _HAS_TTB:
+                btn = tb.Button(timer_btn_frame, text=label, style="secondary.TButton",
+                               command=lambda s=secs: self.timer_start(s), width=4)
+            else:
+                btn = tk.Button(timer_btn_frame, text=label, font=("Helvetica", 8, "bold"), bg="#2C3E50", fg="white",
+                               command=lambda s=secs: self.timer_start(s), relief=tk.FLAT, width=4, height=1, bd=0)
             btn.pack(side=tk.LEFT, padx=2)
             self.timer_buttons.append(btn)
-        tk.Button(timer_btn_frame, text="⏱️", font=("Helvetica", 8, "bold"), bg="#8E44AD", fg="white",
-                 command=self.timer_custom, relief=tk.FLAT, width=3, height=1, bd=0).pack(side=tk.LEFT, padx=2)
-        tk.Button(timer_btn_frame, text="⏹", font=("Helvetica", 8, "bold"), bg="#E74C3C", fg="white",
-                 command=self.timer_stop, relief=tk.FLAT, width=3, height=1, bd=0).pack(side=tk.LEFT, padx=2)
+        if _HAS_TTB:
+            tb.Button(timer_btn_frame, text="⏱️", style="info.TButton",
+                     command=self.timer_custom, width=3).pack(side=tk.LEFT, padx=2)
+            tb.Button(timer_btn_frame, text="⏹", style="danger.TButton",
+                     command=self.timer_stop, width=3).pack(side=tk.LEFT, padx=2)
+        else:
+            tk.Button(timer_btn_frame, text="⏱️", font=("Helvetica", 8, "bold"), bg="#8E44AD", fg="white",
+                     command=self.timer_custom, relief=tk.FLAT, width=3, height=1, bd=0).pack(side=tk.LEFT, padx=2)
+            tk.Button(timer_btn_frame, text="⏹", font=("Helvetica", 8, "bold"), bg="#E74C3C", fg="white",
+                     command=self.timer_stop, relief=tk.FLAT, width=3, height=1, bd=0).pack(side=tk.LEFT, padx=2)
 
         # === 8. CREDITOS ===
         self.credit_frame = tk.Frame(self.right_panel, bg="#1a1a2e", height=30)
@@ -441,7 +475,7 @@ class ChatbotApp:
             if tts_mode in ("none", "offline"):
                 self.tts_enabled = False
                 self.menu_audio.entryconfig(0, label="🔇 TTS: OFF")
-                self.add_message("system", "🔇 TTS no disponible — instala Piper y voces en voices/")
+                self.add_message("system", "🔇 TTS no disponible")
                 return
             self.menu_audio.entryconfig(0, label="🔊 TTS: ON")
             self.add_message("system", "🔊 TTS ACTIVADO")
@@ -546,9 +580,9 @@ class ChatbotApp:
 
     def show_info(self):
         modelo = self._modelo_nombre()
-        info = ("💪 IRON CHAT v2.1\n\n"
+        info = ("💪 IRON CHAT v2.2\n\n"
                 f"🤖 MODELO: {modelo}\n"
-                "🔊 TTS: Piper real + pyttsx3\n"
+                "🔊 TTS: espeak-ng (Linux) / pyttsx3 (Windows)\n"
                 "🎨 DISEÑO: Gym Style\n"
                 "🎨 ASCII ART: 26 dibujos!\n"
                 "📝 NOTAS RAPIDAS\n"
@@ -672,14 +706,6 @@ class ChatbotApp:
             self.menu_sistema.entryconfig(self.menu_download_idx, state='disabled')
             logging.info("Modelo listo!")
 
-    def on_ai_error(self, error):
-        self.progress_bar.stop()
-        self.progress_bar.pack_forget()
-        self.status_label.config(text=">> ERROR: " + error, fg="#E74C3C")
-        self.add_message("system", "❌ ERROR AL CARGAR EL MODELO: " + error)
-        logging.error(f"Error modelo: {error}")
-        messagebox.showerror("ERROR", "NO SE PUDO CARGAR EL MODELO:\n" + error)
-
     def _model_downloaded(self):
         self.add_message("system", "✅ Modelo descargado. Recargando...")
         self.status_label.config(text=">> RECARGANDO MODELO...", fg="#FFD700")
@@ -693,14 +719,57 @@ class ChatbotApp:
         except Exception as e:
             self.root.after(0, lambda: self.add_message("system", f"⚠️ Error recargando: {e}"))
 
+    def _show_dl_ui(self):
+        self.dl_dialog = tk.Toplevel(self.root)
+        self.dl_dialog.title("📥 Descargando Modelo")
+        self.dl_dialog.geometry("420x180")
+        self.dl_dialog.configure(bg="#1a1a2e")
+        self.dl_dialog.resizable(False, False)
+        self.dl_dialog.transient(self.root)
+        self.dl_dialog.protocol("WM_DELETE_WINDOW", lambda: None)
+        tk.Label(self.dl_dialog, text="📥 Descargando Qwen 2.5 3B...", font=("Helvetica", 12, "bold"),
+                 bg="#1a1a2e", fg="#FFD700").pack(pady=(20, 10))
+        self.dl_progress_bar = ttk.Progressbar(self.dl_dialog, mode='determinate', length=350)
+        self.dl_progress_bar.pack(pady=10)
+        self.dl_pct_label = tk.Label(self.dl_dialog, text="0% (0.0/0.0 GB)", font=("Helvetica", 10),
+                                     bg="#1a1a2e", fg="#ECF0F1")
+        self.dl_pct_label.pack(pady=5)
+        self.dl_status_label = tk.Label(self.dl_dialog, text="Iniciando descarga...", font=("Helvetica", 9),
+                                        bg="#1a1a2e", fg="#7F8C8D")
+        self.dl_status_label.pack(pady=5)
+        self.status_label.config(text=">> DESCARGANDO MODELO...", fg="#FFD700")
+
+    def _hide_dl_ui(self):
+        if self.dl_dialog:
+            try:
+                self.dl_dialog.destroy()
+            except Exception:
+                pass
+            self.dl_dialog = None
+        self.dl_progress_bar = None
+        self.dl_pct_label = None
+        self.dl_status_label = None
+
+    def _update_dl_ui(self, pct, sent, total):
+        if self.dl_progress_bar and self.dl_pct_label:
+            self.dl_progress_bar['value'] = pct
+            gb_sent = sent / (1024**3)
+            gb_total = total / (1024**3)
+            self.dl_pct_label.config(text=f"{pct}% ({gb_sent:.1f}/{gb_total:.1f} GB)")
+            if pct == 100:
+                self.dl_status_label.config(text="✅ Verificando archivo...")
+                self.dl_pct_label.config(fg="#27AE60")
+            else:
+                self.dl_status_label.config(text=f"Descargando... {pct}% completado")
+            self.root.update_idletasks()
+
     def _download_progress(self, block, sent, total):
         if total > 0:
             pct = int(sent * 100 / total)
             last = getattr(self, '_last_pct', -1)
             if pct >= last + 2 or pct == 100:
                 self._last_pct = pct
-                self.root.after(0, lambda p=pct, s=sent, t=total: self.status_label.config(
-                    text=f">> DESCARGANDO MODELO... {p}% ({s//1024**3}/{t//1024**3} GB)", fg="#FFD700"))
+                self.root.after(0, lambda p=pct, s=sent, t=total: self._update_dl_ui(p, s, t))
 
     def _pedir_token(self):
         dialog = tk.Toplevel(self.root)
@@ -755,6 +824,7 @@ class ChatbotApp:
         hf_token = self._pedir_token()
         self.add_message("system", "📥 Descargando modelo Qwen 2.5 3B (~2 GB)...")
         self.menu_sistema.entryconfig(self.menu_download_idx, state='disabled')
+        self.root.after(0, self._show_dl_ui)
 
         def _do():
             import ssl
@@ -797,8 +867,7 @@ class ChatbotApp:
             finally:
                 self.root.after(0, lambda: self.menu_sistema.entryconfig(
                     self.menu_download_idx, state='normal'))
-                self.root.after(0, lambda: self.status_label.config(
-                    text=">> ERROR DESCARGA" if not os.path.exists(path) else ">> MODELO LISTO", fg="#E74C3C"))
+                self.root.after(0, self._hide_dl_ui)
                 if os.path.exists(tmp):
                     try:
                         os.remove(tmp)
@@ -1047,15 +1116,10 @@ class ChatbotApp:
     def _stream_response(self, user_input, history):
         self.root.after(0, lambda: self._start_stream_ui())
         full_text = ""
-        first_token = True
         try:
             for partial in self.ai.stream_response(user_input, history=history):
                 full_text = partial
-                if first_token:
-                    self.root.after(0, lambda t=full_text: self._update_stream_ui(t))
-                    first_token = False
-                else:
-                    self.root.after(0, lambda t=full_text: self._update_stream_ui(t))
+                self.root.after(0, lambda t=full_text: self._update_stream_ui(t))
             final = self.ai._post_process(full_text.strip()) if hasattr(self.ai, '_post_process') else full_text.strip()
             self.root.after(0, lambda r=final: self._on_stream_done(r))
         except Exception as e:
