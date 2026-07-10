@@ -962,8 +962,7 @@ class ChatbotApp:
         else:
             formatted = f">> {message}\n"
             tag = "system_msg"
-        if not (sender == "ai" and streamed):
-            self.chat_area.insert(tk.END, formatted, tag)
+        self.chat_area.insert(tk.END, formatted, tag)
         self.chat_history.append(formatted.strip())
         self.guardar_historial()
         self.chat_area.config(state=tk.DISABLED)
