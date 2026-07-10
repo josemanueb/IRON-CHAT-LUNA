@@ -859,7 +859,8 @@ class ChatbotApp:
             return
         self.add_message("system", lang.tr_format("sys_model_downloading", name=model_name, size=model_size))
         self.menu_sistema.entryconfig(self.menu_download_idx, state='disabled')
-        self.root.after(0, lambda: self._show_dl_ui(model_name))
+        self._last_pct = -1
+        self._show_dl_ui(model_name)
 
         def _do():
             import ssl
