@@ -2,6 +2,7 @@ import os
 import random
 import signal
 import json
+from ascii_art import ASCIIArt
 
 
 def _sigill_handler(signum, frame):
