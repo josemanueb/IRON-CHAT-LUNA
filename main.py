@@ -19,6 +19,7 @@ from face_animation import AnimatedFace
 from sounds import Sounds
 from progress_tracker import ProgressTracker
 import glob
+import lang
 
 try:
     import ttkbootstrap as tb
@@ -49,12 +50,13 @@ logging.info("🚀 IRON CHAT iniciado")
 class ChatbotApp:
     def __init__(self, root):
         self.root = root
-        self.root.title("IRON CHAT - Gym Assistant")
+        self.root.title(lang.tr("window_title"))
         self.root.geometry("850x650")
         self.root.minsize(850, 650)
         self.root.configure(bg="#1a1a2e")
         self.root.resizable(True, True)
         self.tts_enabled = True
+        self.lang = "es"
         self.project_dir = os.path.dirname(os.path.abspath(__file__))
         self.historial_file = os.path.join(self.project_dir, "historial.json")
         self.music_playing = False
@@ -116,7 +118,7 @@ class ChatbotApp:
             pass
 
     def actualizar_contador(self):
-        self.contador_label.config(text=f"💬 {self.mensajes_count} msgs")
+        self.contador_label.config(text=lang.tr_format("msg_count", count=self.mensajes_count))
 
     def aplicar_tema(self):
         c = self.colores[self.tema_actual]
@@ -196,9 +198,9 @@ class ChatbotApp:
         # Separator line at bottom of header
         self.header_sep = tk.Frame(self.header, height=2, bg="#FF6B35")
         self.header_sep.place(relx=0, rely=1.0, relwidth=1)
-        self.title_label = tk.Label(self.header, text="💪 IRON CHAT 🏋️", font=("Helvetica", 20, "bold"), bg="#1a1a2e", fg="#FFD700")
+        self.title_label = tk.Label(self.header, text=lang.tr("header_title"), font=("Helvetica", 20, "bold"), bg="#1a1a2e", fg="#FFD700")
         self.title_label.pack(side=tk.LEFT, padx=(15, 5), pady=10)
-        self.subtitle = tk.Label(self.header, text="GYM ASSISTANT PRO", font=("Helvetica", 8, "bold"), bg="#1a1a2e", fg="#FF6B35")
+        self.subtitle = tk.Label(self.header, text=lang.tr("header_subtitle"), font=("Helvetica", 8, "bold"), bg="#1a1a2e", fg="#FF6B35")
         self.subtitle.pack(side=tk.LEFT, padx=(0, 5), pady=15)
         self.reloj_label = tk.Label(self.header, text="", font=("Helvetica", 10, "bold"), bg="#1a1a2e", fg="#ECF0F1")
         self.reloj_label.pack(side=tk.RIGHT, padx=15, pady=10)
@@ -270,17 +272,17 @@ class ChatbotApp:
         self.input_field.bind("<Control-Return>", lambda e: self.send_message() or "break")
         self.input_field.bind("<Control-l>", lambda e: self.clear_chat() or "break")
         if _HAS_TTB:
-            self.send_button = tb.Button(self.input_frame, text="ENVIAR", style="warning.TButton", command=self.send_message)
+            self.send_button = tb.Button(self.input_frame, text=lang.tr("btn_send"), style="warning.TButton", command=self.send_message)
         else:
-            self.send_button = tk.Button(self.input_frame, text="ENVIAR", font=("Helvetica", 10, "bold"), bg="#FF6B35", fg="white", command=self.send_message, relief=tk.FLAT, padx=12, pady=2, bd=0)
+            self.send_button = tk.Button(self.input_frame, text=lang.tr("btn_send"), font=("Helvetica", 10, "bold"), bg="#FF6B35", fg="white", command=self.send_message, relief=tk.FLAT, padx=12, pady=2, bd=0)
         self.send_button.pack(side=tk.RIGHT)
 
         # Status bar
         self.status_bar = tk.Frame(self.overlay, bg="#0d0d1a", height=26)
         self.status_bar.place(relx=0.02, rely=0.93, relwidth=0.96)
-        self.status_label = tk.Label(self.status_bar, text=">> CARGANDO MODELO...", font=("Helvetica", 9, "bold"), bg="#0d0d1a", fg="#FFD700", anchor='w')
+        self.status_label = tk.Label(self.status_bar, text=lang.tr("status_loading"), font=("Helvetica", 9, "bold"), bg="#0d0d1a", fg="#FFD700", anchor='w')
         self.status_label.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
-        self.contador_label = tk.Label(self.status_bar, text="💬 0 msgs", font=("Helvetica", 8, "bold"), bg="#0d0d1a", fg="#FFD700")
+        self.contador_label = tk.Label(self.status_bar, text=lang.tr_format("msg_count", count=0), font=("Helvetica", 8, "bold"), bg="#0d0d1a", fg="#FFD700")
         self.contador_label.pack(side=tk.RIGHT, padx=(5, 0))
         self.progress_bar = ttk.Progressbar(self.status_bar, mode='indeterminate', length=80)
         self.progress_bar.pack(side=tk.RIGHT, padx=(0, 5))
@@ -310,49 +312,11 @@ class ChatbotApp:
 
         self.menu_bar = tk.Menu(self.menu_frame, tearoff=0)
         if _HAS_TTB:
-            self.menubtn = tb.Button(self.menu_frame, text="☰ MENÚ", style="secondary.TButton", command=self._abrir_menu)
+            self.menubtn = tb.Button(self.menu_frame, text=lang.tr("btn_menu"), style="secondary.TButton", command=self._abrir_menu)
         else:
-            self.menubtn = tk.Button(self.menu_frame, text="☰ MENÚ", font=("Helvetica", 11, "bold"), bg="#2C3E50", fg="white", relief=tk.RAISED, bd=2, padx=20, pady=6, cursor="hand2", command=self._abrir_menu)
+            self.menubtn = tk.Button(self.menu_frame, text=lang.tr("btn_menu"), font=("Helvetica", 11, "bold"), bg="#2C3E50", fg="white", relief=tk.RAISED, bd=2, padx=20, pady=6, cursor="hand2", command=self._abrir_menu)
         self.menubtn.pack()
-
-        m = self.menu_bar
-
-        mkw = dict(tearoff=0)
-
-        # 💬 Chat
-        sub = tk.Menu(m, **mkw)
-        m.add_cascade(label="💬 Chat", menu=sub)
-        sub.add_command(label="🗑️ Limpiar chat", command=self.clear_chat)
-        sub.add_command(label="📤 Exportar chat", command=self.export_chat)
-
-        # 🔊 Audio
-        self.menu_audio = tk.Menu(m, **mkw)
-        m.add_cascade(label="🔊 Audio", menu=self.menu_audio)
-        self.menu_audio.add_command(label="🔊 TTS: ON", command=self.toggle_tts)
-        self.menu_audio.add_command(label="🎵 Música OFF", command=self.toggle_music)
-        self.menu_audio.add_command(label="📂 Carpeta MP3", command=self.open_music_folder)
-
-        # 🏋️ Entrenamiento
-        sub = tk.Menu(m, **mkw)
-        m.add_cascade(label="🏋️ Entrenamiento", menu=sub)
-        sub.add_command(label="📝 Notas", command=self.open_notes)
-        sub.add_command(label="🏋️ Rutina", command=self.show_routines)
-        sub.add_command(label="📊 Progreso", command=self.show_progress)
-
-        # ℹ️ App
-        self.menu_app = tk.Menu(m, **mkw)
-        m.add_cascade(label="ℹ️ App", menu=self.menu_app)
-        self.menu_app.add_command(label="ℹ️ Info", command=self.show_info)
-        self.menu_app.add_command(label="🌙 Oscuro", command=self.toggle_theme)
-        self.menu_app.add_command(label="❓ Ayuda", command=self.show_help)
-        self.menu_app.add_command(label="🏆 Créditos", command=self.show_credits)
-
-        # ⚙️ Sistema
-        self.menu_sistema = tk.Menu(m, **mkw)
-        m.add_cascade(label="⚙️ Sistema", menu=self.menu_sistema)
-        self.menu_download_idx = 0
-        self.menu_sistema.add_command(label="📥 Descargar Modelo", command=self.download_model)
-        self.menu_sistema.add_command(label="🖥️ Acceso Escritorio", command=self.crear_acceso_escritorio)
+        self._build_menu()
 
         # === 5. COLORES ===
         self.tema_actual = 0
@@ -449,10 +413,10 @@ class ChatbotApp:
                 self.chat_area.insert(tk.END, msg + "\n")
             self.chat_area.config(state=tk.DISABLED)
             self.chat_area.see(tk.END)
-            self.add_message("system", "📂 HISTORIAL CARGADO ({0} mensajes)".format(len(self.chat_history)))
+            self.add_message("system", lang.tr_format("sys_history_loaded", len(self.chat_history)))
         else:
-            self.add_message("system", "💪 BIENVENIDO A IRON CHAT!")
-            self.add_message("system", ">> CARGANDO MODELO, ESPERA UN MOMENTO...")
+            self.add_message("system", lang.tr("sys_welcome"))
+            self.add_message("system", lang.tr("sys_wait_model"))
 
     # ===================================================================
     # MÉTODOS
@@ -466,7 +430,7 @@ class ChatbotApp:
         self.guardar_historial()
         self.mensajes_count = 0
         self.actualizar_contador()
-        self.add_message("system", "🗑️ CHAT LIMPIADO")
+        self.add_message("system", lang.tr("sys_chat_cleared"))
 
     def toggle_tts(self):
         self.tts_enabled = not self.tts_enabled
@@ -474,17 +438,17 @@ class ChatbotApp:
             tts_mode = getattr(self.tts, 'mode', 'none') if hasattr(self, 'tts') and self.tts else 'none'
             if tts_mode in ("none", "offline"):
                 self.tts_enabled = False
-                self.menu_audio.entryconfig(0, label="🔇 TTS: OFF")
-                self.add_message("system", "🔇 TTS no disponible")
+                self.menu_audio.entryconfig(0, label=lang.tr("menu_tts_off"))
+                self.add_message("system", lang.tr("sys_tts_unavailable"))
                 return
-            self.menu_audio.entryconfig(0, label="🔊 TTS: ON")
-            self.add_message("system", "🔊 TTS ACTIVADO")
+            self.menu_audio.entryconfig(0, label=lang.tr("menu_tts_on"))
+            self.add_message("system", lang.tr("sys_tts_on"))
         else:
             if hasattr(self, 'tts'):
                 self.tts.stop()
                 self.face.set_speaking(False)
-            self.menu_audio.entryconfig(0, label="🔇 TTS: OFF")
-            self.add_message("system", "🔇 TTS DESACTIVADO")
+            self.menu_audio.entryconfig(0, label=lang.tr("menu_tts_off"))
+            self.add_message("system", lang.tr("sys_tts_off"))
 
     def cambiar_volumen(self, val):
         vol = int(val) / 100.0
@@ -511,19 +475,83 @@ class ChatbotApp:
         finally:
             self.menu_bar.grab_release()
 
+    def _build_menu(self):
+        m = self.menu_bar
+        mkw = dict(tearoff=0)
+
+        sub = tk.Menu(m, **mkw)
+        m.add_cascade(label=lang.tr("menu_chat"), menu=sub)
+        sub.add_command(label=lang.tr("menu_clear"), command=self.clear_chat)
+        sub.add_command(label=lang.tr("menu_export"), command=self.export_chat)
+
+        self.menu_audio = tk.Menu(m, **mkw)
+        m.add_cascade(label=lang.tr("menu_audio"), menu=self.menu_audio)
+        self.menu_audio.add_command(label=lang.tr("menu_tts_on"), command=self.toggle_tts)
+        self.menu_audio.add_command(label=lang.tr("menu_music_off"), command=self.toggle_music)
+        self.menu_audio.add_command(label=lang.tr("menu_mp3_folder"), command=self.open_music_folder)
+
+        sub = tk.Menu(m, **mkw)
+        m.add_cascade(label=lang.tr("menu_training"), menu=sub)
+        sub.add_command(label=lang.tr("menu_notes"), command=self.open_notes)
+        sub.add_command(label=lang.tr("menu_routine"), command=self.show_routines)
+        sub.add_command(label=lang.tr("menu_progress"), command=self.show_progress)
+
+        self.menu_app = tk.Menu(m, **mkw)
+        m.add_cascade(label=lang.tr("menu_app"), menu=self.menu_app)
+        self.menu_app.add_command(label=lang.tr("menu_info"), command=self.show_info)
+        self.menu_app.add_command(label=lang.tr("theme_dark"), command=self.toggle_theme)
+        self.menu_app.add_command(label=lang.tr("menu_help"), command=self.show_help)
+        self.menu_app.add_command(label=lang.tr("menu_credits"), command=self.show_credits)
+
+        self.menu_sistema = tk.Menu(m, **mkw)
+        m.add_cascade(label=lang.tr("menu_system"), menu=self.menu_sistema)
+        self.menu_download_idx = 0
+        self.menu_sistema.add_command(label=lang.tr("menu_download_model"), command=self.download_model)
+        self.menu_sistema.add_command(label=lang.tr("menu_desktop"), command=self.crear_acceso_escritorio)
+        self.menu_sistema.add_command(label=lang.tr("menu_lang"), command=self._toggle_lang)
+
     def toggle_theme(self):
         self.tema_actual = (self.tema_actual + 1) % len(self.colores)
         self.aplicar_tema()
         nombre = self.colores[self.tema_actual]['nombre']
         self.menu_app.entryconfig(1, label=nombre)
-        self.add_message("system", f"{nombre} ACTIVADO")
+        self.add_message("system", lang.tr_format("theme_activated", nombre=nombre))
+
+    def _toggle_lang(self):
+        self.lang = "en" if self.lang == "es" else "es"
+        lang.LANG = self.lang
+        # Update window and header
+        self.root.title(lang.tr("window_title"))
+        self.title_label.config(text=lang.tr("header_title"))
+        self.subtitle.config(text=lang.tr("header_subtitle"))
+        # Rebuild menu with new language
+        self.menu_bar.destroy()
+        self.menu_bar = tk.Menu(self.root)
+        self.root.config(menu=self.menu_bar)
+        self._build_menu()
+        # Update menu button
+        if _HAS_TTB and hasattr(self, 'menubtn') and self.menubtn:
+            self.menubtn.config(text=lang.tr("btn_menu"))
+        elif hasattr(self, 'menubtn') and self.menubtn:
+            self.menubtn.config(text=lang.tr("btn_menu"))
+        # Update send button
+        if _HAS_TTB and hasattr(self, 'send_button') and self.send_button:
+            self.send_button.config(text=lang.tr("btn_send"))
+        # Update status
+        self.status_label.config(text=lang.tr("status_ready_short"))
+        # Update msg count
+        try:
+            self.contador_label.config(text=lang.tr_format("msg_count", count=self.mensajes_count))
+        except Exception:
+            pass
+        self.add_message("system", f"🌐 {lang.tr('menu_lang')}")
 
     def animar_escribiendo(self):
         """Animación de puntitos mientras escribe"""
         dots = [".  ", ".. ", "...", " ..", "  .", "   "]
         self.animacion_dots = (self.animacion_dots + 1) % len(dots)
         try:
-            self.status_label.config(text=f">> LUNA ESTÁ ESCRIBIENDO{dots[self.animacion_dots]}")
+            self.status_label.config(text=lang.tr("status_writing").replace("...", dots[self.animacion_dots]))
             if self.ai_loaded and self.status_label.cget("text").startswith(">> LUNA"):
                 self.root.after(300, self.animar_escribiendo)
         except Exception:
@@ -640,20 +668,20 @@ class ChatbotApp:
                 mp3s = glob.glob(os.path.join(music_path, "*.mp3")) + glob.glob(os.path.join(music_path, "*.wav"))
                 if mp3s:
                     Audio.play_music(mp3s[0])
-                    self.menu_audio.entryconfig(1, label="🎵 Música ON")
-                    self.add_message("system", f"🎵 REPRODUCIENDO: {os.path.basename(mp3s[0])}")
+                    self.menu_audio.entryconfig(1, label=lang.tr("menu_music_on"))
+                    self.add_message("system", lang.tr_format("sys_music_playing", basename=os.path.basename(mp3s[0])))
                 else:
                     self.music_playing = False
-                    self.add_message("system", "⚠️ No hay musica en la carpeta 'musica/'")
-                    self.menu_audio.entryconfig(1, label="🎵 Música OFF")
+                    self.add_message("system", lang.tr("sys_no_music"))
+                    self.menu_audio.entryconfig(1, label=lang.tr("menu_music_off"))
             except Exception as e:
                 self.music_playing = False
-                self.add_message("system", f"❌ ERROR: {e}")
-                self.menu_audio.entryconfig(1, label="🎵 Música OFF")
+                self.add_message("system", lang.tr_format("sys_music_error", e=e))
+                self.menu_audio.entryconfig(1, label=lang.tr("menu_music_off"))
         else:
             Audio.stop_music()
-            self.menu_audio.entryconfig(1, label="🎵 Música OFF")
-            self.add_message("system", "🎵 MUSICA DESACTIVADA")
+            self.menu_audio.entryconfig(1, label=lang.tr("menu_music_off"))
+            self.add_message("system", lang.tr("sys_music_off"))
 
     def load_ai(self):
         try:
@@ -689,26 +717,26 @@ class ChatbotApp:
         tts_mode = getattr(self.tts, 'mode', 'none') if hasattr(self, 'tts') and self.tts else 'none'
         if tts_mode in ("none", "offline"):
             self.tts_enabled = False
-            self.menu_audio.entryconfig(0, label="🔇 TTS: OFF")
-            self.add_message("system", "🔇 TTS no disponible — desactivado automáticamente")
+            self.menu_audio.entryconfig(0, label=lang.tr("menu_tts_off"))
+            self.add_message("system", lang.tr("sys_tts_auto_off"))
 
         modelo = self._modelo_nombre()
         modelo_ausente = self.ai is None or getattr(self.ai, 'is_offline', False)
         if modelo_ausente:
-            self.status_label.config(text=">> MODO OFFLINE - RESPUESTAS LIMITADAS", fg="#FF6B35")
-            self.add_message("system", f"⚠️ MODO OFFLINE ({modelo}). El modelo de IA no está disponible.")
-            self.add_message("system", "💬 Mientras tanto, LUNA responde con conocimientos básicos.")
+            self.status_label.config(text=lang.tr("status_offline_long"), fg="#FF6B35")
+            self.add_message("system", lang.tr_format("sys_offline_msg", modelo=modelo))
+            self.add_message("system", lang.tr("sys_offline_hint"))
             self.menu_sistema.entryconfig(self.menu_download_idx, state='normal')
             logging.info("Modelo en modo offline")
         else:
-            self.status_label.config(text=f">> {modelo} - LISTO!", fg="#27AE60")
-            self.add_message("system", f"✅ {modelo} CARGADO! PUEDES EMPEZAR A CHATEAR.")
+            self.status_label.config(text=lang.tr_format("status_ready", modelo=modelo), fg="#27AE60")
+            self.add_message("system", lang.tr_format("sys_model_loaded", modelo=modelo))
             self.menu_sistema.entryconfig(self.menu_download_idx, state='disabled')
             logging.info("Modelo listo!")
 
     def _model_downloaded(self):
-        self.add_message("system", "✅ Modelo descargado. Recargando...")
-        self.status_label.config(text=">> RECARGANDO MODELO...", fg="#FFD700")
+        self.add_message("system", lang.tr("sys_model_downloaded"))
+        self.status_label.config(text=lang.tr("status_reloading"), fg="#FFD700")
         self.root.update()
         threading.Thread(target=self._reload_ai_after_download, daemon=True).start()
 
@@ -717,7 +745,7 @@ class ChatbotApp:
             self.ai = GPT4AllAI()
             self.root.after(0, self.on_ai_loaded)
         except Exception as e:
-            self.root.after(0, lambda: self.add_message("system", f"⚠️ Error recargando: {e}"))
+            self.root.after(0, lambda: self.add_message("system", lang.tr_format("sys_model_reload_error", e=e)))
 
     def _show_dl_ui(self):
         self.dl_dialog = tk.Toplevel(self.root)
@@ -764,29 +792,73 @@ class ChatbotApp:
             self.root.update_idletasks()
 
     def _download_model_url(self):
-        # Qwen2.5 1.5B — español nativo (~900MB), rápido en CPU
-        repos = [
-            ("TheBloke/Qwen2.5-1.5B-Instruct-GGUF", "qwen2.5-1.5b-instruct-q4_k_m.gguf"),
-            ("TheBloke/Qwen2.5-1.5B-Instruct-GGUF", "qwen2.5-1.5b-instruct-q4_0.gguf"),
-        ]
-        repo, filename = repos[0]
-        url = f"https://huggingface.co/{repo}/resolve/main/{filename}"
-        return url, filename
+        return getattr(self, '_dl_repo', ""), getattr(self, '_dl_file', "")
 
     def download_model(self):
         model_dir = os.path.join(self.project_dir, "models")
         os.makedirs(model_dir, exist_ok=True)
+        MODELS = [
+            {
+                "label": lang.tr("dl_qwen15"),
+                "repo": "TheBloke/Qwen2.5-1.5B-Instruct-GGUF",
+                "file": "qwen2.5-1.5b-instruct-q4_k_m.gguf",
+                "size": "~900 MB",
+                "name": "Qwen2.5 1.5B",
+            },
+            {
+                "label": lang.tr("dl_tinyllama"),
+                "repo": "TheBloke/TinyLlama-1.1B-Chat-v1.0-GGUF",
+                "file": "tinyllama-1.1b-chat-v1.0.Q4_K_M.gguf",
+                "size": "~700 MB",
+                "name": "TinyLlama 1.1B",
+            },
+            {
+                "label": lang.tr("dl_qwen3b"),
+                "repo": "TheBloke/Qwen2.5-3B-Instruct-GGUF",
+                "file": "qwen2.5-3b-instruct-q4_k_m.gguf",
+                "size": "~1.8 GB",
+                "name": "Qwen2.5 3B",
+            },
+        ]
+        dialog = tk.Toplevel(self.root)
+        dialog.title(lang.tr("dl_title"))
+        dialog.geometry("520x320")
+        dialog.configure(bg="#1a1a2e")
+        dialog.resizable(False, False)
+        dialog.transient(self.root)
+        tk.Label(dialog, text=lang.tr("dl_select"), font=("Helvetica", 12, "bold"),
+                 bg="#1a1a2e", fg="#FFD700").pack(pady=(15, 10))
+        var = tk.IntVar(value=0)
+        for i, m in enumerate(MODELS):
+            rec = "  " + lang.tr("dl_recommended") if i == 0 else ""
+            tk.Radiobutton(dialog, text=m["label"] + rec, variable=var, value=i,
+                           font=("Helvetica", 11), bg="#1a1a2e", fg="#ECF0F1",
+                           selectcolor="#1a1a2e", activebackground="#1a1a2e",
+                           activeforeground="#FFD700", anchor='w').pack(anchor='w', padx=30, pady=4)
+        btn_frame = tk.Frame(dialog, bg="#1a1a2e")
+        btn_frame.pack(pady=(15, 10))
+        def _start_dl():
+            idx = var.get()
+            sel = MODELS[idx]
+            self._dl_repo = sel["repo"]
+            self._dl_file = sel["file"]
+            dialog.destroy()
+            self._do_download(model_dir, sel["name"], sel["size"])
+        tk.Button(btn_frame, text=lang.tr("dl_download_btn"), font=("Helvetica", 10, "bold"),
+                  bg="#FF6B35", fg="white", relief=tk.FLAT, padx=15, pady=5, command=_start_dl).pack(side=tk.LEFT, padx=5)
+        tk.Button(btn_frame, text=lang.tr("dl_cancel_btn"), font=("Helvetica", 10),
+                  bg="#2C3E50", fg="white", relief=tk.FLAT, padx=15, pady=5, command=dialog.destroy).pack(side=tk.LEFT, padx=5)
+
+    def _do_download(self, model_dir, model_name, model_size):
         url, name = self._download_model_url()
         path = os.path.join(model_dir, name)
-
         if os.path.exists(path) and os.path.getsize(path) > 1000000:
-            self.add_message("system", "✅ El modelo ya existe. Recargando...")
+            self.add_message("system", lang.tr("sys_model_exists"))
             threading.Thread(target=self._reload_ai_after_download, daemon=True).start()
             return
-
-        self.add_message("system", "📥 Descargando Qwen2.5 1.5B (~900 MB)...")
+        self.add_message("system", lang.tr_format("sys_model_downloading", name=model_name, size=model_size))
         self.menu_sistema.entryconfig(self.menu_download_idx, state='disabled')
-        self.root.after(0, self._show_dl_ui)
+        self.root.after(0, lambda: self._show_dl_ui(model_name))
 
         def _do():
             import ssl
@@ -819,40 +891,67 @@ class ChatbotApp:
                 os.rename(tmp, path)
                 self.root.after(0, self._model_downloaded)
             except urllib.error.HTTPError as e:
-                msg = f"❌ Error HTTP {e.code}"
+                msg = lang.tr("sys_http_error", code=e.code)
                 if e.code in (401, 403):
-                    msg += " — acceso denegado"
+                    msg += lang.tr("sys_access_denied")
                 self.root.after(0, lambda m=msg: self.add_message("system", m))
             except urllib.error.URLError as e:
                 err = str(e.reason) if hasattr(e, 'reason') else str(e)
                 if "certificate" in err.lower() or "ssl" in err.lower():
-                    self.root.after(0, lambda: self.add_message("system",
-                        "❌ Error SSL — ejecutá: python -m pip install --upgrade certifi"))
+                    self.root.after(0, lambda: self.add_message("system", lang.tr("sys_ssl_error")))
                 elif "timed out" in err.lower():
-                    self.root.after(0, lambda: self.add_message("system",
-                        "❌ Timeout — revisá tu conexión a internet"))
+                    self.root.after(0, lambda: self.add_message("system", lang.tr("sys_timeout_error")))
                 else:
-                    self.root.after(0, lambda m=err: self.add_message("system", f"❌ Error de red: {m}"))
+                    self.root.after(0, lambda m=err: self.add_message("system", lang.tr("sys_network_error", err=m)))
             except OSError as e:
-                self.root.after(0, lambda m=str(e): self.add_message("system", f"❌ Error de disco: {m}"))
+                self.root.after(0, lambda m=str(e): self.add_message("system", lang.tr("sys_disk_error", e=m)))
             except Exception as e:
-                self.root.after(0, lambda m=str(e): self.add_message("system", f"❌ Error descargando: {m}"))
+                self.root.after(0, lambda m=str(e): self.add_message("system", lang.tr("sys_download_error", e=m)))
             finally:
                 self.root.after(0, lambda: self.menu_sistema.entryconfig(
                     self.menu_download_idx, state='normal'))
                 self.root.after(0, self._hide_dl_ui)
                 if os.path.exists(tmp):
-                    try:
-                        os.remove(tmp)
-                    except Exception:
-                        pass
+                    try: os.remove(tmp)
+                    except: pass
                 if not os.path.exists(path):
                     self.root.after(0, lambda: self.add_message("system",
-                        "📥 Descargá manualmente:\n"
-                        f"   {url}\n"
-                        f"   y guardalo en: {model_dir}/"))
+                        lang.tr_format("sys_download_manual", url=url, model_dir=model_dir)))
 
         threading.Thread(target=_do, daemon=True).start()
+
+    def _show_dl_ui(self, model_name=""):
+        self.dl_dialog = tk.Toplevel(self.root)
+        self.dl_dialog.title(lang.tr("dl_dialog_title"))
+        self.dl_dialog.geometry("420x180")
+        self.dl_dialog.configure(bg="#1a1a2e")
+        self.dl_dialog.resizable(False, False)
+        self.dl_dialog.transient(self.root)
+        self.dl_dialog.protocol("WM_DELETE_WINDOW", lambda: None)
+        tk.Label(self.dl_dialog, text=lang.tr_format("dl_downloading", name=model_name or ""),
+                 font=("Helvetica", 12, "bold"), bg="#1a1a2e", fg="#FFD700").pack(pady=(20, 10))
+        self.dl_progress_bar = ttk.Progressbar(self.dl_dialog, mode='determinate', length=350)
+        self.dl_progress_bar.pack(pady=10)
+        self.dl_pct_label = tk.Label(self.dl_dialog, text="0% (0.0/0.0 GB)", font=("Helvetica", 10),
+                                     bg="#1a1a2e", fg="#ECF0F1")
+        self.dl_pct_label.pack(pady=5)
+        self.dl_status_label = tk.Label(self.dl_dialog, text=lang.tr("dl_init"), font=("Helvetica", 9),
+                                        bg="#1a1a2e", fg="#7F8C8D")
+        self.dl_status_label.pack(pady=5)
+        self.status_label.config(text=lang.tr("status_downloading"), fg="#FFD700")
+
+    def _update_dl_ui(self, pct, sent, total):
+        if self.dl_progress_bar and self.dl_pct_label:
+            self.dl_progress_bar['value'] = pct
+            gb_sent = sent / (1024**3)
+            gb_total = total / (1024**3)
+            self.dl_pct_label.config(text=f"{pct}% ({gb_sent:.1f}/{gb_total:.1f} GB)")
+            if pct == 100:
+                self.dl_status_label.config(text=lang.tr("dl_verifying"))
+                self.dl_pct_label.config(fg="#27AE60")
+            else:
+                self.dl_status_label.config(text=lang.tr_format("dl_progress", pct=pct))
+            self.root.update_idletasks()
 
     def _desktop_path(self):
         for folder in ["Desktop", "Escritorio"]:
