@@ -298,7 +298,7 @@ class ChatbotApp:
         self.face = AnimatedFace(self.right_panel, x=35, y=10, size=280, project_dir=self.project_dir)
 
         # Tools — menú compacto
-        self.tools_frame = tk.Frame(self.right_panel, bg="#1a1a2e", height=120)
+        self.tools_frame = tk.Frame(self.right_panel, bg="#1a1a2e", height=145)
         self.tools_frame.pack(side=tk.BOTTOM, fill=tk.X, pady=(0, 10))
         self.tools_frame.pack_propagate(False)
         self.tools_sep = tk.Frame(self.tools_frame, height=1, bg="#2C3E50")
@@ -405,8 +405,8 @@ class ChatbotApp:
         # === 7. TEMPORIZADOR ===
         self.timer_frame = tk.Frame(self.tools_frame, bg="#1a1a2e")
         self.timer_frame.pack(fill=tk.X, pady=(5, 0), padx=10)
-        self.timer_label = tk.Label(self.timer_frame, text="⏱️ 00:00", font=("Helvetica", 10, "bold"), bg="#1a1a2e", fg="#FFD700")
-        self.timer_label.pack(side=tk.RIGHT, padx=5)
+        self.timer_label = tk.Label(self.timer_frame, text="⏱️ 00:00", font=("Helvetica", 12, "bold"), bg="#1a1a2e", fg="#FFD700")
+        self.timer_label.pack(side=tk.RIGHT, padx=5, pady=2)
         timer_btn_frame = tk.Frame(self.timer_frame, bg="#1a1a2e")
         timer_btn_frame.pack(side=tk.LEFT)
         self.timer_buttons = []
@@ -727,7 +727,7 @@ class ChatbotApp:
         self.dl_dialog.resizable(False, False)
         self.dl_dialog.transient(self.root)
         self.dl_dialog.protocol("WM_DELETE_WINDOW", lambda: None)
-        tk.Label(self.dl_dialog, text="📥 Descargando Qwen 2.5 3B...", font=("Helvetica", 12, "bold"),
+        tk.Label(self.dl_dialog, text="📥 Descargando TinyLlama 1.1B...", font=("Helvetica", 12, "bold"),
                  bg="#1a1a2e", fg="#FFD700").pack(pady=(20, 10))
         self.dl_progress_bar = ttk.Progressbar(self.dl_dialog, mode='determinate', length=350)
         self.dl_progress_bar.pack(pady=10)
@@ -805,8 +805,12 @@ class ChatbotApp:
         return resultado[0] if resultado else ""
 
     def _download_model_url(self, token=""):
-        repo = "Qwen/Qwen2.5-3B-Instruct-GGUF"
-        filename = "qwen2.5-3b-instruct-q4_k_m.gguf"
+        # TinyLlama 1.1B — pequeño (~700MB), rápido en CPU, no requiere auth
+        repos = [
+            ("TheBloke/TinyLlama-1.1B-Chat-v1.0-GGUF", "tinyllama-1.1b-chat-v1.0.Q4_K_M.gguf"),
+            ("TheBloke/TinyLlama-1.1B-Chat-v1.0-GGUF", "tinyllama-1.1b-chat-v1.0.Q4_0.gguf"),
+        ]
+        repo, filename = repos[0]
         url = f"https://huggingface.co/{repo}/resolve/main/{filename}"
         return url, filename
 
@@ -822,7 +826,7 @@ class ChatbotApp:
             return
 
         hf_token = self._pedir_token()
-        self.add_message("system", "📥 Descargando modelo Qwen 2.5 3B (~2 GB)...")
+        self.add_message("system", "📥 Descargando TinyLlama 1.1B (~700 MB)...")
         self.menu_sistema.entryconfig(self.menu_download_idx, state='disabled')
         self.root.after(0, self._show_dl_ui)
 

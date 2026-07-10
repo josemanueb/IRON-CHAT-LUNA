@@ -87,6 +87,8 @@ class GPT4AllAI:
 
     def _find_model(self):
         preferred = [
+            "tinyllama-1.1b-chat-v1.0.Q4_K_M.gguf",
+            "tinyllama-1.1b-chat-v1.0.Q4_0.gguf",
             "qwen2.5-3b-instruct-q4_k_m.gguf",
             "Qwen2.5-3B-Instruct-Q4_K_M.gguf",
             "Llama-3.2-3B-Instruct-Q4_K_M.gguf",
