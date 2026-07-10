@@ -259,15 +259,11 @@ Dibujos disponibles: `mancuerna`, `pesa`, `musculo`, `trofeo`, `fuego`, `corazon
 
 ## 🧠 Modelo de IA
 
-Soporta múltiples modelos GGUF. Se detecta automáticamente:
+**TinyLlama 1.1B** (~700 MB) — se descarga automáticamente desde la app: ☰ Menú → Descargar Modelo
 
-| Modelo | Tamaño | Enlace |
-|--------|--------|--------|
-| **TinyLlama 1.1B** (recomendado) | ~700 MB | `https://huggingface.co/TheBloke/TinyLlama-1.1B-Chat-v1.0-GGUF/resolve/main/tinyllama-1.1b-chat-v1.0.Q4_K_M.gguf` |
-| **Qwen 2.5 3B Instruct** | ~2 GB | `https://huggingface.co/Qwen/Qwen2.5-3B-Instruct-GGUF/resolve/main/qwen2.5-3b-instruct-q4_k_m.gguf` |
-| **Llama 3.2 3B Instruct** | ~2 GB | `https://huggingface.co/bartowski/Llama-3.2-3B-Instruct-GGUF/resolve/main/Llama-3.2-3B-Instruct-Q4_K_M.gguf` |
+También puedes colocar cualquier archivo `.gguf` en `models/` y la app lo detecta solo.
 
-También puedes descargar el modelo desde la app: ☰ Menú → Descargar Modelo
+**Configuración actual:**
 
 **Configuración actual:**
 - Contexto: 2048 tokens
