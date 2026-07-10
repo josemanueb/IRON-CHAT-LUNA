@@ -526,8 +526,7 @@ class ChatbotApp:
         self.subtitle.config(text=lang.tr("header_subtitle"))
         # Rebuild menu with new language
         self.menu_bar.destroy()
-        self.menu_bar = tk.Menu(self.root)
-        self.root.config(menu=self.menu_bar)
+        self.menu_bar = tk.Menu(self.root, tearoff=0)
         self._build_menu()
         # Update menu button
         if _HAS_TTB and hasattr(self, 'menubtn') and self.menubtn:
@@ -599,11 +598,13 @@ class ChatbotApp:
         if hasattr(self, 'ai') and self.ai:
             if getattr(self.ai, 'is_offline', False):
                 return "OFFLINE (reglas)"
+            if hasattr(self.ai, 'model_name'):
+                return self.ai.model_name
             tipo = getattr(self.ai, 'model_type', '')
             if tipo == "qwen":
-                return "Qwen 2.5 3B Instruct"
+                return "Qwen 2.5"
             elif tipo == "llama":
-                return "Llama 3.2 3B Instruct"
+                return "Llama 3.2"
         return "—"
 
     def show_info(self):

@@ -83,17 +83,18 @@ class GPT4AllAI:
         return ctx
 
     def _find_model(self):
-        preferred = [
-            "qwen2.5-1.5b-instruct-q4_k_m.gguf",
-            "qwen2.5-1.5b-instruct-q4_0.gguf",
-            "tinyllama-1.1b-chat-v1.0.Q4_K_M.gguf",
-            "tinyllama-1.1b-chat-v1.0.Q4_0.gguf",
-            "qwen2.5-3b-instruct-q4_k_m.gguf",
-            "Qwen2.5-3B-Instruct-Q4_K_M.gguf",
-            "Llama-3.2-3B-Instruct-Q4_K_M.gguf",
-            "Llama-3.2-3B-Instruct-Q4_0.gguf",
-            "Llama-3.2-3B-Instruct.gguf"
-        ]
+        preferred_names = {
+            "qwen2.5-1.5b-instruct-q4_k_m.gguf": "Qwen2.5 1.5B",
+            "qwen2.5-1.5b-instruct-q4_0.gguf": "Qwen2.5 1.5B",
+            "tinyllama-1.1b-chat-v1.0.Q4_K_M.gguf": "TinyLlama 1.1B",
+            "tinyllama-1.1b-chat-v1.0.Q4_0.gguf": "TinyLlama 1.1B",
+            "qwen2.5-3b-instruct-q4_k_m.gguf": "Qwen2.5 3B",
+            "Qwen2.5-3B-Instruct-Q4_K_M.gguf": "Qwen2.5 3B",
+            "Llama-3.2-3B-Instruct-Q4_K_M.gguf": "Llama 3.2 3B",
+            "Llama-3.2-3B-Instruct-Q4_0.gguf": "Llama 3.2 3B",
+            "Llama-3.2-3B-Instruct.gguf": "Llama 3.2 3B",
+        }
+        preferred = list(preferred_names.keys())
         models_dir = os.path.join(os.path.dirname(__file__), "models")
         if not os.path.isdir(models_dir):
             return None
@@ -101,6 +102,7 @@ class GPT4AllAI:
             path = os.path.join(models_dir, name)
             if os.path.exists(path) and os.path.getsize(path) > 1000000:
                 self.model_type = self._detect_model_type(name)
+                self.model_name = preferred_names.get(name, name)
                 print(f"📦 Modelo detectado: {self.model_type.upper()} ({name})")
                 return path
         for f in os.listdir(models_dir):
@@ -108,9 +110,11 @@ class GPT4AllAI:
                 path = os.path.join(models_dir, f)
                 if os.path.getsize(path) > 1000000:
                     self.model_type = self._detect_model_type(f)
+                    self.model_name = f
                     print(f"📦 Modelo detectado: {self.model_type.upper()} ({f})")
                     return path
         self.model_type = self._detect_model_type("")
+        self.model_name = "—"
         return None
 
     @staticmethod
