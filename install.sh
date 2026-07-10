@@ -25,9 +25,14 @@ else
     exit 1
 fi
 
-# === 2. PIPER TTS ===
+# === 2. espeak-ng (TTS) ===
 echo ""
-echo "🔊 Piper TTS se instalará como paquete Python (piper-tts) en el venv"
+echo "🔊 Instalando espeak-ng para TTS..."
+if command -v espeak-ng &> /dev/null; then
+    echo "  ✅ espeak-ng ya instalado"
+else
+    sudo apt install -y espeak-ng 2>/dev/null && echo "  ✅ espeak-ng instalado" || echo "  ⚠️ No se pudo instalar espeak-ng (TTS sin voz)"
+fi
 
 # === 3. ENTORNO VIRTUAL ===
 echo ""
@@ -56,146 +61,42 @@ else
     exit 1
 fi
 
-echo "  ⏳ Instalando pygame, Pillow, piper-tts..."
-if pip install pygame Pillow piper-tts -q; then
-    echo "  ✅ pygame, Pillow, piper-tts instalados"
+echo "  ⏳ Instalando pygame, Pillow, ttkbootstrap..."
+if pip install pygame Pillow ttkbootstrap -q; then
+    echo "  ✅ pygame, Pillow, ttkbootstrap instalados"
 else
     echo "  ⚠️ Error instalando dependencias secundarias."
     echo "     Puedes instalarlas manualmente después."
 fi
 
-# === 5. MODELO DE IA (2 GB) ===
-echo ""
-echo "🤖 Selecciona el modelo de IA:"
-echo "     1) Qwen 2.5 3B Instruct (RECOMENDADO — Apache 2.0, mejor español)"
-echo "     2) Llama 3.2 3B Instruct (Meta, requiere aceptar licencia)"
-read -p "     Selecciona [1/2] (default 1): " MODEL_CHOICE
-
-if [ "$MODEL_CHOICE" = "2" ]; then
-    MODEL_NAME="Llama-3.2-3B-Instruct-Q4_K_M.gguf"
-    MODEL_URL="https://huggingface.co/bartowski/Llama-3.2-3B-Instruct-GGUF/resolve/main/Llama-3.2-3B-Instruct-Q4_K_M.gguf"
-    echo "     ℹ️ Llama 3.2 requiere aceptar licencia de Meta en huggingface.co"
+echo "  ⏳ Verificando espeak-ng (TTS en Linux)..."
+if command -v espeak-ng &> /dev/null; then
+    echo "  ✅ espeak-ng encontrado"
 else
-    MODEL_NAME="qwen2.5-3b-instruct-q4_k_m.gguf"
-    MODEL_URL="https://huggingface.co/Qwen/Qwen2.5-3B-Instruct-GGUF/resolve/main/qwen2.5-3b-instruct-q4_k_m.gguf"
+    echo "  ⚠️ espeak-ng no instalado. Para TTS:"
+    echo "     sudo apt install espeak-ng"
 fi
 
+# === 5. MODELO DE IA (opcional) ===
+echo ""
+echo "🤖 Modelo de IA (opcional):"
 MODEL_DIR="$SCRIPT_DIR/models"
-MODEL_PATH="$MODEL_DIR/$MODEL_NAME"
-MODEL_OK=false
 mkdir -p "$MODEL_DIR"
-
-echo "🤖 Descargando $MODEL_NAME (~2 GB)..."
-if [ -f "$MODEL_PATH" ]; then
-    SIZE=$(du -h "$MODEL_PATH" | cut -f1)
-    echo "  ✅ Modelo ya existe: $SIZE"
+MODEL_PATH=$(find "$MODEL_DIR" -name "*.gguf" -size +1M 2>/dev/null | head -1)
+if [ -n "$MODEL_PATH" ]; then
+    echo "  ✅ Modelo encontrado en $MODEL_PATH"
 else
-    echo "  ⏳ Descargando modelo (puede tomar varios minutos)..."
-    echo "     ⚠️  NO CIERRES ESTA VENTANA hasta que termine!"
-    echo ""
-    MODEL_OK=false
-
-    # curl con fallback SSL
-    if command -v curl &> /dev/null; then
-        curl -L "$MODEL_URL" -o "$MODEL_PATH.tmp" --progress-bar 2>&1 && \
-        mv "$MODEL_PATH.tmp" "$MODEL_PATH" && MODEL_OK=true
-
-        if [ "$MODEL_OK" = false ]; then
-            echo "     ⚠️ Reintentando con SSL desactivado..."
-            curl -L -k "$MODEL_URL" -o "$MODEL_PATH.tmp" --progress-bar 2>&1 && \
-            mv "$MODEL_PATH.tmp" "$MODEL_PATH" && MODEL_OK=true
-        fi
-    elif command -v wget &> /dev/null; then
-        wget "$MODEL_URL" -O "$MODEL_PATH" 2>&1 && MODEL_OK=true
-        if [ "$MODEL_OK" = false ]; then
-            echo "     ⚠️ Reintentando con SSL desactivado..."
-            wget --no-check-certificate "$MODEL_URL" -O "$MODEL_PATH" 2>&1 && MODEL_OK=true
-        fi
-    fi
-
-    if [ "$MODEL_OK" = true ]; then
-        SIZE=$(du -h "$MODEL_PATH" | cut -f1)
-        echo "  ✅ Modelo descargado: $SIZE"
-    else
-        echo "  ❌ Error descargando el modelo."
-        echo ""
-        echo "  ╔══════════════════════════════════════════════╗"
-        echo "  ║   DESCARGA MANUAL REQUERIDA                ║"
-        echo "  ╚══════════════════════════════════════════════╝"
-        echo ""
-        echo "  1. Abre este enlace en tu navegador:"
-        echo "     $MODEL_URL"
-        echo ""
-        echo "  2. Espera a que descargue (~2 GB)"
-        echo ""
-        echo "  3. Copia el archivo descargado AQUÍ:"
-        echo "     $MODEL_DIR"
-        echo "     El nombre debe ser: $MODEL_NAME"
-        echo ""
-        echo "  4. Una vez colocado, ejecuta install.sh otra vez"
-        echo ""
-        read -p "     Presiona Enter cuando hayas colocado el modelo..."
-
-        if [ -f "$MODEL_PATH" ]; then
-            SIZE=$(du -h "$MODEL_PATH" | cut -f1)
-            echo "  ✅ Modelo encontrado: $SIZE"
-        else
-            echo "  ⚠️ Modelo no encontrado. Puedes continuar sin IA."
-        fi
-    fi
+    echo "  ℹ️ Sin modelo. LUNA usará su modo offline con respuestas completas."
+    echo "     Para respuestas más avanzadas, coloca un .gguf en models/"
 fi
 
-# === 6. VOZ PIPER ===
-echo ""
-echo "🎤 Descargando voz Piper (femenina española)..."
-VOICES_DIR="$SCRIPT_DIR/voices"
-VOICE_PATH="$VOICES_DIR/es_ES-sharvard-medium.onnx"
-VOICE_URL="https://huggingface.co/rhasspy/piper-voices/resolve/main/es/es_ES/sharvard/medium/es_ES-sharvard-medium.onnx"
-VOICE_JSON_URL="https://huggingface.co/rhasspy/piper-voices/resolve/main/es/es_ES/sharvard/medium/es_ES-sharvard-medium.onnx.json"
-mkdir -p "$VOICES_DIR"
-
-if [ -f "$VOICE_PATH" ]; then
-    echo "  ✅ Voz Piper ya existe"
-else
-    echo "  ⏳ Descargando voz (77 MB)..."
-    VOICE_OK=false
-
-    if command -v curl &> /dev/null; then
-        curl -L "$VOICE_URL" -o "$VOICE_PATH" --progress-bar 2>&1 && \
-        curl -L "$VOICE_JSON_URL" -o "$VOICES_DIR/es_ES-sharvard-medium.onnx.json" --progress-bar 2>&1 && \
-        VOICE_OK=true
-
-        if [ "$VOICE_OK" = false ]; then
-            curl -L -k "$VOICE_URL" -o "$VOICE_PATH" --progress-bar 2>&1 && \
-            curl -L -k "$VOICE_JSON_URL" -o "$VOICES_DIR/es_ES-sharvard-medium.onnx.json" --progress-bar 2>&1 && \
-            VOICE_OK=true
-        fi
-    elif command -v wget &> /dev/null; then
-        wget "$VOICE_URL" -O "$VOICE_PATH" 2>&1 && \
-        wget "$VOICE_JSON_URL" -O "$VOICES_DIR/es_ES-sharvard-medium.onnx.json" 2>&1 && \
-        VOICE_OK=true
-
-        if [ "$VOICE_OK" = false ]; then
-            wget --no-check-certificate "$VOICE_URL" -O "$VOICE_PATH" 2>&1 && \
-            wget --no-check-certificate "$VOICE_JSON_URL" -O "$VOICES_DIR/es_ES-sharvard-medium.onnx.json" 2>&1 && \
-            VOICE_OK=true
-        fi
-    fi
-
-    if [ "$VOICE_OK" = true ]; then
-        echo "  ✅ Voz descargada"
-    else
-        echo "  ⚠️ No se pudo descargar la voz. El TTS usará la voz del sistema."
-    fi
-fi
-
-# === 7. MUSICA ===
+# === 6. MUSICA ===
 echo ""
 echo "🎵 Creando carpeta de música..."
 mkdir -p "$SCRIPT_DIR/musica"
 echo "  ✅ Carpeta musica/ creada (mete tus MP3 ahí)"
 
-# === 8. ACCESO DIRECTO (solo Linux) ===
+# === 7. ACCESO DIRECTO (solo Linux) ===
 echo ""
 echo "📌 Creando acceso directo..."
 DESKTOP_FILE="$HOME/Desktop/IRON-CHAT-LUNA.desktop"
@@ -231,7 +132,7 @@ mkdir -p "$APPS_DIR"
 cp "$DESKTOP_FILE" "$APPS_DIR/IRON-CHAT-LUNA.desktop"
 echo "  ✅ Acceso directo registrado en aplicaciones"
 
-# === 9. RESUMEN ===
+# === 8. RESUMEN ===
 echo ""
 echo "╔══════════════════════════════════════╗"
 echo "║   INSTALACIÓN COMPLETADA            ║"

@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 """
 check_deps.py — Verifica dependencias de IRON CHAT - LUNA
-y descarga automáticamente lo que falta (modelo, voces, paquetes).
 Uso:  python3 check_deps.py
 """
 
@@ -10,7 +9,6 @@ import sys
 import subprocess
 import platform
 import urllib.request
-import hashlib
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 OK = chr(0x2705)
@@ -38,6 +36,21 @@ def check_python():
     if not ok:
         print(f"     {WARN} Se necesita Python 3.10+")
     return ok
+
+
+def check_espeak():
+    section("TTS (espeak-ng)")
+    try:
+        r = subprocess.run(["which", "espeak-ng"], capture_output=True, text=True, timeout=5)
+        ok = r.returncode == 0
+        if ok:
+            log("espeak-ng instalado", True)
+        else:
+            log("espeak-ng no instalado. sudo apt install espeak-ng", False)
+        return ok
+    except Exception:
+        log("espeak-ng no disponible", False)
+        return False
 
 
 def check_pip():
@@ -77,91 +90,6 @@ def install_package(name):
     return False
 
 
-def _hf_url(filename, token=""):
-    repo_qwen = "Qwen/Qwen2.5-3B-Instruct-GGUF"
-    repo_llama = "bartowski/Llama-3.2-3B-Instruct-GGUF"
-    if "Llama" in filename:
-        return f"https://huggingface.co/{repo_llama}/resolve/main/{filename}"
-    return f"https://huggingface.co/{repo_qwen}/resolve/main/{filename}"
-
-
-def _descargar_con_token(url, dest, token="", reporthook=None):
-    import ssl
-    ctx = ssl.create_default_context()
-    opener = urllib.request.build_opener(urllib.request.HTTPSHandler(context=ctx))
-    if token:
-        opener.addheaders = [("Authorization", f"Bearer {token}")]
-    else:
-        opener.addheaders = [("User-Agent", "IRON-CHAT-LUNA/2.1")]
-    urllib.request.install_opener(opener)
-    urllib.request.urlretrieve(url, dest, reporthook)
-
-
-def download_model_auto(force_qwen=True, token=""):
-    """Descarga modelo."""
-    model_dir = os.path.join(SCRIPT_DIR, "models")
-    os.makedirs(model_dir, exist_ok=True)
-
-    name = "qwen2.5-3b-instruct-q4_k_m.gguf" if force_qwen else "Llama-3.2-3B-Instruct-Q4_K_M.gguf"
-    url = _hf_url(name)
-    path = os.path.join(model_dir, name)
-
-    if os.path.exists(path) and os.path.getsize(path) > 1000000:
-        return True
-
-    if not token and os.environ.get("HF_TOKEN"):
-        token = os.environ["HF_TOKEN"]
-
-    print(f"     Descargando {name} (~2 GB)...")
-    try:
-        _descargar_con_token(url, path + ".tmp", token)
-        if os.path.getsize(path + ".tmp") < 1000000:
-            raise RuntimeError("Archivo demasiado pequeño (corrupto)")
-        os.rename(path + ".tmp", path)
-        sz = os.path.getsize(path) / (1024**3)
-        log(f"{name} descargado ({sz:.2f} GB)", True)
-        return True
-    except urllib.error.HTTPError as e:
-        if e.code in (401, 403):
-            print(f"     {FAIL} Acceso denegado. Usá --token 'hf_...' o variable HF_TOKEN")
-        else:
-            print(f"     {FAIL} Error HTTP {e.code}")
-    except Exception as e:
-        print(f"     {FAIL} Error: {e}")
-    print(f"     Descargá manualmente de:\n            {url}")
-    return False
-
-
-def download_voice_auto():
-    """Descarga voz Piper sin interacción."""
-    voices_dir = os.path.join(SCRIPT_DIR, "voices")
-    os.makedirs(voices_dir, exist_ok=True)
-
-    voice_name = "es_ES-sharvard-medium.onnx"
-    voice_path = os.path.join(voices_dir, voice_name)
-    voice_json_path = voice_path + ".json"
-
-    if os.path.exists(voice_path) and os.path.getsize(voice_path) > 10000:
-        return True
-
-    base = ("https://huggingface.co/rhasspy/piper-voices/resolve/main/"
-            "es/es_ES/sharvard/medium/es_ES-sharvard-medium.onnx")
-    for suffix, dest in [("", voice_path), (".json", voice_json_path)]:
-        try:
-            urllib.request.urlretrieve(base + suffix, dest + ".tmp")
-            os.rename(dest + ".tmp", dest)
-        except Exception as e:
-            print(f"     {WARN} Error descargando {suffix or 'voz'}: {e}")
-            return False
-
-    ok = os.path.exists(voice_path) and os.path.getsize(voice_path) > 10000
-    if ok:
-        log(f"Voz {voice_name} descargada", True)
-    else:
-        log("Voz no disponible", False)
-    return ok
-
-
 def check_packages(auto_install=False):
     section("Paquetes Python")
     pkgs = [("llama-cpp-python", "llama_cpp"),
@@ -184,7 +112,7 @@ def check_packages(auto_install=False):
     return all_ok
 
 
-def check_models(auto_download=False, force_qwen=True, hf_token=""):
+def check_models():
     section("Modelo de IA")
     model_dir = os.path.join(SCRIPT_DIR, "models")
     os.makedirs(model_dir, exist_ok=True)
@@ -199,34 +127,10 @@ def check_models(auto_download=False, force_qwen=True, hf_token=""):
             log(f"{f} ({sz:.2f} GB)", True)
         return True
 
-    log("Ningún modelo encontrado", False)
-    if auto_download:
-        return download_model_auto(force_qwen, token=hf_token)
-    else:
-        print(f"     {INFO} Ejecutá con --download-model o:\n"
-              "            python3 install.py")
-        return False
-
-
-def check_voices(auto_download=False):
-    section("Voces TTS (Piper)")
-    voices_dir = os.path.join(SCRIPT_DIR, "voices")
-    os.makedirs(voices_dir, exist_ok=True)
-
-    voice_name = "es_ES-sharvard-medium.onnx"
-    voice_path = os.path.join(voices_dir, voice_name)
-    voice_json_path = voice_path + ".json"
-
-    if os.path.exists(voice_path) and os.path.getsize(voice_path) > 10000:
-        log(f"Voz {voice_name} existe", True)
-        return True
-
-    log("Voz Piper no encontrada", False)
-    if auto_download:
-        return download_voice_auto()
-    else:
-        print(f"     {INFO} Ejecutá con --download-voice")
-        return False
+    log("Sin modelo — modo offline activo", True)
+    print(f"     {INFO} LUNA funciona offline con respuestas completas.")
+    print(f"     {INFO} Para IA avanzada, coloca un .gguf en models/")
+    return True
 
 
 def check_venv():
@@ -248,8 +152,7 @@ def check_venv():
     return in_venv
 
 
-def main(auto_install=False, download_model=False, download_voice=False,
-         force_qwen=True, hf_token=""):
+def main(auto_install=False):
     print(f"\n{'='*55}")
     print(f"  🔍 CHECK DEPS — IRON CHAT LUNA")
     print(f"  {platform.system()} | Python {sys.version.split()[0]}")
@@ -261,9 +164,9 @@ def main(auto_install=False, download_model=False, download_voice=False,
     results.append(("Entorno virtual", check_venv()))
     results.append(("pip", check_pip()))
     results.append(("Paquetes", check_packages(auto_install)))
-    results.append(("Modelo IA", check_models(download_model, force_qwen, hf_token=hf_token)))
+    results.append(("Modelo IA", check_models()))
     if platform.system() == "Linux":
-        results.append(("Voces TTS", check_voices(download_voice)))
+        results.append(("TTS espeak-ng", check_espeak()))
 
     print(f"\n{'='*55}")
     print(f"  RESUMEN")
@@ -290,26 +193,12 @@ if __name__ == "__main__":
         description="Verifica dependencias de IRON CHAT - LUNA")
     parser.add_argument("--yes", "-y", action="store_true",
                         help="Instalar paquetes faltantes automáticamente")
-    parser.add_argument("--download-model", action="store_true",
-                        help="Descargar modelo Qwen (o usar --llama)")
-    parser.add_argument("--download-voice", action="store_true",
-                        help="Descargar voz Piper")
-    parser.add_argument("--llama", action="store_true",
-                        help="Usar Llama 3.2 3B en vez de Qwen")
-    parser.add_argument("--token", type=str, default="",
-                        help="Token de HuggingFace (hf_...) para modelos que requieran auth")
     parser.add_argument("--all", action="store_true",
-                        help="Equivalente a --yes --download-model --download-voice")
+                        help="Equivalente a --yes")
     args = parser.parse_args()
 
     if args.all:
         args.yes = True
-        args.download_model = True
-        args.download_voice = True
 
-    ok = main(auto_install=args.yes,
-              download_model=args.download_model,
-              download_voice=args.download_voice,
-              force_qwen=not args.llama,
-              hf_token=args.token or os.environ.get("HF_TOKEN", ""))
+    ok = main(auto_install=args.yes)
     sys.exit(0 if ok else 1)

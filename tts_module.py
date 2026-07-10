@@ -9,21 +9,19 @@ from audio import Audio
 
 class TTS:
     def __init__(self):
-        print("Inicializando TTS con Piper real...")
+        print("Inicializando TTS...")
         self.speaking = False
         self.on_finish_callback = None
         self.volume = 0.7
         self.sistema = platform.system()
         self.mode = "offline"
-        
+
         if self.sistema == "Windows":
             self._init_windows()
         else:
             self._init_linux()
-    
+
     def _init_windows(self):
-        """Windows: usa pyttsx3 con voces SAPI5"""
-        self.engine_w = None
         try:
             import pyttsx3
             self.engine_w = pyttsx3.init()
@@ -35,62 +33,40 @@ class TTS:
                     self.engine_w.setProperty('voice', v.id)
                     break
             self.mode = "windows_tts"
-            print("✅ TTS Windows listo (voz natural)")
+            print("✅ TTS Windows listo (voz natural del sistema)")
         except Exception:
             print("⚠️ TTS Windows no disponible")
-    
+
     def _init_linux(self):
-        """Linux: usa Piper TTS real con voz femenina española"""
-        voices_dir = os.path.join(os.path.dirname(__file__), "voices")
-        
-        # Buscar piper-tts real (el que descargamos)
-        piper_paths = [
-            "/usr/local/bin/piper-tts",
-            "/usr/bin/piper-tts",
-            "/usr/local/bin/piper",
-            "/usr/bin/piper",
-        ]
-        
-        self.piper_bin = None
-        for p in piper_paths:
+        espeak_paths = ["/usr/bin/espeak-ng", "/usr/local/bin/espeak-ng"]
+        self.espeak_bin = None
+        for p in espeak_paths:
             if os.path.exists(p):
-                self.piper_bin = p
+                self.espeak_bin = p
                 break
-        
-        if not self.piper_bin:
-            print("⚠️ Piper TTS no encontrado en /usr/local/bin")
-            print("⚠️ TTS no disponible, modo texto")
+        if not self.espeak_bin:
+            try:
+                r = subprocess.run(["which", "espeak-ng"], capture_output=True, text=True, timeout=5)
+                if r.returncode == 0 and r.stdout.strip():
+                    self.espeak_bin = r.stdout.strip()
+            except Exception:
+                pass
+        if self.espeak_bin:
+            self.mode = "espeak"
+            print(f"✅ TTS Linux listo (espeak-ng)")
+        else:
+            print("⚠️ espeak-ng no instalado. Sin TTS en Linux.")
+            print("   Instala con: sudo apt install espeak-ng")
             self.mode = "none"
-            return
-        
-        # Buscar voz femenina española (preferida) o masculina
-        voces = [
-            ("es_ES-sharvard-medium.onnx", "femenina"),
-            ("es_ES-carlfm-x_low.onnx", "masculina"),
-        ]
-        
-        for voz, tipo in voces:
-            ruta = os.path.join(voices_dir, voz)
-            if os.path.exists(ruta):
-                self.voice_path = ruta
-                self.mode = "piper"
-                print(f"✅ TTS Linux: Piper real con voz {tipo} española ({voz})")
-                print(f"   Binario: {self.piper_bin}")
-                return
-        
-        print("⚠️ No se encontraron voces Piper en la carpeta voices/")
-        print("⚠️ TTS no disponible, modo texto")
-        self.mode = "none"
 
     def set_volume(self, vol):
         self.volume = max(0.0, min(1.0, vol))
 
     def set_speed(self, speed_pct):
-        """speed_pct: 50-200 (100 = normal)"""
-        if self.sistema == "Windows" and self.engine_w:
+        if self.sistema == "Windows" and hasattr(self, 'engine_w') and self.engine_w:
             rate = int(150 * speed_pct / 100)
             self.engine_w.setProperty('rate', rate)
-    
+
     def speak(self, text, on_finish=None):
         if not text:
             if on_finish:
@@ -101,13 +77,13 @@ class TTS:
         thread = threading.Thread(target=self._speak_thread, args=(text,))
         thread.daemon = True
         thread.start()
-    
+
     def _speak_thread(self, text):
         try:
             if self.mode == "windows_tts":
                 self._speak_windows(text)
-            elif self.mode == "piper":
-                self._speak_piper(text)
+            elif self.mode == "espeak":
+                self._speak_espeak(text)
         except Exception as e:
             print(f"Error en TTS: {e}")
         finally:
@@ -117,56 +93,46 @@ class TTS:
                     self.on_finish_callback()
                 except Exception:
                     pass
-    
+
     def _speak_windows(self, text):
-        if getattr(self, 'engine_w', None):
+        if hasattr(self, 'engine_w') and self.engine_w:
             self.engine_w.say(text)
             self.engine_w.runAndWait()
-    
-    def _speak_piper(self, text):
-        """Usa Piper TTS real con voz femenina española"""
+
+    def _speak_espeak(self, text):
         try:
-            # Limpiar texto
             texto_limpio = re.sub(r'[^\w\s,;:.!?¡¿áéíóúüñÁÉÍÓÚÜÑ]', ' ', text)
             texto_limpio = re.sub(r'\s+', ' ', texto_limpio).strip()
-            
             if not texto_limpio:
                 return
-            
-            # Generar WAV con Piper TTS
+
             wav_file = tempfile.NamedTemporaryFile(delete=False, suffix='.wav')
             wav_path = wav_file.name
             wav_file.close()
-            
+
+            amp = max(30, int(self.volume * 100))
             cmd = [
-                self.piper_bin,
-                '--model', self.voice_path,
-                '--output_file', wav_path,
+                self.espeak_bin,
+                '-v', 'es',
+                '-s', '140',
+                '-a', str(amp),
+                '-w', wav_path,
+                texto_limpio,
             ]
-            
-            with subprocess.Popen(
-                cmd,
-                stdin=subprocess.PIPE,
-                stdout=subprocess.DEVNULL,
-                stderr=subprocess.DEVNULL
-            ) as proc:
-                proc.communicate(input=texto_limpio.encode('utf-8'), timeout=60)
-            
-            # Reproducir el WAV
-            if os.path.exists(wav_path) and os.path.getsize(wav_path) > 1000:
+            subprocess.run(cmd, capture_output=True, timeout=30)
+
+            if os.path.exists(wav_path) and os.path.getsize(wav_path) > 100:
                 Audio.play_wav(wav_path)
-                time.sleep(0.5)
-            
-            # Limpiar
+                time.sleep(0.3)
+
             try:
                 if os.path.exists(wav_path):
                     os.unlink(wav_path)
             except Exception:
                 pass
-
         except Exception as e:
-            print(f"Error en Piper TTS: {e}")
-    
+            print(f"Error en espeak-ng TTS: {e}")
+
     def stop(self):
         Audio.stop_all()
         self.speaking = False

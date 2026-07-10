@@ -448,29 +448,42 @@ def main():
         log("Error CRITICO: no se pudo instalar llama-cpp-python", False)
         fatal_error = True
 
-    # 3b. Otras dependencias
+    # 3b. Otras dependencias pip
     deps = ["Pillow", "ttkbootstrap"]
     if platform.system() == "Windows":
         deps.extend(["pyttsx3", "pywin32"])
     else:
-        deps.extend(["pygame", "piper-tts"])
+        deps.extend(["pygame"])
     if not pip_install(pip, deps, ", ".join(deps)):
         print("  ⚠️ Error instalando dependencias secundarias.")
         print("     Puedes instalarlas manualmente después.")
 
-    # 3c. Verificar que lo crítico se pueda importar
-    if not fatal_error:
-        python_exe = os.path.join(venv_dir, "Scripts", "python.exe") if platform.system() == "Windows" else os.path.join(venv_dir, "bin", "python")
-        test = subprocess.run([python_exe, "-c", "import llama_cpp; print('✅ llama_cpp importado OK')"], capture_output=True, text=True)
-        if test.returncode == 0:
-            print(f"     {test.stdout.strip()}")
-        else:
-            txt = (test.stderr or "").split("\n")[-1].strip()
-            log(f"Error importando llama_cpp: {txt}", False)
-            fatal_error = True
+    # 3c. espeak-ng para TTS en Linux
+    if platform.system() != "Windows":
+        print("  ⏳ Verificando espeak-ng (TTS en Linux)...")
+        try:
+            r = subprocess.run(["which", "espeak-ng"], capture_output=True, text=True, timeout=10)
+            if r.returncode != 0:
+                print("     ⚠️ espeak-ng no instalado. Para activar TTS de voz:")
+                print("       sudo apt install espeak-ng")
+                print("     (La app funciona igual sin TTS)")
+            else:
+                log("espeak-ng encontrado")
+        except Exception:
+            print("     ⚠️ No se pudo verificar espeak-ng")
 
     # 3d. Resumen de dependencias
     if fatal_error:
+        py_ver = f"cp{sys.version_info.major}{sys.version_info.minor}"
+        arch = platform.machine().lower()
+        if arch in ("amd64", "x86_64"):
+            arch = "win_amd64"
+        elif arch == "arm64":
+            arch = "win_arm64"
+        else:
+            arch = "win32"
+
+        print("\n  ❌ FALLO CRÍTICO: llama-cpp-python no se instaló correctamente.")
         py_ver = f"cp{sys.version_info.major}{sys.version_info.minor}"
         arch = platform.machine().lower()
         if arch in ("amd64", "x86_64"):
@@ -503,117 +516,27 @@ def main():
         input("\nPresiona Enter para salir...")
         sys.exit(1)
 
-    # === 4. MODELO DE IA ===
+    # === 4. MODELO DE IA (opcional) ===
     section("🤖 Modelo de IA")
     model_dir = os.path.join(SCRIPT_DIR, "models")
     os.makedirs(model_dir, exist_ok=True)
-
-    # Detectar si ya existe algún modelo
     modelos_existentes = [f for f in os.listdir(model_dir) if f.endswith(".gguf") and os.path.getsize(os.path.join(model_dir, f)) > 1000000]
     if modelos_existentes:
-        model_name = modelos_existentes[0]
-        model_path = os.path.join(model_dir, model_name)
-        size = os.path.getsize(model_path) / (1024**3)
-        log(f"Modelo ya existe: {model_name} ({size:.2f} GB)")
-        if size < 1.0:
-            print("     ⚠️ El archivo parece muy pequeño, puede estar corrupto.")
-            print("     Elimínalo y vuelve a ejecutar el instalador.")
+        log(f"Modelo encontrado: {modelos_existentes[0]}")
+        print("     ✅ La IA podrá usar respuestas avanzadas si está presente.")
     else:
-        # Elegir modelo
-        print("     Modelos disponibles:")
-        print("     1) Qwen 2.5 3B Instruct (RECOMENDADO — Apache 2.0, mejor español)")
-        print("     2) Llama 3.2 3B Instruct (Meta, requiere aceptar licencia)")
-        choice = input("     Selecciona [1/2] (default 1): ").strip()
-        if choice == "2":
-            model_name = "Llama-3.2-3B-Instruct-Q4_K_M.gguf"
-            model_url = "https://huggingface.co/bartowski/Llama-3.2-3B-Instruct-GGUF/resolve/main/Llama-3.2-3B-Instruct-Q4_K_M.gguf"
-            print("     ℹ️ Llama 3.2 requiere aceptar licencia de Meta en huggingface.co")
-        else:
-            model_name = "qwen2.5-3b-instruct-q4_k_m.gguf"
-            model_url = "https://huggingface.co/Qwen/Qwen2.5-3B-Instruct-GGUF/resolve/main/qwen2.5-3b-instruct-q4_k_m.gguf"
+        print("     ℹ️ Sin modelo descargado. LUNA usará su modo offline con")
+        print("     respuestas completas de rutinas, dietas y consejos.")
+        print("     Si quieres respuestas más avanzadas, coloca un modelo .gguf")
+        print("     en la carpeta 'models/' manualmente.")
 
-        model_path = os.path.join(model_dir, model_name)
-        print(f"  ⏳ Descargando {model_name} (2 GB, puede tomar varios minutos)...")
-        print("     ⚠️  NO CIERRES ESTA VENTANA hasta que termine!")
-        print()
-
-        if not download_model_auto(model_url, model_path):
-            print()
-            print("  ╔══════════════════════════════════════════════╗")
-            print("  ║   DESCARGA MANUAL REQUERIDA                ║")
-            print("  ╚══════════════════════════════════════════════╝")
-            print()
-            print("  🔷 Opción recomendada (más rápida):")
-            print()
-            print("     1. Presiona Ctrl+C y pega este enlace en tu navegador:")
-            print(f"        {model_url}")
-            print()
-            print()
-            print("     2. Espera a que descargue (~2 GB)")
-            print()
-            print(f"     3. Copia el archivo AQUÍ:")
-            print(f"        {model_dir}")
-            print(f"        NOMBRE EXACTO: {model_name}")
-            print()
-            print(f"     4. Luego ejecuta install.bat OTRA VEZ")
-            print()
-            print("  🔷 O intenta descargar con este comando en PowerShell (como Administrador):")
-            print()
-            print(f'        curl -L "{model_url}" -o "{model_path}"')
-            print()
-            input("     Presiona Enter cuando hayas puesto el modelo...")
-            if os.path.exists(model_path):
-                size = os.path.getsize(model_path) / (1024**3)
-                if size >= 1.0:
-                    log(f"Modelo encontrado: {size:.2f} GB")
-                else:
-                    log("El archivo parece corrupto (muy pequeño)", False)
-                    input("Presiona Enter para continuar...")
-            else:
-                log("Modelo no encontrado. Puedes continuar sin IA", False)
-                input("Presiona Enter para continuar...")
-
-    # === 5. VOZ PIPER ===
-    section("🎤 Voz Piper")
-    voices_dir = os.path.join(SCRIPT_DIR, "voices")
-    voice_path = os.path.join(voices_dir, "es_ES-sharvard-medium.onnx")
-    os.makedirs(voices_dir, exist_ok=True)
-
-    if os.path.exists(voice_path):
-        log("Voz Piper ya existe")
-    else:
-        voice_url = "https://huggingface.co/rhasspy/piper-voices/resolve/main/es/es_ES/sharvard/medium/es_ES-sharvard-medium.onnx"
-        voice_json_url = "https://huggingface.co/rhasspy/piper-voices/resolve/main/es/es_ES/sharvard/medium/es_ES-sharvard-medium.onnx.json"
-        print("  ⏳ Descargando voz (77 MB)...")
-
-        voice_ok = False
-
-        for url, dest, label in [
-            (voice_url, voice_path, "Voz"),
-            (voice_json_url, voice_path + ".json", "Config")
-        ]:
-            ok = (_download_urllib(url, dest, verified=True) or
-                  _download_urllib(url, dest, verified=False) or
-                  download_with_powershell(url, dest) or
-                  download_with_powershell_ssl_fallback(url, dest) or
-                  download_with_bits(url, dest))
-            if ok:
-                log(f"{label} descargada")
-                voice_ok = True
-            else:
-                log(f"No se pudo descargar {label}", False)
-
-        if not voice_ok:
-            log("No se pudo descargar la voz", False)
-            print("     ⚠️ El TTS usará la voz del sistema")
-
-    # === 6. MUSICA ===
+    # === 5. MUSICA ===
     section("🎵 Música")
     music_dir = os.path.join(SCRIPT_DIR, "musica")
     os.makedirs(music_dir, exist_ok=True)
     log("Carpeta musica/ creada (mete tus MP3 ahí)")
 
-    # === 7. ACCESO DIRECTO (solo Linux) ===
+    # === 6. ACCESO DIRECTO (solo Linux) ===
     if platform.system() != "Windows":
         section("📌 Acceso directo")
         desktop = os.path.join(os.path.expanduser("~"), "Desktop")
@@ -653,7 +576,7 @@ Categories=Utility;AI;
             f.write('@echo off\ncd /d "%~dp0"\ncall venv\\Scripts\\activate.bat\npython main.py\npause\n')
         log("run.bat creado")
 
-    # === 8. RESUMEN ===
+    # === 7. RESUMEN ===
     print("\n╔══════════════════════════════════════╗")
     print("║   INSTALACIÓN COMPLETADA            ║")
     print("╚══════════════════════════════════════╝")
