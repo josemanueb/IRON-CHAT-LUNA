@@ -97,18 +97,27 @@ class GPT4AllAI:
         for name in preferred:
             path = os.path.join(models_dir, name)
             if os.path.exists(path) and os.path.getsize(path) > 1000000:
-                self.model_type = "qwen" if "qwen" in name.lower() else "llama"
+                self.model_type = self._detect_model_type(name)
                 print(f"📦 Modelo detectado: {self.model_type.upper()} ({name})")
                 return path
         for f in os.listdir(models_dir):
             if f.endswith(".gguf") and f.lower() not in ("readme.md", "readme.txt"):
                 path = os.path.join(models_dir, f)
                 if os.path.getsize(path) > 1000000:
-                    self.model_type = "qwen" if "qwen" in f.lower() else "llama"
+                    self.model_type = self._detect_model_type(f)
                     print(f"📦 Modelo detectado: {self.model_type.upper()} ({f})")
                     return path
-        self.model_type = "llama"
+        self.model_type = self._detect_model_type("")
         return None
+
+    @staticmethod
+    def _detect_model_type(filename: str) -> str:
+        name = filename.lower()
+        if "tinyllama" in name:
+            return "qwen"
+        if "qwen" in name:
+            return "qwen"
+        return "llama"
 
     def _offline_response(self, user_input, history=None):
         text = user_input.lower().strip()
