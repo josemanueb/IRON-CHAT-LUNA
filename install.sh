@@ -1,6 +1,6 @@
 #!/bin/bash
 # ============================================================
-#  INSTALADOR DE IRON CHAT - LUNA v2.0 PARA LINUX
+#  INSTALADOR DE IRON CHAT - LUNA v2.2 PARA LINUX
 #  Descarga automatica de modelo + acceso directo
 #  Creado por: ⚡ JMbirner ⚡
 # ============================================================
@@ -8,7 +8,7 @@
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 
 echo "╔══════════════════════════════════════╗"
-echo "║   INSTALADOR IRON CHAT - LUNA v2.0   ║"
+echo "║   INSTALADOR IRON CHAT - LUNA v2.2   ║"
 echo "║   PARA LINUX                          ║"
 echo "╚══════════════════════════════════════╝"
 echo ""
