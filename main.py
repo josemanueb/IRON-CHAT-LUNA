@@ -825,7 +825,6 @@ class ChatbotApp:
             threading.Thread(target=self._reload_ai_after_download, daemon=True).start()
             return
 
-        hf_token = self._pedir_token()
         self.add_message("system", "📥 Descargando TinyLlama 1.1B (~700 MB)...")
         self.menu_sistema.entryconfig(self.menu_download_idx, state='disabled')
         self.root.after(0, self._show_dl_ui)
@@ -835,27 +834,36 @@ class ChatbotApp:
             tmp = path + ".tmp"
             try:
                 ctx = ssl.create_default_context()
-                opener = urllib.request.build_opener(
-                    urllib.request.HTTPSHandler(context=ctx))
-                if hf_token:
-                    opener.addheaders = [("Authorization", f"Bearer {hf_token}")]
-                else:
-                    opener.addheaders = [("User-Agent", "IRON-CHAT-LUNA/2.1")]
-                urllib.request.install_opener(opener)
-                urllib.request.urlretrieve(url, tmp, self._download_progress)
-                if os.path.getsize(tmp) < 1000000:
-                    raise RuntimeError("Archivo demasiado pequeño (probablemente corrupto)")
+                req = urllib.request.Request(url)
+                req.add_header("User-Agent", "IRON-CHAT-LUNA/2.2")
+                resp = urllib.request.urlopen(req, context=ctx, timeout=120)
+                total = int(resp.headers.get("Content-Length", 0))
+                sent = 0
+                chunk_size = 65536
+                with open(tmp, "wb") as f:
+                    while True:
+                        chunk = resp.read(chunk_size)
+                        if not chunk:
+                            break
+                        f.write(chunk)
+                        sent += len(chunk)
+                        if total > 0:
+                            pct = int(sent * 100 / total)
+                            last = getattr(self, '_last_pct', -1)
+                            if pct >= last + 2 or pct == 100:
+                                self._last_pct = pct
+                                self.root.after(0, lambda p=pct, s=sent, t=total: self._update_dl_ui(p, s, t))
+                resp.close()
+                sz = os.path.getsize(tmp)
+                if sz < 1000000:
+                    raise RuntimeError(f"Archivo corrupto: solo {sz} bytes")
                 os.rename(tmp, path)
                 self.root.after(0, self._model_downloaded)
             except urllib.error.HTTPError as e:
+                msg = f"❌ Error HTTP {e.code}"
                 if e.code in (401, 403):
-                    self.root.after(0, lambda: self.add_message("system",
-                        "❌ Acceso denegado. El modelo requiere token de HuggingFace."))
-                    self.root.after(0, lambda: self.add_message("system",
-                        "🌐 Creá un token gratis en: https://huggingface.co/settings/tokens"))
-                else:
-                    self.root.after(0, lambda: self.add_message("system",
-                        f"❌ Error HTTP {e.code}"))
+                    msg += " — acceso denegado"
+                self.root.after(0, lambda m=msg: self.add_message("system", m))
             except urllib.error.URLError as e:
                 err = str(e.reason) if hasattr(e, 'reason') else str(e)
                 if "certificate" in err.lower() or "ssl" in err.lower():
@@ -865,9 +873,11 @@ class ChatbotApp:
                     self.root.after(0, lambda: self.add_message("system",
                         "❌ Timeout — revisá tu conexión a internet"))
                 else:
-                    self.root.after(0, lambda: self.add_message("system", f"❌ Error de red: {err}"))
+                    self.root.after(0, lambda m=err: self.add_message("system", f"❌ Error de red: {m}"))
+            except OSError as e:
+                self.root.after(0, lambda m=str(e): self.add_message("system", f"❌ Error de disco: {m}"))
             except Exception as e:
-                self.root.after(0, lambda: self.add_message("system", f"❌ Error descargando: {e}"))
+                self.root.after(0, lambda m=str(e): self.add_message("system", f"❌ Error descargando: {m}"))
             finally:
                 self.root.after(0, lambda: self.menu_sistema.entryconfig(
                     self.menu_download_idx, state='normal'))
