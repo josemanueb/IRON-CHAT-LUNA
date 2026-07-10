@@ -727,7 +727,7 @@ class ChatbotApp:
         self.dl_dialog.resizable(False, False)
         self.dl_dialog.transient(self.root)
         self.dl_dialog.protocol("WM_DELETE_WINDOW", lambda: None)
-        tk.Label(self.dl_dialog, text="📥 Descargando TinyLlama 1.1B...", font=("Helvetica", 12, "bold"),
+        tk.Label(self.dl_dialog, text="📥 Descargando Qwen2.5 1.5B...", font=("Helvetica", 12, "bold"),
                  bg="#1a1a2e", fg="#FFD700").pack(pady=(20, 10))
         self.dl_progress_bar = ttk.Progressbar(self.dl_dialog, mode='determinate', length=350)
         self.dl_progress_bar.pack(pady=10)
@@ -764,10 +764,10 @@ class ChatbotApp:
             self.root.update_idletasks()
 
     def _download_model_url(self):
-        # TinyLlama 1.1B — pequeño (~700MB), rápido en CPU, no requiere auth
+        # Qwen2.5 1.5B — español nativo (~900MB), rápido en CPU
         repos = [
-            ("TheBloke/TinyLlama-1.1B-Chat-v1.0-GGUF", "tinyllama-1.1b-chat-v1.0.Q4_K_M.gguf"),
-            ("TheBloke/TinyLlama-1.1B-Chat-v1.0-GGUF", "tinyllama-1.1b-chat-v1.0.Q4_0.gguf"),
+            ("TheBloke/Qwen2.5-1.5B-Instruct-GGUF", "qwen2.5-1.5b-instruct-q4_k_m.gguf"),
+            ("TheBloke/Qwen2.5-1.5B-Instruct-GGUF", "qwen2.5-1.5b-instruct-q4_0.gguf"),
         ]
         repo, filename = repos[0]
         url = f"https://huggingface.co/{repo}/resolve/main/{filename}"
@@ -784,7 +784,7 @@ class ChatbotApp:
             threading.Thread(target=self._reload_ai_after_download, daemon=True).start()
             return
 
-        self.add_message("system", "📥 Descargando TinyLlama 1.1B (~700 MB)...")
+        self.add_message("system", "📥 Descargando Qwen2.5 1.5B (~900 MB)...")
         self.menu_sistema.entryconfig(self.menu_download_idx, state='disabled')
         self.root.after(0, self._show_dl_ui)
 
