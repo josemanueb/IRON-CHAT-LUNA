@@ -639,7 +639,7 @@ class GPT4AllAI:
             return self._post_process(text)
         except Exception as e:
             print("Error al generar respuesta: " + str(e))
-            return self._offline_response(user_input, history)
+            return f"⚠️ Error del modelo: {e}"
 
     def stream_response(self, user_input, history=None):
         try:
@@ -668,4 +668,4 @@ class GPT4AllAI:
             yield self._post_process(accumulated.strip())
         except Exception as e:
             print("Error en stream_response: " + str(e))
-            yield self._offline_response(user_input, history)
+            yield f"⚠️ Error del modelo: {e}"

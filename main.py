@@ -1,6 +1,7 @@
 import tkinter as tk
 from tkinter import messagebox
 import threading
+import time
 from datetime import datetime
 import os
 import json
@@ -1087,10 +1088,15 @@ class ChatbotApp:
     def _stream_response(self, user_input, history):
         self.root.after(0, lambda: self._start_stream_ui())
         full_text = ""
+        last_update = 0.0
         try:
             for partial in self.ai.stream_response(user_input, history=history):
                 full_text = partial
-                self.root.after(0, lambda t=full_text: self._update_stream_ui(t))
+                now = time.time()
+                if now - last_update >= 0.05:
+                    last_update = now
+                    self.root.after_idle(lambda t=full_text: self._update_stream_ui(t))
+            self.root.after_idle(lambda t=full_text: self._update_stream_ui(t))
             final = self.ai._post_process(full_text.strip()) if hasattr(self.ai, '_post_process') else full_text.strip()
             self.root.after(0, lambda r=final: self._on_stream_done(r))
         except Exception as e:
@@ -1128,9 +1134,7 @@ class ChatbotApp:
         tts_activo = self.tts_enabled and hasattr(self, 'tts') and self.tts and self.tts.mode not in ("none", "offline")
         if not tts_activo:
             Sounds.play_notification()
-        self._sending_timeout = self.root.after(120000, self._finish_sending)
         self.speak_response(response)
-        # Save memory of this exchange
         self._recordar_conversacion(self._last_user_input, response)
 
     def _on_response(self, response):
@@ -1138,9 +1142,7 @@ class ChatbotApp:
         tts_activo = self.tts_enabled and hasattr(self, 'tts') and self.tts and self.tts.mode not in ("none", "offline")
         if not tts_activo:
             Sounds.play_notification()
-        self._sending_timeout = self.root.after(120000, self._finish_sending)
         self.speak_response(response)
-        # Save memory of this exchange
         self._recordar_conversacion(self._last_user_input, response)
 
     def _finish_sending(self):
