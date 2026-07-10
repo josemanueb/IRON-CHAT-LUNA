@@ -44,7 +44,7 @@ if exist "%SCRIPT_DIR%iron_chat.log" (
 
 REM === 4. PREGUNTAR POR MODELO ===
 echo.
-echo ⚠️ ¿Quieres eliminar el modelo de IA (~2 GB)?
+echo ⚠️ ¿Quieres eliminar el modelo de IA (~700 MB)?
 echo    Si lo eliminas, tendrás que descargarlo otra vez.
 set /p BORRAR_MODELO="   (S/N): "
 if /i "%BORRAR_MODELO%"=="S" (

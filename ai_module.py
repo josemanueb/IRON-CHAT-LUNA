@@ -2,7 +2,6 @@ import os
 import random
 import signal
 import json
-from ascii_art import ASCIIArt
 
 
 def _sigill_handler(signum, frame):
@@ -26,7 +25,6 @@ class GPT4AllAI:
             print("⚠️ Modelo no encontrado.")
             print("⚠️ Modo OFFLINE activado — respuestas basadas en reglas")
             self.is_offline = True
-            self.ascii = ASCIIArt()
             return
 
         print("Modelo encontrado: " + self.model_path)
@@ -47,10 +45,8 @@ class GPT4AllAI:
             print(f"⚠️ Error cargando modelo: {e}")
             print("⚠️ Modo OFFLINE activado")
             self.is_offline = True
-            self.ascii = ASCIIArt()
             return
 
-        self.ascii = ASCIIArt()
         self._memorias = []
         self._memorias_path = os.path.join(os.path.dirname(__file__), "memorias.json")
         self._cargar_memorias()

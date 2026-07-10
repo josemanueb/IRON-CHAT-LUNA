@@ -8,7 +8,6 @@ import os
 import sys
 import subprocess
 import platform
-import urllib.request
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 OK = chr(0x2705)

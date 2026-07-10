@@ -2,7 +2,6 @@
 """Smoke tests para IRON CHAT - LUNA"""
 import sys
 import os
-import importlib
 import tempfile
 
 DIR = os.path.dirname(os.path.abspath(__file__))
@@ -160,7 +159,7 @@ def main_methods_exist():
     required = [
         "download_model", "crear_acceso_escritorio",
         "_model_downloaded", "_reload_ai_after_download",
-        "_download_progress", "_modelo_nombre",
+        "_modelo_nombre",
         "_desktop_path", "_pythonw_path", "_abrir_menu",
     ]
     for method in required:

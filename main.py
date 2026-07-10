@@ -15,7 +15,6 @@ from PIL import Image, ImageTk
 from ai_module import GPT4AllAI
 from tts_module import TTS
 from face_animation import AnimatedFace
-from ascii_art import ASCIIArt
 from sounds import Sounds
 from progress_tracker import ProgressTracker
 import glob
@@ -763,48 +762,7 @@ class ChatbotApp:
                 self.dl_status_label.config(text=f"Descargando... {pct}% completado")
             self.root.update_idletasks()
 
-    def _download_progress(self, block, sent, total):
-        if total > 0:
-            pct = int(sent * 100 / total)
-            last = getattr(self, '_last_pct', -1)
-            if pct >= last + 2 or pct == 100:
-                self._last_pct = pct
-                self.root.after(0, lambda p=pct, s=sent, t=total: self._update_dl_ui(p, s, t))
-
-    def _pedir_token(self):
-        dialog = tk.Toplevel(self.root)
-        dialog.title("🔑 Token de HuggingFace")
-        dialog.geometry("500x200")
-        dialog.configure(bg="#1a1a2e")
-        dialog.resizable(False, False)
-        dialog.transient(self.root)
-        dialog.grab_set()
-        tk.Label(dialog, text="🔑 HuggingFace Token", font=("Helvetica", 12, "bold"),
-                 bg="#1a1a2e", fg="#FFD700").pack(pady=(15, 5))
-        tk.Label(dialog, text="Algunos modelos requieren autenticación.\nCreá un token gratis en: https://huggingface.co/settings/tokens",
-                 font=("Helvetica", 9), bg="#1a1a2e", fg="#ECF0F1", wraplength=450, justify=tk.LEFT).pack(pady=5)
-        entry = tk.Entry(dialog, font=self.FONT_MONO_SM, width=60, show="*", bg="#0d0d1a", fg="#ECF0F1",
-                         insertbackground="#FFD700", relief=tk.FLAT, bd=5)
-        entry.pack(pady=10, padx=15, fill=tk.X)
-        tk.Label(dialog, text="Dejalo vacío para descarga sin token (modelos abiertos)",
-                 font=("Helvetica", 8), bg="#1a1a2e", fg="#7F8C8D").pack()
-        resultado = []
-        def aceptar():
-            resultado.append(entry.get().strip())
-            dialog.destroy()
-        def saltar():
-            resultado.append("")
-            dialog.destroy()
-        frame = tk.Frame(dialog, bg="#1a1a2e")
-        frame.pack(pady=15)
-        tk.Button(frame, text="✅ ACEPTAR", font=("Helvetica", 10, "bold"), bg="#27AE60", fg="white",
-                  command=aceptar, relief=tk.FLAT, width=12, bd=0).pack(side=tk.LEFT, padx=5)
-        tk.Button(frame, text="⏭ SALTAR", font=("Helvetica", 10, "bold"), bg="#2C3E50", fg="white",
-                  command=saltar, relief=tk.FLAT, width=12, bd=0).pack(side=tk.LEFT, padx=5)
-        self.root.wait_window(dialog)
-        return resultado[0] if resultado else ""
-
-    def _download_model_url(self, token=""):
+    def _download_model_url(self):
         # TinyLlama 1.1B — pequeño (~700MB), rápido en CPU, no requiere auth
         repos = [
             ("TheBloke/TinyLlama-1.1B-Chat-v1.0-GGUF", "tinyllama-1.1b-chat-v1.0.Q4_K_M.gguf"),

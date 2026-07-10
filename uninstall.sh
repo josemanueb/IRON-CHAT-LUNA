@@ -50,7 +50,7 @@ done
 
 # === 4. PREGUNTAR POR MODELO ===
 echo ""
-echo "⚠️  ¿Quieres eliminar el modelo de IA (~2 GB)?"
+echo "⚠️  ¿Quieres eliminar el modelo de IA (~700 MB)?"
 echo "    Si lo eliminas, tendrás que descargarlo otra vez."
 read -p "   (s/N): " -r BORRAR_MODELO
 if [[ "$BORRAR_MODELO" =~ ^[Ss]$ ]]; then
