@@ -1089,14 +1089,23 @@ class ChatbotApp:
         self.root.after(0, lambda: self._start_stream_ui())
         full_text = ""
         last_update = 0.0
+        pending_update = None
+        def _schedule_update(t):
+            nonlocal pending_update
+            if pending_update:
+                try: self.root.after_cancel(pending_update)
+                except: pass
+            pending_update = self.root.after(0, lambda t=t: self._update_stream_ui(t))
         try:
             for partial in self.ai.stream_response(user_input, history=history):
                 full_text = partial
                 now = time.time()
                 if now - last_update >= 0.05:
                     last_update = now
-                    self.root.after_idle(lambda t=full_text: self._update_stream_ui(t))
-            self.root.after_idle(lambda t=full_text: self._update_stream_ui(t))
+                    _schedule_update(full_text)
+            if pending_update:
+                try: self.root.after_cancel(pending_update)
+                except: pass
             final = self.ai._post_process(full_text.strip()) if hasattr(self.ai, '_post_process') else full_text.strip()
             self.root.after(0, lambda r=final: self._on_stream_done(r))
         except Exception as e:
@@ -1174,12 +1183,31 @@ class ChatbotApp:
             return
         self.face.set_speaking(True)
         self.status_label.config(text=">> HABLANDO...", fg="#FF6B35")
+        # Safety timeout: unlock sending if TTS hangs for 30s
+        def _tts_timeout():
+            self._cancel_tts_timeout()
+            self.face.set_speaking(False)
+            self.status_label.config(text=">> LISTO", fg="#27AE60")
+            self._finish_sending()
+        self._tts_timeout_id = self.root.after(30000, _tts_timeout)
         def _on_done():
-            self.root.after(0, self.on_tts_finish)
+            self.root.after(0, self._on_tts_done_safe)
         try:
             tts.speak(texto_limpio if texto_limpio else response, on_finish=_on_done)
         except Exception:
+            self._cancel_tts_timeout()
             self._finish_sending()
+
+    def _cancel_tts_timeout(self):
+        timeout_id = getattr(self, '_tts_timeout_id', None)
+        if timeout_id:
+            try: self.root.after_cancel(timeout_id)
+            except: pass
+            self._tts_timeout_id = None
+
+    def _on_tts_done_safe(self):
+        self._cancel_tts_timeout()
+        self.on_tts_finish()
 
     def on_tts_finish(self):
         self.face.set_speaking(False)
