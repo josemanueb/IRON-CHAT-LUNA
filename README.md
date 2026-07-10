@@ -12,7 +12,7 @@
 
 | Función | Descripción |
 |---------|-------------|
-| 🤖 **IA local** | Qwen 2.5 3B / Llama 3.2 3B (GGUF Q4_K_M) — sin internet necesaria |
+| 🤖 **IA local** | TinyLlama 1.1B / Qwen 2.5 3B / Llama 3.2 3B (GGUF Q4_K_M) — sin internet necesaria |
 | 🧠 **Memoria** | Recuerda los últimos 5 mensajes de la conversación |
 | 🔊 **TTS real** | espeak-ng (Linux) / pyttsx3 (Windows) — voz femenina española, velocidad ajustable ⚡ |
 | 🎨 **Cara animada** | Robot que se balancea al hablar |
@@ -36,7 +36,7 @@
 
 - **CPU**: Cualquiera (compatible sin AVX)
 - **RAM**: 8 GB (mínimo 4 GB)
-- **Disco**: ~2.5 GB libres (modelo GGUF)
+- **Disco**: ~1 GB libres (modelo TinyLlama 1.1B)
 - **SO**: Linux (Deepin, Ubuntu, Debian) o Windows 10/11
 - **Python**: 3.12
 
@@ -62,10 +62,11 @@ pip install llama-cpp-python pygame Pillow
 # 4. Instalar TTS (espeak-ng)
 sudo apt install -y espeak-ng
 
-# 5. Descargar el modelo (elige uno):
-#    Opción A (recomendada): Qwen 2.5 3B Instruct
+# 5. Descargar el modelo (recomendado: TinyLlama 1.1B — ~700MB, rápido):
+#    wget https://huggingface.co/TheBloke/TinyLlama-1.1B-Chat-v1.0-GGUF/resolve/main/tinyllama-1.1b-chat-v1.0.Q4_K_M.gguf -P models/
+#
+#    Alternativas (modelos más grandes):
 #    wget https://huggingface.co/Qwen/Qwen2.5-3B-Instruct-GGUF/resolve/main/qwen2.5-3b-instruct-q4_k_m.gguf -P models/
-#    Opción B: Llama 3.2 3B Instruct
 #    wget https://huggingface.co/bartowski/Llama-3.2-3B-Instruct-GGUF/resolve/main/Llama-3.2-3B-Instruct-Q4_K_M.gguf -P models/
 
 # 6. Ejecutar
@@ -258,14 +259,15 @@ Dibujos disponibles: `mancuerna`, `pesa`, `musculo`, `trofeo`, `fuego`, `corazon
 
 ## 🧠 Modelo de IA
 
-Soporta dos modelos (elige uno al instalar o descarga manual):
+Soporta múltiples modelos GGUF. Se detecta automáticamente:
 
-| Modelo | Licencia | Enlace |
-|--------|----------|--------|
-| **Qwen 2.5 3B Instruct** (recomendado) | Apache 2.0 | `https://huggingface.co/Qwen/Qwen2.5-3B-Instruct-GGUF/resolve/main/qwen2.5-3b-instruct-q4_k_m.gguf` |
-| **Llama 3.2 3B Instruct** | Meta License (requiere aceptación) | `https://huggingface.co/bartowski/Llama-3.2-3B-Instruct-GGUF/resolve/main/Llama-3.2-3B-Instruct-Q4_K_M.gguf` |
+| Modelo | Tamaño | Enlace |
+|--------|--------|--------|
+| **TinyLlama 1.1B** (recomendado) | ~700 MB | `https://huggingface.co/TheBloke/TinyLlama-1.1B-Chat-v1.0-GGUF/resolve/main/tinyllama-1.1b-chat-v1.0.Q4_K_M.gguf` |
+| **Qwen 2.5 3B Instruct** | ~2 GB | `https://huggingface.co/Qwen/Qwen2.5-3B-Instruct-GGUF/resolve/main/qwen2.5-3b-instruct-q4_k_m.gguf` |
+| **Llama 3.2 3B Instruct** | ~2 GB | `https://huggingface.co/bartowski/Llama-3.2-3B-Instruct-GGUF/resolve/main/Llama-3.2-3B-Instruct-Q4_K_M.gguf` |
 
-Colocá el archivo `.gguf` en `models/` y la app lo detecta automáticamente.
+También puedes descargar el modelo desde la app: ☰ Menú → Descargar Modelo
 
 **Configuración actual:**
 - Contexto: 2048 tokens
