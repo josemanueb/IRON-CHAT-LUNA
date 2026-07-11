@@ -721,6 +721,7 @@ class ChatbotApp:
     def on_ai_loaded(self):
         self.progress_bar.stop()
         self.progress_bar.pack_forget()
+        self._hide_dl_ui()
 
         tts_mode = getattr(self.tts, 'mode', 'none') if hasattr(self, 'tts') and self.tts else 'none'
         if tts_mode in ("none", "offline"):
@@ -753,6 +754,7 @@ class ChatbotApp:
             self.root.after(0, self.on_ai_loaded)
         except Exception as e:
             self.root.after(0, lambda: self.add_message("system", lang.tr_format("sys_model_reload_error", e=e)))
+            self.root.after(0, self._hide_dl_ui)
 
     def _hide_dl_ui(self):
         if self.dl_dialog:
@@ -842,6 +844,7 @@ class ChatbotApp:
 
         def _do():
             import ssl
+            success = False
             tmp = path + ".tmp"
             try:
                 ctx = ssl.create_default_context()
@@ -869,6 +872,7 @@ class ChatbotApp:
                 if sz < 1000000:
                     raise RuntimeError(f"Archivo corrupto: solo {sz} bytes")
                 os.rename(tmp, path)
+                success = True
                 self.root.after(0, self._model_downloaded)
             except urllib.error.HTTPError as e:
                 msg = lang.tr("sys_http_error", code=e.code)
@@ -891,7 +895,8 @@ class ChatbotApp:
                 self._dl_in_progress = False
                 self.root.after(0, lambda: self.menu_sistema.entryconfig(
                     self.menu_download_idx, state='normal'))
-                self.root.after(0, self._hide_dl_ui)
+                if not success:
+                    self.root.after(0, self._hide_dl_ui)
                 if os.path.exists(tmp):
                     try: os.remove(tmp)
                     except: pass
