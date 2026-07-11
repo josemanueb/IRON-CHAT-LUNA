@@ -27,6 +27,8 @@ copy "%SCRIPT_DIR%ascii_art.py" "%BACKUP_DIR%\" >nul
 copy "%SCRIPT_DIR%sounds.py" "%BACKUP_DIR%\" >nul
 copy "%SCRIPT_DIR%audio.py" "%BACKUP_DIR%\" >nul
 copy "%SCRIPT_DIR%progress_tracker.py" "%BACKUP_DIR%\" >nul
+copy "%SCRIPT_DIR%lang.py" "%BACKUP_DIR%\" >nul
+copy "%SCRIPT_DIR%check_deps.py" "%BACKUP_DIR%\" >nul
 copy "%SCRIPT_DIR%test_all.py" "%BACKUP_DIR%\" >nul
 
 REM === Instaladores ===
@@ -62,7 +64,7 @@ echo.
 echo ✅ Respaldo completado en:
 echo    %BACKUP_DIR%
 echo.
-echo Archivos: 30
+echo Archivos: 32
 echo Tamaño: ~1 MB (sin modelo ni venv)
 echo.
 echo ⚡ JMbirner ⚡

@@ -67,6 +67,7 @@ class ChatbotApp:
         self.timer_job = None
         self._sending = False
         self._sending_timeout = None
+        self._stream_start_index = "1.0"
         self.FONT_MONO = ("Consolas", 12) if _platform.system() == "Windows" else ("monospace", 12)
         self.FONT_MONO_SM = ("Consolas", 10) if _platform.system() == "Windows" else ("monospace", 10)
         self.FONT_MONO_LG = ("Consolas", 14) if _platform.system() == "Windows" else ("monospace", 14)
@@ -513,7 +514,8 @@ class ChatbotApp:
     def toggle_theme(self):
         self.tema_actual = (self.tema_actual + 1) % len(self.colores)
         self.aplicar_tema()
-        nombre = self.colores[self.tema_actual]['nombre']
+        theme_names = [lang.tr("theme_dark"), lang.tr("theme_light"), lang.tr("theme_nature")]
+        nombre = theme_names[self.tema_actual]
         self.menu_app.entryconfig(1, label=nombre)
         self.add_message("system", lang.tr_format("theme_activated", nombre=nombre))
 
@@ -543,15 +545,20 @@ class ChatbotApp:
             self.contador_label.config(text=lang.tr_format("msg_count", count=self.mensajes_count))
         except Exception:
             pass
+        # Update theme name in menu
+        theme_names = [lang.tr("theme_dark"), lang.tr("theme_light"), lang.tr("theme_nature")]
+        self.menu_app.entryconfig(1, label=theme_names[self.tema_actual])
         self.add_message("system", f"🌐 {lang.tr('menu_lang')}")
 
     def animar_escribiendo(self):
-        """Animación de puntitos mientras escribe"""
         dots = [".  ", ".. ", "...", " ..", "  .", "   "]
         self.animacion_dots = (self.animacion_dots + 1) % len(dots)
         try:
-            self.status_label.config(text=lang.tr("status_writing").replace("...", dots[self.animacion_dots]))
-            if self.ai_loaded and self.status_label.cget("text").startswith(">> LUNA"):
+            label = getattr(self, 'status_label', None)
+            if label is None:
+                return
+            label.config(text=lang.tr("status_writing").replace("...", dots[self.animacion_dots]))
+            if self.ai_loaded:
                 self.root.after(300, self.animar_escribiendo)
         except Exception:
             pass
@@ -738,7 +745,6 @@ class ChatbotApp:
     def _model_downloaded(self):
         self.add_message("system", lang.tr("sys_model_downloaded"))
         self.status_label.config(text=lang.tr("status_reloading"), fg="#FFD700")
-        self.root.update()
         threading.Thread(target=self._reload_ai_after_download, daemon=True).start()
 
     def _reload_ai_after_download(self):
@@ -747,26 +753,6 @@ class ChatbotApp:
             self.root.after(0, self.on_ai_loaded)
         except Exception as e:
             self.root.after(0, lambda: self.add_message("system", lang.tr_format("sys_model_reload_error", e=e)))
-
-    def _show_dl_ui(self):
-        self.dl_dialog = tk.Toplevel(self.root)
-        self.dl_dialog.title("📥 Descargando Modelo")
-        self.dl_dialog.geometry("420x180")
-        self.dl_dialog.configure(bg="#1a1a2e")
-        self.dl_dialog.resizable(False, False)
-        self.dl_dialog.transient(self.root)
-        self.dl_dialog.protocol("WM_DELETE_WINDOW", lambda: None)
-        tk.Label(self.dl_dialog, text="📥 Descargando Qwen2.5 1.5B...", font=("Helvetica", 12, "bold"),
-                 bg="#1a1a2e", fg="#FFD700").pack(pady=(20, 10))
-        self.dl_progress_bar = ttk.Progressbar(self.dl_dialog, mode='determinate', length=350)
-        self.dl_progress_bar.pack(pady=10)
-        self.dl_pct_label = tk.Label(self.dl_dialog, text="0% (0.0/0.0 GB)", font=("Helvetica", 10),
-                                     bg="#1a1a2e", fg="#ECF0F1")
-        self.dl_pct_label.pack(pady=5)
-        self.dl_status_label = tk.Label(self.dl_dialog, text="Iniciando descarga...", font=("Helvetica", 9),
-                                        bg="#1a1a2e", fg="#7F8C8D")
-        self.dl_status_label.pack(pady=5)
-        self.status_label.config(text=">> DESCARGANDO MODELO...", fg="#FFD700")
 
     def _hide_dl_ui(self):
         if self.dl_dialog:
@@ -779,23 +765,13 @@ class ChatbotApp:
         self.dl_pct_label = None
         self.dl_status_label = None
 
-    def _update_dl_ui(self, pct, sent, total):
-        if self.dl_progress_bar and self.dl_pct_label:
-            self.dl_progress_bar['value'] = pct
-            gb_sent = sent / (1024**3)
-            gb_total = total / (1024**3)
-            self.dl_pct_label.config(text=f"{pct}% ({gb_sent:.1f}/{gb_total:.1f} GB)")
-            if pct == 100:
-                self.dl_status_label.config(text="✅ Verificando archivo...")
-                self.dl_pct_label.config(fg="#27AE60")
-            else:
-                self.dl_status_label.config(text=f"Descargando... {pct}% completado")
-            self.root.update_idletasks()
-
     def _download_model_url(self):
         return getattr(self, '_dl_repo', ""), getattr(self, '_dl_file', "")
 
     def download_model(self):
+        if getattr(self, '_dl_in_progress', False):
+            self.add_message("system", "⚠️ Ya hay una descarga en curso")
+            return
         model_dir = os.path.join(self.project_dir, "models")
         os.makedirs(model_dir, exist_ok=True)
         MODELS = [
@@ -910,6 +886,7 @@ class ChatbotApp:
             except Exception as e:
                 self.root.after(0, lambda m=str(e): self.add_message("system", lang.tr("sys_download_error", e=m)))
             finally:
+                self._dl_in_progress = False
                 self.root.after(0, lambda: self.menu_sistema.entryconfig(
                     self.menu_download_idx, state='normal'))
                 self.root.after(0, self._hide_dl_ui)
@@ -920,6 +897,7 @@ class ChatbotApp:
                     self.root.after(0, lambda: self.add_message("system",
                         lang.tr_format("sys_download_manual", url=url, model_dir=model_dir)))
 
+        self._dl_in_progress = True
         threading.Thread(target=_do, daemon=True).start()
 
     def _show_dl_ui(self, model_name=""):
@@ -1034,14 +1012,21 @@ class ChatbotApp:
 
     def _get_conversation_context(self, max_exchanges=5):
         exchanges = []
-        for msg in reversed(self.chat_history):
-            msg = msg.strip()
-            if msg.startswith("[") and "TÚ:" in msg:
-                text = msg.split("TÚ:", 1)[1].strip()
-                exchanges.append(("user", text))
-            elif msg.startswith("[") and "IRON:" in msg:
-                text = msg.split("IRON:", 1)[1].strip()
-                exchanges.append(("assistant", text))
+        user_markers = ("TÚ:", "YOU:")
+        assistant_marker = "IRON:"
+        history = list(self.chat_history)
+        for msg in reversed(history):
+            msg_s = msg.strip()
+            if msg_s.startswith("["):
+                for marker in user_markers:
+                    if marker in msg_s:
+                        text = msg_s.split(marker, 1)[1].strip()
+                        exchanges.append(("user", text))
+                        break
+                else:
+                    if assistant_marker in msg_s:
+                        text = msg_s.split(assistant_marker, 1)[1].strip()
+                        exchanges.append(("assistant", text))
             if len(exchanges) >= max_exchanges * 2:
                 break
         exchanges.reverse()
@@ -1051,15 +1036,15 @@ class ChatbotApp:
         self.chat_area.config(state=tk.NORMAL)
         timestamp = datetime.now().strftime("%H:%M")
         if sender == "user":
-            formatted = f"[{timestamp}] 🏋️ TÚ: {message}\n"
+            formatted = f"[{timestamp}] {lang.tr('user_prefix')}: {message}\n"
             tag = "user_msg"
         elif sender == "ai":
             if streamed:
                 self.chat_area.delete(self._stream_start_index, tk.END)
-                formatted = f"[{timestamp}] 💪 IRON: {message}\n"
+                formatted = f"[{timestamp}] {lang.tr('ai_prefix')}: {message}\n"
                 tag = "ai_msg"
             else:
-                formatted = f"[{timestamp}] 💪 IRON: {message}\n"
+                formatted = f"[{timestamp}] {lang.tr('ai_prefix')}: {message}\n"
                 tag = "ai_msg"
         else:
             formatted = f">> {message}\n"
@@ -1165,28 +1150,33 @@ class ChatbotApp:
         self.add_message("user", user_input)
         self.mensajes_count += 1
         self.actualizar_contador()
-        self.status_label.config(text=">> LUNA ESTÁ ESCRIBIENDO...", fg="#FFD700")
+        self.status_label.config(text=lang.tr("status_writing"), fg="#FFD700")
         self.animar_escribiendo()
         threading.Thread(target=self.get_response, args=(user_input,), daemon=True).start()
 
     def get_response(self, user_input):
         try:
-            self.root.after(0, lambda: self.status_label.config(text=">> PENSANDO...", fg="#3498DB"))
+            ai = getattr(self, 'ai', None)
+            if ai is None:
+                self.root.after(0, lambda: self.add_message("system", lang.tr("sys_model_error", msg="Modelo no disponible")))
+                self.root.after(0, self._finish_sending)
+                return
+            self.root.after(0, lambda: self.status_label.config(text=lang.tr("status_thinking"), fg="#3498DB"))
             history = self._get_conversation_context(5)
-            use_stream = hasattr(self.ai, 'stream_response') and not self.ai.is_offline
+            use_stream = hasattr(ai, 'stream_response') and not ai.is_offline
             if use_stream:
-                self._stream_response(user_input, history)
+                self._stream_response(user_input, history, ai)
             else:
-                response = self.ai.get_response(user_input, history=history)
+                response = ai.get_response(user_input, history=history)
                 self.root.after(0, lambda r=response: self._on_response(r))
         except Exception as e:
             error_msg = str(e)
             logging.error(f"Error en get_response: {error_msg}")
-            self.root.after(0, lambda: self.add_message("system", "❌ ERROR: " + error_msg))
-            self.root.after(0, lambda: self.status_label.config(text=">> ERROR", fg="#E74C3C"))
+            self.root.after(0, lambda: self.add_message("system", lang.tr("sys_model_error", msg=error_msg)))
+            self.root.after(0, lambda: self.status_label.config(text=lang.tr("status_error"), fg="#E74C3C"))
             self.root.after(0, self._finish_sending)
 
-    def _stream_response(self, user_input, history):
+    def _stream_response(self, user_input, history, ai):
         self.root.after(0, lambda: self._start_stream_ui())
         full_text = ""
         last_update = 0.0
@@ -1194,34 +1184,38 @@ class ChatbotApp:
         def _schedule_update(t):
             nonlocal pending_update
             if pending_update:
-                try: self.root.after_cancel(pending_update)
-                except: pass
+                try:
+                    self.root.after_cancel(pending_update)
+                except Exception:
+                    logging.warning("Error cancelando pending_update")
             pending_update = self.root.after(0, lambda t=t: self._update_stream_ui(t))
         try:
-            for partial in self.ai.stream_response(user_input, history=history):
+            for partial in ai.stream_response(user_input, history=history):
                 full_text = partial
                 now = time.time()
                 if now - last_update >= 0.05:
                     last_update = now
                     _schedule_update(full_text)
             if pending_update:
-                try: self.root.after_cancel(pending_update)
-                except: pass
-            final = self.ai._post_process(full_text.strip()) if hasattr(self.ai, '_post_process') else full_text.strip()
+                try:
+                    self.root.after_cancel(pending_update)
+                except Exception:
+                    logging.warning("Error cancelando pending_update en stream done")
+            final = ai._post_process(full_text.strip()) if hasattr(ai, '_post_process') else full_text.strip()
             self.root.after(0, lambda r=final: self._on_stream_done(r))
         except Exception as e:
             logging.error(f"Error en stream: {e}")
-            self.root.after(0, lambda: self.status_label.config(text=">> ERROR", fg="#E74C3C"))
+            self.root.after(0, lambda: self.status_label.config(text=lang.tr("status_error"), fg="#E74C3C"))
             self.root.after(0, self._finish_sending)
 
     def _start_stream_ui(self):
         self.chat_area.config(state=tk.NORMAL)
         timestamp = datetime.now().strftime("%H:%M")
-        self.chat_area.insert(tk.END, f"[{timestamp}] 🤖 LUNA: ")
+        self.chat_area.insert(tk.END, f"[{timestamp}] {lang.tr('ai_stream_prefix')}: ")
         self.chat_area.see(tk.END)
         self.chat_area.config(state=tk.DISABLED)
         self._stream_start_index = self.chat_area.index(tk.END + "-1c")
-        self.status_label.config(text=">> GENERANDO...", fg="#3498DB")
+        self.status_label.config(text=lang.tr("status_generating"), fg="#3498DB")
 
     def _update_stream_ui(self, text):
         self.chat_area.config(state=tk.NORMAL)
@@ -1275,7 +1269,7 @@ class ChatbotApp:
         texto_limpio = re.sub(r"[^\w\s,;:.!?¡¿áéíóúüñÁÉÍÓÚÜÑ]", " ", response)
         texto_limpio = re.sub(r"\s+", " ", texto_limpio).strip()
         if not self.tts_enabled:
-            self.status_label.config(text=">> LISTO", fg="#27AE60")
+            self.status_label.config(text=lang.tr("status_ready_short"), fg="#27AE60")
             self._finish_sending()
             return
         tts = getattr(self, 'tts', None)
@@ -1283,12 +1277,12 @@ class ChatbotApp:
             self._finish_sending()
             return
         self.face.set_speaking(True)
-        self.status_label.config(text=">> HABLANDO...", fg="#FF6B35")
+        self.status_label.config(text=lang.tr("status_speaking"), fg="#FF6B35")
         # Safety timeout: unlock sending if TTS hangs for 30s
         def _tts_timeout():
             self._cancel_tts_timeout()
             self.face.set_speaking(False)
-            self.status_label.config(text=">> LISTO", fg="#27AE60")
+            self.status_label.config(text=lang.tr("status_ready_short"), fg="#27AE60")
             self._finish_sending()
         self._tts_timeout_id = self.root.after(30000, _tts_timeout)
         def _on_done():
@@ -1312,7 +1306,7 @@ class ChatbotApp:
 
     def on_tts_finish(self):
         self.face.set_speaking(False)
-        self.status_label.config(text=">> LISTO", fg="#27AE60")
+        self.status_label.config(text=lang.tr("status_ready_short"), fg="#27AE60")
         self._finish_sending()
 
     # ===================================================================
@@ -1350,7 +1344,7 @@ class ChatbotApp:
         self.timer_running = True
         self.timer_remaining = seconds
         self.timer_label.config(text=f"⏱️ {seconds//60:02d}:{seconds%60:02d}")
-        self.timer_tick()
+        self.timer_job = self.root.after(1000, self.timer_tick)
 
     def timer_stop(self):
         self.timer_running = False
@@ -1373,7 +1367,6 @@ class ChatbotApp:
             self.timer_job = self.root.after(1000, self.timer_tick)
 
     def _reminder_thread(self, seconds, message):
-        import time
         time.sleep(seconds)
         self.root.after(0, lambda: self.add_message("system", f"⏰ RECORDATORIO: {message}"))
         self.root.after(0, lambda: Sounds.play_notification())
@@ -1427,6 +1420,9 @@ class ChatbotApp:
                  command=dialog.destroy, relief=tk.FLAT, width=22, bd=0).pack(pady=10)
 
     def _add_progress_ui(self, parent):
+        if self.progress is None:
+            self.add_message("system", "⚠️ Progreso no disponible (error de base de datos)")
+            return
         dialog = tk.Toplevel(parent)
         dialog.title("➕ AÑADIR MEDICIÓN")
         dialog.geometry("320x380")
@@ -1466,6 +1462,9 @@ class ChatbotApp:
         btn_save.pack(pady=15)
 
     def _view_progress(self, parent):
+        if self.progress is None:
+            self.add_message("system", "⚠️ Progreso no disponible (error de base de datos)")
+            return
         entries = self.progress.get_entries()
         dialog = tk.Toplevel(parent)
         dialog.title("📈 HISTORIAL")
@@ -1487,7 +1486,7 @@ class ChatbotApp:
             date, weight, bicep, chest, waist, thigh, notes = entry
             def fmt(v, pv):
                 s = f"{v:.1f}" if v else "-"
-                if pv is not None and v is not None and pv is not None:
+                if v is not None and pv is not None:
                     delta = v - pv
                     if delta > 0:
                         s += f" ▲{delta:.1f}"
