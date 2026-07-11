@@ -7,12 +7,13 @@ project_dir = os.path.dirname(os.path.abspath(__file__))
 archivos = [
     "main.py", "ai_module.py", "tts_module.py", "face_animation.py",
     "ascii_art.py", "sounds.py", "audio.py", "progress_tracker.py",
+    "hash_utils.py", "themes.py", "lang.py", "check_deps.py",
     "install.py", "install_windows.ps1", "install.sh", "install.bat",
     "uninstall.bat", "uninstall.sh",
     "iron-chat.bat", "backup.bat",
     "generar_firma.py", "verificar_firma.py",
-    ".gitignore", "requirements.txt", "check_deps.py",
-    ".github/workflows/test.yml"
+    ".gitignore", "requirements.txt",
+    "test_download.py"
 ]
 
 hash_total = hashlib.sha256()
