@@ -704,7 +704,8 @@ class ChatbotApp:
     def on_ai_loaded(self):
         self.progress_bar.stop()
         self.progress_bar.pack_forget()
-        self._hide_dl_ui()
+        if not getattr(self, '_dl_in_progress', False):
+            self._hide_dl_ui()
 
         tts_mode = getattr(self.tts, 'mode', 'none') if hasattr(self, 'tts') and self.tts else 'none'
         if tts_mode in ("none", "offline"):
