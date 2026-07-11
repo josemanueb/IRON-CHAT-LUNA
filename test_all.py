@@ -174,6 +174,73 @@ def luna_sh_syntax():
     assert lines[0].startswith("#!/"), "luna.sh falta shebang"
 
 
+def themes_module_ok():
+    from themes import COLORES, get_theme, theme_count
+    assert theme_count() == 3, f"Se esperaban 3 temas, hay {theme_count()}"
+    for i in range(theme_count()):
+        t = get_theme(i)
+        assert "nombre" in t, f"Tema {i} sin nombre"
+        assert "bg" in t, f"Tema {i} sin bg"
+        assert "fg" in t, f"Tema {i} sin fg"
+    t = get_theme(99)
+    assert t["nombre"] == COLORES[0]["nombre"], "Wrap-around no funciona"
+
+
+def hash_utils_ok():
+    from hash_utils import sha256_file, verify_file, file_size_ok
+    import tempfile
+    f = tempfile.NamedTemporaryFile(delete=False, suffix=".txt")
+    f.write(b"hello world")
+    f.close()
+    try:
+        h = sha256_file(f.name)
+        assert len(h) == 64, f"Hash no es SHA256: {len(h)}"
+        assert verify_file(f.name, h), "verify_file falla con hash correcto"
+        assert not verify_file(f.name, "badhash"), "verify_file no rechaza hash malo"
+        assert file_size_ok(f.name, 1), "file_size_ok falla"
+        assert not file_size_ok(f.name, 999999), "file_size_ok no rechaza minimo alto"
+    finally:
+        os.unlink(f.name)
+
+
+def rutinas_json_ok():
+    import json
+    path = os.path.join(DIR, "rutinas.json")
+    assert os.path.exists(path), "rutinas.json no existe"
+    with open(path, "r", encoding="utf-8") as f:
+        data = json.load(f)
+    assert len(data) >= 10, f"Se esperaban >=10 rutinas, hay {len(data)}"
+    for key, rutina in data.items():
+        assert "keywords" in rutina, f"Rutina {key} sin keywords"
+        assert "response" in rutina, f"Rutina {key} sin response"
+        assert len(rutina["keywords"]) > 0, f"Rutina {key} con keywords vacías"
+        assert len(rutina["response"]) > 20, f"Rutina {key} response muy corta"
+
+
+def ai_module_rutinas_ok():
+    from ai_module import _RUTINAS, GPT4AllAI
+    assert len(_RUTINAS) >= 10, f"Se esperaban >=10 rutinas cargadas"
+    resp = GPT4AllAI._offline_response(None, "dame rutina de pecho")
+    assert "RUTINA" in resp, f"Respuesta no contiene RUTINA: {resp[:50]}"
+    resp2 = GPT4AllAI._offline_response(None, "quiero rutina de piernas")
+    assert "PIERNAS" in resp2, f"Respuesta no contiene PIERNAS: {resp2[:50]}"
+
+
+def progress_tracker_context_manager_ok():
+    import tempfile
+    f = tempfile.NamedTemporaryFile(suffix=".db", delete=False)
+    f.close()
+    try:
+        from progress_tracker import ProgressTracker
+        p = ProgressTracker(f.name)
+        p.add_entry(weight=80)
+        p.add_entry(weight=82)
+        entries = p.get_entries()
+        assert len(entries) == 2
+    finally:
+        os.unlink(f.name)
+
+
 if __name__ == "__main__":
     print(f"\n{'='*50}")
     print("  PRUEBAS DE ESTABILIDAD - IRON CHAT LUNA")
@@ -193,6 +260,11 @@ if __name__ == "__main__":
     test("Sounds: _gen_wav genera RIFF válido", sounds_generate_wav)
     test("Main: métodos nuevos existen", main_methods_exist)
     test("luna.sh: sintaxis válida", luna_sh_syntax)
+    test("Themes: 3 temas con keys correctas", themes_module_ok)
+    test("Hash utils: SHA256 y verificación", hash_utils_ok)
+    test("Rutinas JSON: 10+ rutinas válidas", rutinas_json_ok)
+    test("AI module: rutinas desde JSON funcionan", ai_module_rutinas_ok)
+    test("Progress Tracker: context manager funciona", progress_tracker_context_manager_ok)
 
     print(f"\n{'='*50}")
     print(f"  RESULTADO: {PASS} pasaron, {FAIL} fallaron")

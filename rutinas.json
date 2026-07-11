@@ -1,0 +1,46 @@
+{
+  "push": {
+    "keywords": ["push", "empuje", "pecho", "hombro", "triceps", "tríceps"],
+    "response": "🔥 RUTINA PUSH (Empuje):\n\n1️⃣ Press de banca con barra — 4x8-10\n2️⃣ Press militar con mancuernas — 4x10-12\n3️⃣ Aperturas con mancuernas en banco plano — 3x12\n4️⃣ Elevaciones laterales — 3x15\n5️⃣ Fondos en paralelas — 3x10-12\n6️⃣ Extensiones de tríceps en polea — 3x15\n\n💪 Descansa 60-90s entre series. ¡A darle!"
+  },
+  "pull": {
+    "keywords": ["pull", "traccion", "tracción", "espalda", "biceps", "bíceps"],
+    "response": "🔥 RUTINA PULL (Tracción):\n\n1️⃣ Dominadas (o jalón al pecho) — 4x8-10\n2️⃣ Remo con barra — 4x10-12\n3️⃣ Jalón al pecho en polea alta — 3x12\n4️⃣ Remo con mancuerna a una mano — 3x12 por brazo\n5️⃣ Curl con barra — 3x12\n6️⃣ Curl martillo — 3x15\n\n🔥 Concéntrate en la contracción. ¡Tira fuerte!"
+  },
+  "piernas": {
+    "keywords": ["pierna", "piernas", "leg", "quad", "cuadriceps", "gluteo", "glúteo", "femoral", "isquiotibial"],
+    "response": "🦵 RUTINA DE PIERNAS:\n\n1️⃣ Sentadilla con barra — 4x8-10\n2️⃣ Prensa de piernas — 4x12\n3️⃣ Curl femoral acostado — 3x15\n4️⃣ Extensiones de cuádriceps — 3x15\n5️⃣ Elevaciones de gemelos de pie — 4x20\n6️⃣ Zancadas con mancuernas — 3x10 por pierna\n\n🦵 ¡Las piernas son la base de todo! Dale duro."
+  },
+  "fullbody": {
+    "keywords": ["full body", "cuerpo completo", "cuerpo entero", "dia completo", "día completo"],
+    "response": "💪 RUTINA FULL BODY:\n\n1️⃣ Sentadilla con barra — 4x8-10\n2️⃣ Press de banca — 4x8-10\n3️⃣ Remo con barra — 4x10-12\n4️⃣ Press militar — 3x10\n5️⃣ Peso muerto rumano — 3x12\n6️⃣ Curl de bíceps + extensiones tríceps — 3x15\n\n🔥 Cuerpo completo en una sesión. ¡Intensidad total!"
+  },
+  "cardio": {
+    "keywords": ["cardio", "cardiovascular", "correr", "bicicleta", "elíptica", "eliptica", "trote"],
+    "response": "🏃 RUTINA DE CARDIO:\n\n1️⃣ Calentamiento: 5 min caminata rápida\n2️⃣ Trote suave — 10 min a ritmo constante\n3️⃣ HIIT: 30s sprint / 30s recuperación x 8 rondas\n4️⃣ Bicicleta estática — 10 min ritmo moderado\n5️⃣ Cuerda para saltar — 3x1 min\n6️⃣ Enfriamiento: 5 min estiramientos\n\n🔥 Quema grasa y mejora tu resistencia cardiovascular!"
+  },
+  "calistenia": {
+    "keywords": ["calistenia", "calisthenics", "peso corporal", "bodyweight", "sin pesas", "casa"],
+    "response": "💪 RUTINA DE CALISTENIA (sin pesas):\n\n1️⃣ Flexiones (push-ups) — 4x15\n2️⃣ Dominadas (o negativas) — 4x8\n3️⃣ Sentadillas con peso corporal — 4x20\n4️⃣ Fondos en silla — 3x12\n5️⃣ Plancha — 3x45s\n6️⃣ Burpees — 3x10\n\n🔥 Controla tu propio peso corporal. ¡Sin excusas!"
+  },
+  "hombros": {
+    "keywords": ["hombro", "hombros", "deltoides", "press militar", "elevaciones"],
+    "response": "🔥 RUTINA DE HOMBROS:\n\n1️⃣ Press militar con barra — 4x8-10\n2️⃣ Elevaciones laterales con mancuerna — 4x12-15\n3️⃣ Elevaciones frontales — 3x12\n4️⃣ Pájaros (vuelos invertidos) — 3x15\n5️⃣ Encogimientos de hombros — 4x12\n6️⃣ Face pull en polea — 3x15\n\n🔥 Hombros redondos y fuertes. ¡A darle!"
+  },
+  "brazos": {
+    "keywords": ["brazo", "brazos", "curl", "antebrazo"],
+    "response": "💪 RUTINA DE BRAZOS:\n\n🔥 BÍCEPS:\n1️⃣ Curl con barra — 4x10-12\n2️⃣ Curl martillo — 3x12-15\n3️⃣ Curl concentrado — 3x12\n\n🔥 TRÍCEPS:\n4️⃣ Extensiones en polea — 4x12\n5️⃣ Fondos en banco — 3x12\n6️⃣ Patada de tríceps — 3x15\n\n🔥 Brazos marcados. ¡A explotarlos!"
+  },
+  "abdominales": {
+    "keywords": ["abdominal", "abdominales", "core", "abs", "six pack", "abdomen", "vientre"],
+    "response": "🔥 RUTINA ABDOMINALES:\n\n1️⃣ Plancha frontal — 4x45s\n2️⃣ Crunch clásico — 3x20\n3️⃣ Elevación de piernas — 3x15\n4️⃣ Russian twists — 3x20 (10 cada lado)\n5️⃣ Plancha lateral — 3x30s cada lado\n6️⃣ Bicicleta (crunches) — 3x20\n\n🔥 El core es tu centro de poder. ¡Dale duro!"
+  },
+  "gluteos": {
+    "keywords": ["gluteo", "glúteo", "gluteos", "glúteos", "culo", "cadera", "hip thrust"],
+    "response": "🍑 RUTINA DE GLÚTEOS:\n\n1️⃣ Hip thrust con barra — 4x10-12\n2️⃣ Sentadilla búlgara — 3x10 por pierna\n3️⃣ Patada de glúteo en polea — 3x15 cada pierna\n4️⃣ Peso muerto rumano — 4x12\n5️⃣ Elevación de cadera a una pierna — 3x12\n6️⃣ Zancada lateral — 3x10 por pierna\n\n🍑 ¡Glúteos fuertes, espalda sana!"
+  },
+  "semanal": {
+    "keywords": ["rutina semanal", "semana", "plan semanal", "organización", "organizacion", "planificar"],
+    "response": "📅 RUTINA SEMANAL RECOMENDADA:\n\nLUNES:  🏋️ Push (Pecho, Hombro, Tríceps)\nMARTES: 🦵 Piernas (Cuádriceps, Glúteos)\nMIÉRCOLES: 🏃 Cardio + Abdominales\nJUEVES:  🔥 Pull (Espalda, Bíceps)\nVIERNES: 🍑 Glúteos + Hombros\nSÁBADO:  💪 Full Body o Descanso\nDOMINGO: 😴 Descanso total\n\n🔥 Ajusta según tu nivel y disponibilidad. ¡Constancia!"
+  }
+}

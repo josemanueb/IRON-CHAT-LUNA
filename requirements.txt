@@ -1,17 +1,13 @@
-# IRON CHAT - LUNA v2.2 (CPU sin AVX)
-# Instalar con: pip install -r requirements.txt
-# En Linux: sudo apt install -y espeak-ng python3-tk (para TTS y GUI)
-#
-# Dependencias base (cross-platform):
-llama-cpp-python
-Pillow
-ttkbootstrap
-#
-# Windows: descomentar para TTS
-# pyttsx3
-# pywin32
-#
-# Linux: descomentar para sonidos/musica
-# pygame
-#
-# En Linux si falta compilador: pip install --prefer-binary llama-cpp-python
+# IRON CHAT - LUNA v2.2
+# Python 3.10+
+
+# Core
+llama-cpp-python>=0.2.0
+Pillow>=9.0.0
+ttkbootstrap>=1.10.0
+
+# Audio
+pygame>=2.1.0
+
+# TTS (Windows)
+pyttsx3>=2.90

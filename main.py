@@ -18,6 +18,8 @@ from tts_module import TTS
 from face_animation import AnimatedFace
 from sounds import Sounds
 from progress_tracker import ProgressTracker
+from hash_utils import sha256_file, verify_file, file_size_ok
+from themes import COLORES, get_theme, theme_count
 import glob
 import lang
 
@@ -321,26 +323,7 @@ class ChatbotApp:
 
         # === 5. COLORES ===
         self.tema_actual = 0
-        self.colores = [
-            {
-                "nombre": "🌙 Oscuro",
-                "bg": "#1a1a2e", "fg": "#ECF0F1", "chat_bg": "#0d0d1a",
-                "btn_bg": "#2C3E50", "acento": "#FFD700", "naranja": "#FF6B35",
-                "input_bg": "#1a1a2e", "scroll": "#34495E", "face_bg": "#2C3E50"
-            },
-            {
-                "nombre": "☀️ Claro",
-                "bg": "#F5F5F5", "fg": "#2C3E50", "chat_bg": "#FFFFFF",
-                "btn_bg": "#2980B9", "acento": "#E67E22", "naranja": "#E74C3C",
-                "input_bg": "#FFFFFF", "scroll": "#BDC3C7", "face_bg": "#2980B9"
-            },
-            {
-                "nombre": "🌿 Naturaleza",
-                "bg": "#1a2e1a", "fg": "#E8F5E9", "chat_bg": "#0d1a0d",
-                "btn_bg": "#2E7D32", "acento": "#A5D6A7", "naranja": "#FF8A65",
-                "input_bg": "#1a2e1a", "scroll": "#388E3C", "face_bg": "#2E7D32"
-            },
-        ]
+        self.colores = COLORES
 
         # === 6. VOLUMEN ===
         self.vol_frame = tk.Frame(self.tools_frame, bg="#1a1a2e")
@@ -783,6 +766,7 @@ class ChatbotApp:
                 "file": "qwen2.5-1.5b-instruct-q4_k_m.gguf",
                 "size": "~900 MB",
                 "name": "Qwen2.5 1.5B",
+                "sha256": None,
             },
             {
                 "label": lang.tr("dl_tinyllama"),
@@ -790,6 +774,7 @@ class ChatbotApp:
                 "file": "tinyllama-1.1b-chat-v1.0.Q4_K_M.gguf",
                 "size": "~700 MB",
                 "name": "TinyLlama 1.1B",
+                "sha256": None,
             },
             {
                 "label": lang.tr("dl_qwen3b"),
@@ -797,6 +782,7 @@ class ChatbotApp:
                 "file": "qwen2.5-3b-instruct-q4_k_m.gguf",
                 "size": "~1.8 GB",
                 "name": "Qwen2.5 3B",
+                "sha256": None,
             },
         ]
         dialog = tk.Toplevel(self.root)
@@ -821,6 +807,7 @@ class ChatbotApp:
             sel = MODELS[idx]
             self._dl_repo = sel["repo"]
             self._dl_file = sel["file"]
+            self._dl_sha256 = sel.get("sha256")
             dialog.destroy()
             self._do_download(model_dir, sel["name"], sel["size"])
         tk.Button(btn_frame, text=lang.tr("dl_download_btn"), font=("Helvetica", 10, "bold"),
@@ -871,6 +858,12 @@ class ChatbotApp:
                 sz = os.path.getsize(tmp)
                 if sz < 1000000:
                     raise RuntimeError(f"Archivo corrupto: solo {sz} bytes")
+                file_hash = sha256_file(tmp)
+                logging.info(f"SHA256 del modelo descargado: {file_hash}")
+                expected = getattr(self, '_dl_sha256', None)
+                if expected and not verify_file(tmp, expected):
+                    os.remove(tmp)
+                    raise RuntimeError(f"SHA256 no coincide: esperado {expected[:16]}..., obtenido {file_hash[:16]}...")
                 os.rename(tmp, path)
                 success = True
                 self.root.after(0, self._model_downloaded)

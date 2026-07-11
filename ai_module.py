@@ -4,6 +4,19 @@ import signal
 import json
 from ascii_art import ASCIIArt
 
+_RUTINAS_PATH = os.path.join(os.path.dirname(__file__), "rutinas.json")
+
+
+def _load_rutinas():
+    try:
+        with open(_RUTINAS_PATH, "r", encoding="utf-8") as f:
+            return json.load(f)
+    except Exception:
+        return {}
+
+
+_RUTINAS = _load_rutinas()
+
 
 def _sigill_handler(signum, frame):
     raise RuntimeError("SIGILL: instrucción no soportada por la CPU (probablemente AVX/AVX2 requerido)")
@@ -151,117 +164,10 @@ class GPT4AllAI:
                 "¡Dale duro! Cualquier cosa, me dices. 💪🔥",
             ])
 
-        # === RUTINA PUSH ===
-        if any(p in text for p in ["push", "empuje", "pecho", "hombro", "triceps", "tríceps"]):
-            return ("🔥 RUTINA PUSH (Empuje):\n\n"
-                    "1️⃣ Press de banca con barra — 4x8-10\n"
-                    "2️⃣ Press militar con mancuernas — 4x10-12\n"
-                    "3️⃣ Aperturas con mancuernas en banco plano — 3x12\n"
-                    "4️⃣ Elevaciones laterales — 3x15\n"
-                    "5️⃣ Fondos en paralelas — 3x10-12\n"
-                    "6️⃣ Extensiones de tríceps en polea — 3x15\n\n"
-                    "💪 Descansa 60-90s entre series. ¡A darle!")
-
-        # === RUTINA PULL ===
-        if any(p in text for p in ["pull", "traccion", "tracción", "espalda", "biceps", "bíceps"]):
-            return ("🔥 RUTINA PULL (Tracción):\n\n"
-                    "1️⃣ Dominadas (o jalón al pecho) — 4x8-10\n"
-                    "2️⃣ Remo con barra — 4x10-12\n"
-                    "3️⃣ Jalón al pecho en polea alta — 3x12\n"
-                    "4️⃣ Remo con mancuerna a una mano — 3x12 por brazo\n"
-                    "5️⃣ Curl con barra — 3x12\n"
-                    "6️⃣ Curl martillo — 3x15\n\n"
-                    "🔥 Concéntrate en la contracción. ¡Tira fuerte!")
-
-        # === RUTINA PIERNAS ===
-        if any(p in text for p in ["pierna", "piernas", "leg", "quad", "cuadriceps", "gluteo", "glúteo", "femoral", "isquiotibial"]):
-            return ("🦵 RUTINA DE PIERNAS:\n\n"
-                    "1️⃣ Sentadilla con barra — 4x8-10\n"
-                    "2️⃣ Prensa de piernas — 4x12\n"
-                    "3️⃣ Curl femoral acostado — 3x15\n"
-                    "4️⃣ Extensiones de cuádriceps — 3x15\n"
-                    "5️⃣ Elevaciones de gemelos de pie — 4x20\n"
-                    "6️⃣ Zancadas con mancuernas — 3x10 por pierna\n\n"
-                    "🦵 ¡Las piernas son la base de todo! Dale duro.")
-
-        # === FULL BODY ===
-        if any(p in text for p in ["full body", "cuerpo completo", "cuerpo entero", "dia completo", "día completo"]):
-            return ("💪 RUTINA FULL BODY:\n\n"
-                    "1️⃣ Sentadilla con barra — 4x8-10\n"
-                    "2️⃣ Press de banca — 4x8-10\n"
-                    "3️⃣ Remo con barra — 4x10-12\n"
-                    "4️⃣ Press militar — 3x10\n"
-                    "5️⃣ Peso muerto rumano — 3x12\n"
-                    "6️⃣ Curl de bíceps + extensiones tríceps — 3x15\n\n"
-                    "🔥 Cuerpo completo en una sesión. ¡Intensidad total!")
-
-        # === CARDIO ===
-        if any(p in text for p in ["cardio", "cardiovascular", "correr", "bicicleta", "elíptica", "eliptica", "trote"]):
-            return ("🏃 RUTINA DE CARDIO:\n\n"
-                    "1️⃣ Calentamiento: 5 min caminata rápida\n"
-                    "2️⃣ Trote suave — 10 min a ritmo constante\n"
-                    "3️⃣ HIIT: 30s sprint / 30s recuperación x 8 rondas\n"
-                    "4️⃣ Bicicleta estática — 10 min ritmo moderado\n"
-                    "5️⃣ Cuerda para saltar — 3x1 min\n"
-                    "6️⃣ Enfriamiento: 5 min estiramientos\n\n"
-                    "🔥 Quema grasa y mejora tu resistencia cardiovascular!")
-
-        # === CALISTENIA ===
-        if any(p in text for p in ["calistenia", "calisthenics", "peso corporal", "bodyweight", "sin pesas", "casa"]):
-            return ("💪 RUTINA DE CALISTENIA (sin pesas):\n\n"
-                    "1️⃣ Flexiones (push-ups) — 4x15\n"
-                    "2️⃣ Dominadas (o negativas) — 4x8\n"
-                    "3️⃣ Sentadillas con peso corporal — 4x20\n"
-                    "4️⃣ Fondos en silla — 3x12\n"
-                    "5️⃣ Plancha — 3x45s\n"
-                    "6️⃣ Burpees — 3x10\n\n"
-                    "🔥 Controla tu propio peso corporal. ¡Sin excusas!")
-
-        # === RUTINA HOMBROS ===
-        if any(p in text for p in ["hombro", "hombros", "deltoides", "press militar", "elevaciones"]):
-            return ("🔥 RUTINA DE HOMBROS:\n\n"
-                    "1️⃣ Press militar con barra — 4x8-10\n"
-                    "2️⃣ Elevaciones laterales con mancuerna — 4x12-15\n"
-                    "3️⃣ Elevaciones frontales — 3x12\n"
-                    "4️⃣ Pájaros (vuelos invertidos) — 3x15\n"
-                    "5️⃣ Encogimientos de hombros — 4x12\n"
-                    "6️⃣ Face pull en polea — 3x15\n\n"
-                    "🔥 Hombros redondos y fuertes. ¡A darle!")
-
-        # === RUTINA BRAZOS ===
-        if any(p in text for p in ["brazo", "brazos", "bíceps", "biceps", "tríceps", "triceps", "curl", "antebrazo"]):
-            return ("💪 RUTINA DE BRAZOS:\n\n"
-                    "🔥 BÍCEPS:\n"
-                    "1️⃣ Curl con barra — 4x10-12\n"
-                    "2️⃣ Curl martillo — 3x12-15\n"
-                    "3️⃣ Curl concentrado — 3x12\n\n"
-                    "🔥 TRÍCEPS:\n"
-                    "4️⃣ Extensiones en polea — 4x12\n"
-                    "5️⃣ Fondos en banco — 3x12\n"
-                    "6️⃣ Patada de tríceps — 3x15\n\n"
-                    "🔥 Brazos marcados. ¡A explotarlos!")
-
-        # === RUTINA ABDOMINALES ===
-        if any(p in text for p in ["abdominal", "abdominales", "core", "abs", "six pack", "abdomen", "vientre"]):
-            return ("🔥 RUTINA ABDOMINALES:\n\n"
-                    "1️⃣ Plancha frontal — 4x45s\n"
-                    "2️⃣ Crunch clásico — 3x20\n"
-                    "3️⃣ Elevación de piernas — 3x15\n"
-                    "4️⃣ Russian twists — 3x20 (10 cada lado)\n"
-                    "5️⃣ Plancha lateral — 3x30s cada lado\n"
-                    "6️⃣ Bicicleta (crunches) — 3x20\n\n"
-                    "🔥 El core es tu centro de poder. ¡Dale duro!")
-
-        # === GLÚTEOS ===
-        if any(p in text for p in ["gluteo", "glúteo", "gluteos", "glúteos", "culo", "cadera", "hip thrust"]):
-            return ("🍑 RUTINA DE GLÚTEOS:\n\n"
-                    "1️⃣ Hip thrust con barra — 4x10-12\n"
-                    "2️⃣ Sentadilla búlgara — 3x10 por pierna\n"
-                    "3️⃣ Patada de glúteo en polea — 3x15 cada pierna\n"
-                    "4️⃣ Peso muerto rumano — 4x12\n"
-                    "5️⃣ Elevación de cadera a una pierna — 3x12\n"
-                    "6️⃣ Zancada lateral — 3x10 por pierna\n\n"
-                    "🍑 ¡Glúteos fuertes, espalda sana!")
+        # === RUTINAS (desde JSON) ===
+        for _key, rutina in _RUTINAS.items():
+            if any(p in text for p in rutina["keywords"]):
+                return rutina["response"]
 
         # === TIPS / CONSEJOS ===
         if any(p in text for p in ["consejo", "tip", "recomendación", "recomendacion", "sugerencia", "ayuda"]):
