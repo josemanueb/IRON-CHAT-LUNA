@@ -76,10 +76,18 @@ class Audio:
         if not os.path.exists(path):
             return
         if _system == "Windows":
-            Audio._music_process = subprocess.Popen(
-                ['cmd', '/c', 'start', '/min', '', path],
-                shell=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL
-            )
+            # Use python winsound or mciSendString for better path handling
+            try:
+                import winsound
+                winsound.PlaySound(path, winsound.SND_ASYNC | winsound.SND_FILENAME)
+                Audio._music_process = True  # Flag that music is playing
+            except Exception:
+                # Fallback to cmd but quote the path properly
+                quoted = f'"{path}"'
+                Audio._music_process = subprocess.Popen(
+                    ['cmd', '/c', 'start', '/min', '', quoted],
+                    shell=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL
+                )
         else:
             pygame = _get_pygame()
             if not pygame:
@@ -94,10 +102,14 @@ class Audio:
         if _system == "Windows":
             if Audio._music_process:
                 try:
-                    subprocess.run(
-                        ['taskkill', '/f', '/t', '/pid', str(Audio._music_process.pid)],
-                        stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL
-                    )
+                    if isinstance(Audio._music_process, subprocess.Popen):
+                        subprocess.run(
+                            ['taskkill', '/f', '/t', '/pid', str(Audio._music_process.pid)],
+                            stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL
+                        )
+                    else:
+                        import winsound
+                        winsound.PlaySound(None, winsound.SND_PURGE)
                 except Exception:
                     pass
                 Audio._music_process = None

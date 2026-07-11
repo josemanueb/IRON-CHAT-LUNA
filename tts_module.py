@@ -96,8 +96,20 @@ class TTS:
 
     def _speak_windows(self, text):
         if hasattr(self, 'engine_w') and self.engine_w:
-            self.engine_w.say(text)
-            self.engine_w.runAndWait()
+            try:
+                self.engine_w.say(text)
+                self.engine_w.runAndWait()
+            except Exception:
+                # pyttsx3 can crash on repeated calls; reinitialize
+                try:
+                    import pyttsx3
+                    self.engine_w = pyttsx3.init()
+                    self.engine_w.setProperty('rate', 150)
+                    self.engine_w.setProperty('volume', self.volume)
+                    self.engine_w.say(text)
+                    self.engine_w.runAndWait()
+                except Exception:
+                    pass
 
     def _speak_espeak(self, text):
         try:
