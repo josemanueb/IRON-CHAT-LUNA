@@ -865,7 +865,7 @@ class ChatbotApp:
                 if expected and not verify_file(tmp, expected):
                     os.remove(tmp)
                     raise RuntimeError(f"SHA256 no coincide: esperado {expected[:16]}..., obtenido {file_hash[:16]}...")
-                os.rename(tmp, path)
+                os.replace(tmp, path)
                 success = True
                 self.root.after(0, self._model_downloaded)
             except urllib.error.HTTPError as e:
@@ -893,7 +893,7 @@ class ChatbotApp:
                     self.root.after(0, self._hide_dl_ui)
                 if os.path.exists(tmp):
                     try: os.remove(tmp)
-                    except: pass
+                    except Exception: pass
                 if not os.path.exists(path):
                     self.root.after(0, lambda: self.add_message("system",
                         lang.tr_format("sys_download_manual", url=manual_url, model_dir=model_dir)))
@@ -1042,7 +1042,7 @@ class ChatbotApp:
         elif sender == "ai":
             if streamed:
                 self.chat_area.delete(self._stream_start_index, tk.END)
-                formatted = f"[{timestamp}] {lang.tr('ai_prefix')}: {message}\n"
+                formatted = f"{message}\n"
                 tag = "ai_msg"
             else:
                 formatted = f"[{timestamp}] {lang.tr('ai_prefix')}: {message}\n"
@@ -1298,7 +1298,7 @@ class ChatbotApp:
         timeout_id = getattr(self, '_tts_timeout_id', None)
         if timeout_id:
             try: self.root.after_cancel(timeout_id)
-            except: pass
+            except Exception: pass
             self._tts_timeout_id = None
 
     def _on_tts_done_safe(self):

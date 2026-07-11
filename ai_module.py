@@ -133,8 +133,6 @@ class GPT4AllAI:
     @staticmethod
     def _detect_model_type(filename: str) -> str:
         name = filename.lower()
-        if "tinyllama" in name:
-            return "qwen"
         if "qwen" in name:
             return "qwen"
         return "llama"

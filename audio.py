@@ -112,6 +112,13 @@ class Audio:
     @staticmethod
     def set_music_volume(vol):
         Audio._music_volume = max(0.0, min(1.0, vol))
+        if _system == "Linux":
+            pygame = _get_pygame()
+            if pygame:
+                try:
+                    pygame.mixer.music.set_volume(Audio._music_volume)
+                except Exception:
+                    pass
 
     @staticmethod
     def stop_all():
