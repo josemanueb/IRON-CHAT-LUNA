@@ -18,8 +18,8 @@ from tts_module import TTS
 from face_animation import AnimatedFace
 from sounds import Sounds
 from progress_tracker import ProgressTracker
-from hash_utils import sha256_file, verify_file, file_size_ok
-from themes import COLORES, get_theme, theme_count
+from hash_utils import sha256_file, verify_file
+from themes import COLORES
 import glob
 import lang
 
@@ -881,7 +881,15 @@ class ChatbotApp:
                 if expected and not verify_file(tmp, expected):
                     os.remove(tmp)
                     raise RuntimeError(f"SHA256 no coincide: esperado {expected[:16]}..., obtenido {file_hash[:16]}...")
-                os.replace(tmp, path)
+                for _ in range(3):
+                    try:
+                        os.replace(tmp, path)
+                        break
+                    except OSError as e:
+                        if _ == 2:
+                            raise
+                        logging.warning(f"os.replace falló (intento {_+1}/3): {e}")
+                        time.sleep(1)
                 success = True
                 logging.info(f"Descarga completada: {path} ({sz} bytes)")
                 self.root.after(0, self._model_downloaded)
@@ -913,7 +921,7 @@ class ChatbotApp:
                     self.root.after(0, self._hide_dl_ui)
                 if os.path.exists(tmp):
                     try: os.remove(tmp)
-                    except Exception: pass
+                    except Exception as e: logging.warning(f"No se pudo eliminar {tmp}: {e}")
                 if not os.path.exists(path):
                     self.root.after(0, lambda: self.add_message("system",
                         lang.tr_format("sys_download_manual", url=manual_url, model_dir=model_dir)))

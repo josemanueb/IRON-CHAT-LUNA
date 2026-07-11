@@ -86,10 +86,12 @@ def _download_chunked(url, dest, verified=True, timeout=120):
             mode = "wb" if resume_bytes == 0 else "ab"
 
             with open(tmp, mode) as f:
+                completed = False
                 while True:
                     try:
                         chunk = resp.read(CHUNK)
                         if not chunk:
+                            completed = True
                             break
                         f.write(chunk)
                         resume_bytes += len(chunk)
@@ -108,11 +110,9 @@ def _download_chunked(url, dest, verified=True, timeout=120):
                         print(f"\n     ⚠️  Error en chunk, reintentando... ({attempt+1}/{max_retries})")
                         attempt += 1
                         break
-                else:
-                    if resume_bytes >= total or total == 0:
-                        os.replace(tmp, dest)
-                        return True
-                    continue
+            if completed and (resume_bytes >= total or total == 0):
+                os.replace(tmp, dest)
+                return True
         except urllib.request.HTTPError as e:
             if e.code == 416 and resume_bytes > 0:
                 os.replace(tmp, dest)
@@ -134,8 +134,12 @@ def _download_urllib(url, dest, verified=True):
 def _ps_check(result, tmp, dest):
     """Verifica código de retorno + archivo > 1 MB y renombra"""
     if result.returncode == 0 and os.path.exists(tmp) and os.path.getsize(tmp) > 1024 * 1024:
-        os.replace(tmp, dest)
-        return True
+        try:
+            os.replace(tmp, dest)
+            return True
+        except OSError as e:
+            print(f"     ⚠️  Error al renombrar: {e}")
+            return False
     if os.path.exists(tmp):
         sz = os.path.getsize(tmp) / (1024**3)
         print(f"     ⚠️  PowerShell terminó con código {result.returncode}, parcial: {sz:.2f} GB")
@@ -461,29 +465,16 @@ def main():
     # 3c. espeak-ng para TTS en Linux
     if platform.system() != "Windows":
         print("  ⏳ Verificando espeak-ng (TTS en Linux)...")
-        try:
-            r = subprocess.run(["which", "espeak-ng"], capture_output=True, text=True, timeout=10)
-            if r.returncode != 0:
-                print("     ⚠️ espeak-ng no instalado. Para activar TTS de voz:")
-                print("       sudo apt install espeak-ng")
-                print("     (La app funciona igual sin TTS)")
-            else:
-                log("espeak-ng encontrado")
-        except Exception:
-            print("     ⚠️ No se pudo verificar espeak-ng")
+        espeak = shutil.which("espeak-ng")
+        if espeak:
+            log("espeak-ng encontrado")
+        else:
+            print("     ⚠️ espeak-ng no instalado. Para activar TTS de voz:")
+            print("       sudo apt install espeak-ng")
+            print("     (La app funciona igual sin TTS)")
 
     # 3d. Resumen de dependencias
     if fatal_error:
-        py_ver = f"cp{sys.version_info.major}{sys.version_info.minor}"
-        arch = platform.machine().lower()
-        if arch in ("amd64", "x86_64"):
-            arch = "win_amd64"
-        elif arch == "arm64":
-            arch = "win_arm64"
-        else:
-            arch = "win32"
-
-        print("\n  ❌ FALLO CRÍTICO: llama-cpp-python no se instaló correctamente.")
         py_ver = f"cp{sys.version_info.major}{sys.version_info.minor}"
         arch = platform.machine().lower()
         if arch in ("amd64", "x86_64"):

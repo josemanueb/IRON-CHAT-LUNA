@@ -5,6 +5,7 @@ import platform
 import tempfile
 import re
 import time
+import shutil
 from audio import Audio
 
 class TTS:
@@ -38,19 +39,7 @@ class TTS:
             print("⚠️ TTS Windows no disponible")
 
     def _init_linux(self):
-        espeak_paths = ["/usr/bin/espeak-ng", "/usr/local/bin/espeak-ng"]
-        self.espeak_bin = None
-        for p in espeak_paths:
-            if os.path.exists(p):
-                self.espeak_bin = p
-                break
-        if not self.espeak_bin:
-            try:
-                r = subprocess.run(["which", "espeak-ng"], capture_output=True, text=True, timeout=5)
-                if r.returncode == 0 and r.stdout.strip():
-                    self.espeak_bin = r.stdout.strip()
-            except Exception:
-                pass
+        self.espeak_bin = shutil.which("espeak-ng")
         if self.espeak_bin:
             self.mode = "espeak"
             print(f"✅ TTS Linux listo (espeak-ng)")

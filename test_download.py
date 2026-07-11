@@ -11,8 +11,8 @@ MODELS_DIR = os.path.join(DIR, "models")
 os.makedirs(MODELS_DIR, exist_ok=True)
 
 # Modelo más pequeño para test rápido (TinyLlama ~700MB)
-REPO = "TheBloke/TinyLlama-1.1B-Chat-v1.0-GGUF"
-FILE = "tinyllama-1.1b-chat-v1.0.Q4_K_M.gguf"
+REPO = "MaziyarPanahi/Llama-3.2-1B-Instruct-GGUF"
+FILE = "Llama-3.2-1B-Instruct.Q4_K_M.gguf"
 URL = f"https://huggingface.co/{REPO}/resolve/main/{FILE}"
 DEST = os.path.join(MODELS_DIR, FILE)
 

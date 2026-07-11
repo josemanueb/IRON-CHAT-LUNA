@@ -143,4 +143,4 @@ class Audio:
             if pygame:
                 pygame.time.wait(duration_ms)
 
-_init = _get_pygame()
+_get_pygame()

@@ -2,6 +2,7 @@ import os
 import random
 import signal
 import json
+import platform as _platform
 from ascii_art import ASCIIArt
 
 _RUTINAS_PATH = os.path.join(os.path.dirname(__file__), "rutinas.json")
@@ -22,10 +23,11 @@ def _sigill_handler(signum, frame):
     raise RuntimeError("SIGILL: instrucción no soportada por la CPU (probablemente AVX/AVX2 requerido)")
 
 
-try:
-    signal.signal(signal.SIGILL, _sigill_handler)
-except Exception:
-    pass
+if _platform.system() != "Windows":
+    try:
+        signal.signal(signal.SIGILL, _sigill_handler)
+    except Exception:
+        pass
 
 
 class GPT4AllAI:

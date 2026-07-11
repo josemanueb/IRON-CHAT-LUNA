@@ -8,6 +8,7 @@ import os
 import sys
 import subprocess
 import platform
+import shutil
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 OK = chr(0x2705)
@@ -40,8 +41,8 @@ def check_python():
 def check_espeak():
     section("TTS (espeak-ng)")
     try:
-        r = subprocess.run(["which", "espeak-ng"], capture_output=True, text=True, timeout=5)
-        ok = r.returncode == 0
+        espeak = shutil.which("espeak-ng")
+        ok = espeak is not None
         if ok:
             log("espeak-ng instalado", True)
         else:
