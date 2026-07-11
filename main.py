@@ -704,8 +704,7 @@ class ChatbotApp:
     def on_ai_loaded(self):
         self.progress_bar.stop()
         self.progress_bar.pack_forget()
-        if not getattr(self, '_dl_in_progress', False):
-            self._hide_dl_ui()
+        self._hide_dl_ui()
 
         tts_mode = getattr(self.tts, 'mode', 'none') if hasattr(self, 'tts') and self.tts else 'none'
         if tts_mode in ("none", "offline"):
@@ -844,6 +843,8 @@ class ChatbotApp:
                 logging.info(f"Content-Length: {total} bytes")
                 sent = 0
                 chunk_size = 65536
+                last_ui_time = time.time()
+                ui_interval = 0.5
                 with open(tmp, "wb") as f:
                     while True:
                         chunk = resp.read(chunk_size)
@@ -851,12 +852,16 @@ class ChatbotApp:
                             break
                         f.write(chunk)
                         sent += len(chunk)
+                        now = time.time()
                         if total > 0:
                             pct = int(sent * 100 / total)
                             last = getattr(self, '_last_pct', -1)
                             if pct >= last + 2 or pct == 100:
                                 self._last_pct = pct
                                 self.root.after(0, lambda p=pct, s=sent, t=total: self._update_dl_ui(p, s, t))
+                        elif now - last_ui_time >= ui_interval:
+                            last_ui_time = now
+                            self.root.after(0, lambda s=sent: self._update_dl_ui(None, s, None))
                 resp.close()
                 sz = os.path.getsize(tmp)
                 if sz < 1000000:
@@ -932,15 +937,21 @@ class ChatbotApp:
 
     def _update_dl_ui(self, pct, sent, total):
         if self.dl_progress_bar and self.dl_pct_label:
-            self.dl_progress_bar['value'] = pct
-            gb_sent = sent / (1024**3)
-            gb_total = total / (1024**3)
-            self.dl_pct_label.config(text=f"{pct}% ({gb_sent:.1f}/{gb_total:.1f} GB)")
-            if pct == 100:
-                self.dl_status_label.config(text=lang.tr("dl_verifying"))
-                self.dl_pct_label.config(fg="#27AE60")
+            if total and total > 0:
+                self.dl_progress_bar['value'] = pct
+                gb_sent = sent / (1024**3)
+                gb_total = total / (1024**3)
+                self.dl_pct_label.config(text=f"{pct}% ({gb_sent:.1f}/{gb_total:.1f} GB)")
+                if pct == 100:
+                    self.dl_status_label.config(text=lang.tr("dl_verifying"))
+                    self.dl_pct_label.config(fg="#27AE60")
+                else:
+                    self.dl_status_label.config(text=lang.tr_format("dl_progress", pct=pct))
             else:
-                self.dl_status_label.config(text=lang.tr_format("dl_progress", pct=pct))
+                mb_sent = sent / (1024**2)
+                self.dl_progress_bar['value'] = 0
+                self.dl_pct_label.config(text=f"{mb_sent:.1f} MB")
+                self.dl_status_label.config(text=lang.tr("dl_progress_bytes", mb=mb_sent))
             self.root.update_idletasks()
 
     def _desktop_path(self):

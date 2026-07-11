@@ -123,6 +123,7 @@ TEXTS = {
     "dl_verifying": {"es": "✅ Verificando archivo...", "en": "✅ Verifying file..."},
     "dl_progress": {"es": "Descargando... {pct}% completado", "en": "Downloading... {pct}% complete"},
     "dl_init": {"es": "Iniciando descarga...", "en": "Starting download..."},
+    "dl_progress_bytes": {"es": "Descargando... {mb:.1f} MB", "en": "Downloading... {mb:.1f} MB"},
 
     # === INFO DIALOG ===
     "info_title": {"es": "💪 IRON CHAT", "en": "💪 IRON CHAT"},
