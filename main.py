@@ -718,7 +718,14 @@ class ChatbotApp:
         if modelo_ausente:
             self.status_label.config(text=lang.tr("status_offline_long"), fg="#FF6B35")
             self.add_message("system", lang.tr_format("sys_offline_msg", modelo=modelo))
-            self.add_message("system", lang.tr("sys_offline_hint"))
+            model_dir = os.path.join(self.project_dir, "models")
+            has_model = os.path.isdir(model_dir) and any(
+                f.endswith(".gguf") and os.path.getsize(os.path.join(model_dir, f)) > 1000000
+                for f in os.listdir(model_dir))
+            if has_model:
+                self.add_message("system", lang.tr("sys_model_no_llamacpp"))
+            else:
+                self.add_message("system", lang.tr("sys_offline_hint"))
             self.menu_sistema.entryconfig(self.menu_download_idx, state='normal')
             logging.info("Modelo en modo offline")
         else:

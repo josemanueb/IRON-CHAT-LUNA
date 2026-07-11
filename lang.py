@@ -92,6 +92,7 @@ TEXTS = {
     "sys_model_downloaded": {"es": "✅ Modelo descargado. Recargando...", "en": "✅ Model downloaded. Reloading..."},
     "sys_model_reload_error": {"es": "⚠️ Error recargando: {e}", "en": "⚠️ Reload error: {e}"},
     "sys_model_exists": {"es": "✅ El modelo ya existe. Recargando...", "en": "✅ Model already exists. Reloading..."},
+    "sys_model_no_llamacpp": {"es": "⚠️ El archivo del modelo existe pero no se pudo cargar. Ejecutá en una terminal: pip install llama-cpp-python", "en": "⚠️ Model file exists but could not be loaded. Run in terminal: pip install llama-cpp-python"},
     "sys_model_downloading": {"es": "📥 Descargando {name} ({size})...", "en": "📥 Downloading {name} ({size})..."},
     "sys_http_error": {"es": "❌ Error HTTP {code}", "en": "❌ HTTP Error {code}"},
     "sys_access_denied": {"es": " — acceso denegado", "en": " — access denied"},

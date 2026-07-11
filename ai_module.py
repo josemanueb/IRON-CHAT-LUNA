@@ -43,7 +43,13 @@ class GPT4AllAI:
 
         print("Modelo encontrado: " + self.model_path)
 
-        from llama_cpp import Llama
+        try:
+            from llama_cpp import Llama
+        except ImportError:
+            print("⚠️ llama_cpp no instalado. Ejecutá: pip install llama-cpp-python")
+            print("⚠️ Modo OFFLINE activado — respuestas basadas en reglas")
+            self.is_offline = True
+            return
 
         print("Cargando modelo (esto puede tomar varios minutos)...")
         try:
