@@ -704,7 +704,8 @@ class ChatbotApp:
     def on_ai_loaded(self):
         self.progress_bar.stop()
         self.progress_bar.pack_forget()
-        self._hide_dl_ui()
+        if not getattr(self, '_dl_in_progress', False):
+            self._hide_dl_ui()
 
         tts_mode = getattr(self.tts, 'mode', 'none') if hasattr(self, 'tts') and self.tts else 'none'
         if tts_mode in ("none", "offline"):
@@ -863,6 +864,7 @@ class ChatbotApp:
                             last_ui_time = now
                             self.root.after(0, lambda s=sent: self._update_dl_ui(None, s, None))
                 resp.close()
+                self.root.after(0, lambda s=sent, t=total: self._update_dl_ui(100, s, t))
                 sz = os.path.getsize(tmp)
                 if sz < 1000000:
                     raise RuntimeError(f"Archivo corrupto: solo {sz} bytes")
@@ -947,6 +949,9 @@ class ChatbotApp:
                     self.dl_pct_label.config(fg="#27AE60")
                 else:
                     self.dl_status_label.config(text=lang.tr_format("dl_progress", pct=pct))
+            elif pct == 100:
+                self.dl_status_label.config(text=lang.tr("dl_verifying"))
+                self.dl_pct_label.config(fg="#27AE60")
             else:
                 mb_sent = sent / (1024**2)
                 self.dl_progress_bar['value'] = 0
