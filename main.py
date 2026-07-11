@@ -827,7 +827,7 @@ class ChatbotApp:
                   bg="#2C3E50", fg="white", relief=tk.FLAT, padx=15, pady=5, command=dialog.destroy).pack(side=tk.LEFT, padx=5)
 
     def _do_download(self, model_dir, model_name, model_size):
-        url, name = self._download_model_url()
+        repo, name = self._download_model_url()
         path = os.path.join(model_dir, name)
         if os.path.exists(path) and os.path.getsize(path) > 1000000:
             self.add_message("system", lang.tr("sys_model_exists"))
@@ -837,13 +837,15 @@ class ChatbotApp:
         self.menu_sistema.entryconfig(self.menu_download_idx, state='disabled')
         self._last_pct = -1
         self._show_dl_ui(model_name)
+        download_url = f"https://huggingface.co/{repo}/resolve/main/{name}"
+        manual_url = f"https://huggingface.co/{repo}/tree/main"
 
         def _do():
             import ssl
             tmp = path + ".tmp"
             try:
                 ctx = ssl.create_default_context()
-                req = urllib.request.Request(url)
+                req = urllib.request.Request(download_url)
                 req.add_header("User-Agent", "IRON-CHAT-LUNA/2.2")
                 resp = urllib.request.urlopen(req, context=ctx, timeout=120)
                 total = int(resp.headers.get("Content-Length", 0))
@@ -895,7 +897,7 @@ class ChatbotApp:
                     except: pass
                 if not os.path.exists(path):
                     self.root.after(0, lambda: self.add_message("system",
-                        lang.tr_format("sys_download_manual", url=url, model_dir=model_dir)))
+                        lang.tr_format("sys_download_manual", url=manual_url, model_dir=model_dir)))
 
         self._dl_in_progress = True
         threading.Thread(target=_do, daemon=True).start()
