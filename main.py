@@ -834,12 +834,14 @@ class ChatbotApp:
             import ssl
             success = False
             tmp = path + ".tmp"
+            logging.info(f"Iniciando descarga: {download_url}")
             try:
                 ctx = ssl.create_default_context()
                 req = urllib.request.Request(download_url)
                 req.add_header("User-Agent", "IRON-CHAT-LUNA/2.2")
                 resp = urllib.request.urlopen(req, context=ctx, timeout=120)
                 total = int(resp.headers.get("Content-Length", 0))
+                logging.info(f"Content-Length: {total} bytes")
                 sent = 0
                 chunk_size = 65536
                 with open(tmp, "wb") as f:
@@ -867,14 +869,17 @@ class ChatbotApp:
                     raise RuntimeError(f"SHA256 no coincide: esperado {expected[:16]}..., obtenido {file_hash[:16]}...")
                 os.replace(tmp, path)
                 success = True
+                logging.info(f"Descarga completada: {path} ({sz} bytes)")
                 self.root.after(0, self._model_downloaded)
             except urllib.error.HTTPError as e:
+                logging.error(f"HTTP Error {e.code}: {e.reason}")
                 msg = lang.tr("sys_http_error", code=e.code)
                 if e.code in (401, 403):
                     msg += lang.tr("sys_access_denied")
                 self.root.after(0, lambda m=msg: self.add_message("system", m))
             except urllib.error.URLError as e:
                 err = str(e.reason) if hasattr(e, 'reason') else str(e)
+                logging.error(f"URL Error: {err}")
                 if "certificate" in err.lower() or "ssl" in err.lower():
                     self.root.after(0, lambda: self.add_message("system", lang.tr("sys_ssl_error")))
                 elif "timed out" in err.lower():
@@ -884,6 +889,7 @@ class ChatbotApp:
             except OSError as e:
                 self.root.after(0, lambda m=str(e): self.add_message("system", lang.tr("sys_disk_error", e=m)))
             except Exception as e:
+                logging.error(f"Download error: {e}")
                 self.root.after(0, lambda m=str(e): self.add_message("system", lang.tr("sys_download_error", e=m)))
             finally:
                 self._dl_in_progress = False
@@ -908,7 +914,9 @@ class ChatbotApp:
         self.dl_dialog.configure(bg="#1a1a2e")
         self.dl_dialog.resizable(False, False)
         self.dl_dialog.transient(self.root)
+        self.dl_dialog.grab_set()
         self.dl_dialog.protocol("WM_DELETE_WINDOW", lambda: None)
+        self.dl_dialog.focus_set()
         tk.Label(self.dl_dialog, text=lang.tr_format("dl_downloading", name=model_name or ""),
                  font=("Helvetica", 12, "bold"), bg="#1a1a2e", fg="#FFD700").pack(pady=(20, 10))
         self.dl_progress_bar = ttk.Progressbar(self.dl_dialog, mode='determinate', length=350)
@@ -920,6 +928,7 @@ class ChatbotApp:
                                         bg="#1a1a2e", fg="#7F8C8D")
         self.dl_status_label.pack(pady=5)
         self.status_label.config(text=lang.tr("status_downloading"), fg="#FFD700")
+        logging.info(f"Mostrando diálogo de descarga para: {model_name}")
 
     def _update_dl_ui(self, pct, sent, total):
         if self.dl_progress_bar and self.dl_pct_label:
