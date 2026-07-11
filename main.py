@@ -11,6 +11,7 @@ import platform as _platform
 import subprocess
 import sys as _sys
 import urllib.request
+import concurrent.futures
 from audio import Audio
 from PIL import Image, ImageTk
 from ai_module import GPT4AllAI
@@ -1208,8 +1209,18 @@ class ChatbotApp:
             if use_stream:
                 self._stream_response(user_input, history, ai)
             else:
-                response = ai.get_response(user_input, history=history)
-                self.root.after(0, lambda r=response: self._on_response(r))
+                with concurrent.futures.ThreadPoolExecutor(max_workers=1) as pool:
+                    future = pool.submit(ai.get_response, user_input, history=history)
+                    try:
+                        response = future.result(timeout=120)
+                        self.root.after(0, lambda r=response: self._on_response(r))
+                    except concurrent.futures.TimeoutError:
+                        logging.warning("Inferencia agotó timeout de 120s, forzando offline")
+                        ai.is_offline = True
+                        self.root.after(0, lambda: self.add_message("system", lang.tr("sys_model_too_slow")))
+                        self.root.after(0, lambda: self.add_message("system", lang.tr("sys_model_offline_fallback")))
+                        self.root.after(0, lambda: self.status_label.config(text=lang.tr("status_offline"), fg="#FF6B35"))
+                        self.root.after(0, self._finish_sending)
         except Exception as e:
             error_msg = str(e)
             logging.error(f"Error en get_response: {error_msg}")

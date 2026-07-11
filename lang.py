@@ -106,6 +106,8 @@ TEXTS = {
     "sys_desktop_created_lnk": {"es": "🖥️ Acceso directo creado en el escritorio (.lnk + .bat)", "en": "🖥️ Desktop shortcut created (.lnk + .bat)"},
     "sys_no_desktop": {"es": "⚠️ No se encontró la carpeta de escritorio", "en": "⚠️ Desktop folder not found"},
     "sys_reminder_set": {"es": "⏰ RECORDATORIO PROGRAMADO: {msg} en {mins} minuto(s)", "en": "⏰ REMINDER SET: {msg} in {mins} minute(s)"},
+    "sys_model_too_slow": {"es": "⏳ El modelo es muy lento para este equipo. Cambiando a modo offline.", "en": "⏳ Model is too slow for this device. Switching to offline mode."},
+    "sys_model_offline_fallback": {"es": "🤖 Usando respuestas basadas en reglas.", "en": "🤖 Using rule-based responses."},
     "sys_reminder_usage": {"es": "❌ Usa: /recordatorio <minutos> '<mensaje>' (ej: /recordatorio 30 'Beber agua')", "en": "❌ Usage: /reminder <minutes> '<message>' (e.g. /reminder 30 'Drink water')"},
     "sys_model_loading": {"es": "⏳ Modelo aún cargándose, espera unos segundos...", "en": "⏳ Model still loading, please wait..."},
     "sys_model_error": {"es": "❌ ERROR: {msg}", "en": "❌ ERROR: {msg}"},

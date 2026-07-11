@@ -54,11 +54,14 @@ class GPT4AllAI:
             return
 
         print("Cargando modelo (esto puede tomar varios minutos)...")
+        cpu_count = os.cpu_count() or 2
+        n_threads = max(1, cpu_count)
+        print(f"🔧 CPU detectada: {cpu_count} núcleos, usando {n_threads} threads")
         try:
             self.model = Llama(
                 model_path=self.model_path,
                 n_ctx=2048,
-                n_threads=4,
+                n_threads=n_threads,
                 n_gpu_layers=0,
                 verbose=False
             )
