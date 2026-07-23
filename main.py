@@ -82,11 +82,25 @@ class ChatbotApp:
         self.init_ui()
         self.ai = None
         self.ai_loaded = False
+        threading.Thread(target=self._verificar_integridad, daemon=True).start()
         threading.Thread(target=self.load_ai, daemon=True).start()
         self.root.bind("<Control-l>", lambda e: self.clear_chat())
         self.root.bind("<Control-d>", lambda e: self.export_chat())
         self.root.bind("<Control-t>", lambda e: self.toggle_theme())
         self.actualizar_reloj()
+
+    def _verificar_integridad(self):
+        try:
+            from hash_utils import verify_project_integrity
+            icon, msg = verify_project_integrity(self.project_dir)
+            logging.info(f"Integridad: {icon} {msg}")
+            if icon == "❌":
+                self.root.after(0, lambda: self.add_message("system", f"🚨 {msg}"))
+                self.root.after(0, lambda: self.add_message("system", "🚨 ¡Ejecutá 'python3 generar_firma.py' para regenerar la firma!"))
+            elif icon == "⚠️":
+                self.root.after(0, lambda: self.add_message("system", f"⚠️ {msg}"))
+        except Exception as e:
+            logging.warning(f"No se pudo verificar integridad: {e}")
 
     def _find_image(self, *names):
         for name in names:

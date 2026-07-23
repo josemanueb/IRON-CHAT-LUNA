@@ -1,24 +1,16 @@
 #!/usr/bin/env python3
 import hashlib
 import os
+import re
 from datetime import datetime
+import sys
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from hash_utils import ARCHIVOS_FIRMA
 
 project_dir = os.path.dirname(os.path.abspath(__file__))
-archivos = [
-    "main.py", "ai_module.py", "tts_module.py", "face_animation.py",
-    "ascii_art.py", "sounds.py", "audio.py", "progress_tracker.py",
-    "hash_utils.py", "themes.py", "lang.py", "check_deps.py",
-    "install.py", "install_windows.ps1", "install.sh", "install.bat",
-    "uninstall.bat", "uninstall.sh",
-    "iron-chat.bat", "backup.bat",
-    "generar_firma.py", "verificar_firma.py",
-    ".gitignore", "requirements.txt",
-    "test_download.py"
-]
-
 hash_total = hashlib.sha256()
 
-for archivo in archivos:
+for archivo in ARCHIVOS_FIRMA:
     ruta = os.path.join(project_dir, archivo)
     if os.path.exists(ruta):
         with open(ruta, 'rb') as f:
@@ -35,16 +27,14 @@ print("🔐 SELLO DE INTEGRIDAD IRON CHAT - LUNA")
 print("="*50)
 print(f"Hash SHA256: {hash_final}")
 print(f"Fecha: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
-print(f"Archivos: {len(archivos)}")
+print(f"Archivos: {len(ARCHIVOS_FIRMA)}")
 print("="*50)
 
-# Guardar en SIGNATURE.md
 sig_file = os.path.join(project_dir, "SIGNATURE.md")
 if os.path.exists(sig_file):
     with open(sig_file, 'r', encoding='utf-8') as f:
         contenido = f.read()
 
-    import re
     if re.search(r'SHA256:.*', contenido):
         contenido = re.sub(r'SHA256:.*', f'SHA256: {hash_final}', contenido)
         contenido = re.sub(r'Fecha:.*', f'Fecha: {datetime.now().strftime("%Y-%m-%d %H:%M:%S")}', contenido)

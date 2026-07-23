@@ -97,20 +97,9 @@ def tts_imports_ok():
 
 
 def signature_files_match():
-    import ast
-    def _extract_list(filepath):
-        with open(filepath) as f:
-            tree = ast.parse(f.read())
-        for node in ast.walk(tree):
-            if isinstance(node, ast.Assign):
-                for target in node.targets:
-                    if isinstance(target, ast.Name) and target.id == "archivos":
-                        return [el.value for el in node.value.elts]
-        return []
-    gen = _extract_list(os.path.join(DIR, "generar_firma.py"))
-    ver = _extract_list(os.path.join(DIR, "verificar_firma.py"))
-    assert gen == ver, f"Listas diferentes!\n  gen: {gen}\n  ver: {ver}"
-    for a in gen:
+    from hash_utils import ARCHIVOS_FIRMA
+    assert len(ARCHIVOS_FIRMA) > 0
+    for a in ARCHIVOS_FIRMA:
         assert os.path.exists(os.path.join(DIR, a)), f"Falta archivo: {a}"
 
 
@@ -136,16 +125,9 @@ def sounds_generate_wav():
 
 
 def verificar_firma_syntax():
-    import ast
-    with open(os.path.join(DIR, "verificar_firma.py")) as f:
-        tree = ast.parse(f.read())
-    found = False
-    for node in ast.walk(tree):
-        if isinstance(node, ast.Assign):
-            for target in node.targets:
-                if isinstance(target, ast.Name) and target.id == "archivos":
-                    found = True
-    assert found, "No se encontró variable 'archivos' en verificar_firma.py"
+    from hash_utils import ARCHIVOS_FIRMA
+    assert len(ARCHIVOS_FIRMA) > 0, "ARCHIVOS_FIRMA vacío"
+    assert "main.py" in ARCHIVOS_FIRMA
 
 
 def face_animation_import():
