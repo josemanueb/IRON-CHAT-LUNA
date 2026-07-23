@@ -25,7 +25,17 @@ else
     exit 1
 fi
 
-# === 2. espeak-ng (TTS) ===
+# === 2. TKINTER (obligatorio) ===
+echo ""
+echo "🖥️ Verificando tkinter (GUI)..."
+if python3 -c "import tkinter" 2>/dev/null; then
+    echo "  ✅ tkinter disponible"
+else
+    echo "  ⚠️ tkinter no encontrado. Instalando..."
+    sudo apt install -y python3-tk 2>/dev/null && echo "  ✅ tkinter instalado" || echo "  ❌ No se pudo instalar tkinter. Ejecutá: sudo apt install python3-tk"
+fi
+
+# === 3. espeak-ng (TTS) ===
 echo ""
 echo "🔊 Instalando espeak-ng para TTS..."
 if command -v espeak-ng &> /dev/null; then
