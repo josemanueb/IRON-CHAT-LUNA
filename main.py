@@ -202,6 +202,8 @@ class ChatbotApp:
         self.vol_speed_num_label.configure(bg=c["bg"], fg=c["acento"])
         self.credit_frame.configure(bg=c["bg"])
         self.credit_label.configure(bg=c["bg"], fg=c["naranja"])
+        if hasattr(self, 'jmb_label') and self.jmb_label:
+            self.jmb_label.configure(bg=c["bg"])
 
         try:
             self.face.canvas.configure(bg=c["face_bg"])
@@ -397,8 +399,20 @@ class ChatbotApp:
         self.credit_frame = tk.Frame(self.right_panel, bg="#1a1a2e", height=30)
         self.credit_frame.pack(side=tk.BOTTOM, fill=tk.X)
         self.credit_frame.pack_propagate(False)
+        jmb_path = self._find_image("icon-jmb.png", "robot-icon.png")
+        self.jmb_photo = None
+        self.jmb_label = None
+        if jmb_path:
+            try:
+                jmb_img = Image.open(jmb_path)
+                jmb_img = jmb_img.resize((20, 20), Image.LANCZOS)
+                self.jmb_photo = ImageTk.PhotoImage(jmb_img)
+                self.jmb_label = tk.Label(self.credit_frame, image=self.jmb_photo, bg="#1a1a2e")
+                self.jmb_label.pack(side=tk.LEFT, padx=(5, 2))
+            except Exception:
+                pass
         self.credit_label = tk.Label(self.credit_frame, text="⚡ JMB ⚡", font=("Helvetica", 9, "bold"), bg="#1a1a2e", fg="#FF6B35")
-        self.credit_label.pack(expand=True)
+        self.credit_label.pack(side=tk.LEFT)
 
         # === 9. APLICAR TEMA INICIAL ===
         self.aplicar_tema()
@@ -1602,7 +1616,7 @@ class ChatbotApp:
             "╔════════════════════════════════╗\n"
             "║    IRON CHAT - LUNA v2.2       ║\n"
             "╠════════════════════════════════╣\n"
-            "║  👨‍💻 CREADOR: ⚡ JMbirner ⚡    ║\n"
+            "║  👨‍💻 CREADOR: ⚡ JMB ⚡         ║\n"
             "╠════════════════════════════════╣\n"
             f"║ 🤖 {modelo:<26}║\n"
             "║ 📝 Python + Tkinter            ║\n"
