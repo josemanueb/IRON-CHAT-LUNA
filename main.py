@@ -397,7 +397,7 @@ class ChatbotApp:
         self.credit_frame = tk.Frame(self.right_panel, bg="#1a1a2e", height=30)
         self.credit_frame.pack(side=tk.BOTTOM, fill=tk.X)
         self.credit_frame.pack_propagate(False)
-        self.credit_label = tk.Label(self.credit_frame, text="⚡ JMbirner ⚡", font=("Helvetica", 9, "bold"), bg="#1a1a2e", fg="#FF6B35")
+        self.credit_label = tk.Label(self.credit_frame, text="⚡ JMB ⚡", font=("Helvetica", 9, "bold"), bg="#1a1a2e", fg="#FF6B35")
         self.credit_label.pack(expand=True)
 
         # === 9. APLICAR TEMA INICIAL ===
