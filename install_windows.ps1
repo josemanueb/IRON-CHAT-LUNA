@@ -59,7 +59,7 @@ if (-not $pythonExe) {
             $pipUrl = "https://bootstrap.pypa.io/get-pip.py"
             $getPip = "$env:TEMP\get-pip.py"
             $wc.DownloadFile($pipUrl, $getPip)
-            & "$SCRIPT_DIR\portable_python\python.exe" $getPip --quiet 2>$null
+            & "$SCRIPT_DIR\portable_python\python.exe" $getPip --quiet
 
             $pythonExe = "$SCRIPT_DIR\portable_python\python.exe"
             Write-Host "  ✅ Python portable listo" -ForegroundColor Green
@@ -103,10 +103,12 @@ $llamaOk = $false
 $whlFile = Get-ChildItem "$SCRIPT_DIR\llama_cpp_python_win-*.whl" -ErrorAction SilentlyContinue | Select-Object -First 1
 if ($whlFile) {
     Write-Host "    Wheel local encontrado: $($whlFile.Name)" -ForegroundColor Gray
-    $r = & $venvPython -m pip install "$($whlFile.FullName)" 2>&1 | Out-Null
+    $r = & $venvPython -m pip install "$($whlFile.FullName)"
     if ($LASTEXITCODE -eq 0) {
         $llamaOk = $true
         Write-Host "  ✅ llama-cpp-python instalado desde .whl local" -ForegroundColor Green
+    } else {
+        Write-Host "    ⚠️ Error instalando .whl local, probando alternativas..." -ForegroundColor Yellow
     }
 }
 
@@ -118,7 +120,7 @@ if (-not $llamaOk) {
     )
     foreach ($m in $methods) {
         Write-Host "    Intentando $($m[0])..." -ForegroundColor Gray
-        $r = & $venvPython -m pip install $($m[1]) 2>&1 | Out-Null
+        $r = & $venvPython -m pip install $($m[1])
         if ($LASTEXITCODE -eq 0) {
             $llamaOk = $true
             Write-Host "  ✅ llama-cpp-python instalado" -ForegroundColor Green
@@ -133,9 +135,13 @@ if (-not $llamaOk) {
 }
 
 # 3b. Dependencias secundarias
-Write-Host "  ⏳ Instalando Pillow, pyttsx3..." -ForegroundColor Yellow
-& $venvPython -m pip install --quiet Pillow pyttsx3 2>$null
-Write-Host "  ✅ Pillow, pyttsx3 instalados" -ForegroundColor Green
+Write-Host "  ⏳ Instalando Pillow, pyttsx3, pywin32..." -ForegroundColor Yellow
+& $venvPython -m pip install --quiet Pillow pyttsx3 pywin32
+if ($LASTEXITCODE -eq 0) {
+    Write-Host "  ✅ Pillow, pyttsx3, pywin32 instalados" -ForegroundColor Green
+} else {
+    Write-Host "  ⚠️ Algunas dependencias secundarias fallaron" -ForegroundColor Yellow
+}
 
 # === 4. ACCESO DIRECTO ESCRITORIO ===
 Write-Host "`n🖥️ Creando acceso directo..." -ForegroundColor Cyan

@@ -11,6 +11,7 @@ class Sounds:
     _project_dir = os.path.dirname(os.path.abspath(__file__))
     _last_sound_time = 0
     _lock = threading.Lock()
+    _last_wav_data = None
 
     @classmethod
     def _cooldown(cls):
@@ -75,6 +76,7 @@ class Sounds:
                     chunks.append(val)
 
                 wav_data = cls._gen_wav(chunks, sr)
+                cls._last_wav_data = wav_data
                 import platform
                 if platform.system() == "Windows":
                     import winsound

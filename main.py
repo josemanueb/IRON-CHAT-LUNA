@@ -1012,11 +1012,13 @@ class ChatbotApp:
 
     def _pythonw_path(self):
         e = getattr(_sys, 'executable', None)
-        if e and e.lower().endswith('python.exe'):
+        if not e:
+            return os.path.join(self.project_dir, 'venv', 'Scripts', 'pythonw.exe')
+        if e.lower().endswith('python.exe'):
             w = e[:-4] + 'w.exe'
             if os.path.exists(w):
                 return w
-        return e or 'pythonw.exe'
+        return e
 
     def crear_acceso_escritorio(self):
         desktop = self._desktop_path()
@@ -1037,7 +1039,7 @@ class ChatbotApp:
             # .lnk via VBS (funciona sin win32com)
             vbs = os.path.join(self.project_dir, "_crear_lnk_tmp.vbs")
             icono = icon_ico if os.path.exists(icon_ico) else target_exe
-            with open(vbs, "w", encoding="utf-8") as f:
+            with open(vbs, "w", encoding="mbcs") as f:
                 f.write(
                     f'Set o = WScript.CreateObject("WScript.Shell")\n'
                     f'Set s = o.CreateShortcut("{lnk_path}")\n'
@@ -1060,7 +1062,7 @@ class ChatbotApp:
                     pass
 
             # .bat de respaldo
-            with open(bat_path, "w", encoding="utf-8") as f:
+            with open(bat_path, "w", encoding="mbcs") as f:
                 f.write(f'@echo off\nstart "" /B "{target_exe}" "{main_py}"\nexit\n')
 
             self.add_message("system", "🖥️ Acceso directo creado en el escritorio (.lnk + .bat)")

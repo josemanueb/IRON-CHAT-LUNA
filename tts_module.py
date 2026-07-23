@@ -16,14 +16,20 @@ class TTS:
         self.volume = 0.7
         self.sistema = platform.system()
         self.mode = "offline"
+        self.engine_w = None
 
         if self.sistema == "Windows":
-            self._init_windows()
+            self.mode = "windows_tts"
+            print("✅ TTS Windows configurado (inicio diferido)")
         else:
             self._init_linux()
 
-    def _init_windows(self):
+    def _init_windows_engine(self):
+        if self.engine_w is not None:
+            return True
         try:
+            import pythoncom
+            pythoncom.CoInitialize()
             import pyttsx3
             self.engine_w = pyttsx3.init()
             self.engine_w.setProperty('rate', 150)
@@ -33,10 +39,10 @@ class TTS:
                 if 'spanish' in v.name.lower() or 'es' in v.id.lower() or 'helena' in v.name.lower():
                     self.engine_w.setProperty('voice', v.id)
                     break
-            self.mode = "windows_tts"
-            print("✅ TTS Windows listo (voz natural del sistema)")
+            return True
         except Exception:
-            print("⚠️ TTS Windows no disponible")
+            self.mode = "offline"
+            return False
 
     def _init_linux(self):
         self.espeak_bin = shutil.which("espeak-ng")
@@ -52,9 +58,12 @@ class TTS:
         self.volume = max(0.0, min(1.0, vol))
 
     def set_speed(self, speed_pct):
-        if self.sistema == "Windows" and hasattr(self, 'engine_w') and self.engine_w:
+        if self.sistema == "Windows" and self.engine_w:
             rate = int(150 * speed_pct / 100)
-            self.engine_w.setProperty('rate', rate)
+            try:
+                self.engine_w.setProperty('rate', rate)
+            except Exception:
+                pass
 
     def speak(self, text, on_finish=None):
         if not text:
@@ -84,17 +93,15 @@ class TTS:
                     pass
 
     def _speak_windows(self, text):
-        if hasattr(self, 'engine_w') and self.engine_w:
-            try:
-                self.engine_w.say(text)
-                self.engine_w.runAndWait()
-            except Exception:
-                # pyttsx3 can crash on repeated calls; reinitialize
+        if not self._init_windows_engine():
+            return
+        try:
+            self.engine_w.say(text)
+            self.engine_w.runAndWait()
+        except Exception:
+            self.engine_w = None
+            if self._init_windows_engine():
                 try:
-                    import pyttsx3
-                    self.engine_w = pyttsx3.init()
-                    self.engine_w.setProperty('rate', 150)
-                    self.engine_w.setProperty('volume', self.volume)
                     self.engine_w.say(text)
                     self.engine_w.runAndWait()
                 except Exception:

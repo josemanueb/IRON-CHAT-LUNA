@@ -76,18 +76,30 @@ class Audio:
         if not os.path.exists(path):
             return
         if _system == "Windows":
-            # Use python winsound or mciSendString for better path handling
-            try:
+            ext = os.path.splitext(path)[1].lower()
+            if ext == ".wav":
                 import winsound
-                winsound.PlaySound(path, winsound.SND_ASYNC | winsound.SND_FILENAME)
-                Audio._music_process = True  # Flag that music is playing
-            except Exception:
-                # Fallback to cmd but quote the path properly
-                quoted = f'"{path}"'
-                Audio._music_process = subprocess.Popen(
-                    ['cmd', '/c', 'start', '/min', '', quoted],
-                    shell=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL
-                )
+                flags = winsound.SND_ASYNC | winsound.SND_FILENAME
+                if loop:
+                    flags |= winsound.SND_LOOP
+                winsound.PlaySound(path, flags)
+                Audio._music_process = "winsound"
+            else:
+                try:
+                    import ctypes
+                    winmm = ctypes.windll.winmm
+                    winmm.mciSendStringW('close all', None, 0, 0)
+                    cmd = f'open "{path}" type mpegvideo alias music'
+                    winmm.mciSendStringW(cmd, None, 0, 0)
+                    vol = int(Audio._music_volume * 1000)
+                    winmm.mciSendStringW(f'setaudio music volume to {vol}', None, 0, 0)
+                    if loop:
+                        winmm.mciSendStringW('play music repeat', None, 0, 0)
+                    else:
+                        winmm.mciSendStringW('play music', None, 0, 0)
+                    Audio._music_process = "mci"
+                except Exception:
+                    Audio._music_process = None
         else:
             pygame = _get_pygame()
             if not pygame:
@@ -100,19 +112,21 @@ class Audio:
     @staticmethod
     def stop_music():
         if _system == "Windows":
-            if Audio._music_process:
+            if Audio._music_process == "mci":
                 try:
-                    if isinstance(Audio._music_process, subprocess.Popen):
-                        subprocess.run(
-                            ['taskkill', '/f', '/t', '/pid', str(Audio._music_process.pid)],
-                            stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL
-                        )
-                    else:
-                        import winsound
-                        winsound.PlaySound(None, winsound.SND_PURGE)
+                    import ctypes
+                    winmm = ctypes.windll.winmm
+                    winmm.mciSendStringW('stop music', None, 0, 0)
+                    winmm.mciSendStringW('close music', None, 0, 0)
                 except Exception:
                     pass
-                Audio._music_process = None
+            elif Audio._music_process == "winsound":
+                try:
+                    import winsound
+                    winsound.PlaySound(None, winsound.SND_PURGE)
+                except Exception:
+                    pass
+            Audio._music_process = None
         else:
             pygame = _get_pygame()
             if pygame:
@@ -124,7 +138,15 @@ class Audio:
     @staticmethod
     def set_music_volume(vol):
         Audio._music_volume = max(0.0, min(1.0, vol))
-        if _system == "Linux":
+        if _system == "Windows" and Audio._music_process == "mci":
+            try:
+                import ctypes
+                vol_mci = int(Audio._music_volume * 1000)
+                ctypes.windll.winmm.mciSendStringW(
+                    f'setaudio music volume to {vol_mci}', None, 0, 0)
+            except Exception:
+                pass
+        elif _system == "Linux":
             pygame = _get_pygame()
             if pygame:
                 try:

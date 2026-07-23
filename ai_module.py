@@ -1,11 +1,18 @@
 import os
+import sys
 import random
 import signal
 import json
 import platform as _platform
 from ascii_art import ASCIIArt
 
-_RUTINAS_PATH = os.path.join(os.path.dirname(__file__), "rutinas.json")
+def _project_dir():
+    if getattr(sys, 'frozen', False):
+        return os.path.dirname(sys.executable)
+    return os.path.dirname(os.path.abspath(__file__))
+
+_PROJECT_DIR = _project_dir()
+_RUTINAS_PATH = os.path.join(_PROJECT_DIR, "rutinas.json")
 
 
 def _load_rutinas():
@@ -73,7 +80,7 @@ class GPT4AllAI:
             return
 
         self._memorias = []
-        self._memorias_path = os.path.join(os.path.dirname(__file__), "memorias.json")
+        self._memorias_path = os.path.join(_PROJECT_DIR, "memorias.json")
         self._cargar_memorias()
         print("ASCII Art cargado - disponible!")
 
@@ -122,7 +129,7 @@ class GPT4AllAI:
             "Llama-3.2-3B-Instruct.gguf": "Llama 3.2 3B",
         }
         preferred = list(preferred_names.keys())
-        models_dir = os.path.join(os.path.dirname(__file__), "models")
+        models_dir = os.path.join(_PROJECT_DIR, "models")
         if not os.path.isdir(models_dir):
             return None
         for name in preferred:

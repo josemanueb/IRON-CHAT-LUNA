@@ -28,7 +28,7 @@ if not defined PYTHON (
 :: Construir el .exe
 echo ⏳ Construyendo ejecutable (puede tardar varios minutos)...
 echo.
-%PYTHON% -m PyInstaller --onefile --windowed --icon=robot-icon.ico --name "IRON-CHAT-LUNA" --add-data "robot-icon.png;." --add-data "robot.jpeg;." --add-data "gymp.jpeg;." --add-data "iniciodesesion.wav;." --add-data "icon-jmb.png;." --add-data "lang.py;." --add-data "themes.py;." --add-data "hash_utils.py;." --add-data "ascii_art.py;." --add-data "sounds.py;." --add-data "audio.py;." --add-data "tts_module.py;." --add-data "face_animation.py;." --add-data "ai_module.py;." --add-data "progress_tracker.py;." --add-data "rutinas.json;." --add-data "SIGNATURE.md;." main.py
+%PYTHON% -m PyInstaller --onefile --windowed --icon=robot-icon.ico --name "IRON-CHAT-LUNA" --add-data "robot-icon.png;." --add-data "robot.jpeg;." --add-data "gymp.jpeg;." --add-data "iniciodesesion.wav;." --add-data "icon-jmb.png;." --add-data "rutinas.json;." --add-data "SIGNATURE.md;." --add-data "musica;musica" --add-data "models;models" main.py
 
 if exist "dist\IRON-CHAT-LUNA.exe" (
     echo.

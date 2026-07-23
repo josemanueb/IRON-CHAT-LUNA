@@ -99,7 +99,6 @@ def check_packages(auto_install=False):
         pkgs.append(("pygame", "pygame"))
     elif platform.system() == "Windows":
         pkgs.append(("pyttsx3", "pyttsx3"))
-        pkgs.append(("pywin32", "win32api"))
 
     all_ok = True
     for name, imp in pkgs:
@@ -165,7 +164,17 @@ def main(auto_install=False):
     results.append(("pip", check_pip()))
     results.append(("Paquetes", check_packages(auto_install)))
     results.append(("Modelo IA", check_models()))
-    if platform.system() == "Linux":
+    if platform.system() == "Windows":
+        try:
+            import pyttsx3
+            e = pyttsx3.init()
+            voices = e.getProperty('voices')
+            ok = len(voices) > 0
+            e.stop()
+        except Exception:
+            ok = False
+        results.append(("TTS (pyttsx3 + voces)", ok))
+    else:
         results.append(("TTS espeak-ng", check_espeak()))
 
     print(f"\n{'='*55}")
