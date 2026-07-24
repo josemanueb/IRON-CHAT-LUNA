@@ -628,43 +628,10 @@ class ChatbotApp:
 
     def show_info(self):
         modelo = self._modelo_nombre()
-        info = ("💪 IRON CHAT v2.2\n\n"
-                f"🤖 MODELO: {modelo}\n"
-                "🔊 TTS: espeak-ng (Linux) / pyttsx3 (Windows)\n"
-                "🎨 DISEÑO: Gym Style\n"
-                "🎨 ASCII ART: 26 dibujos!\n"
-                "📝 NOTAS RAPIDAS\n"
-                "🎵 MUSICA MOTIVACIONAL\n"
-                "📂 CARPETA MP3\n"
-                "🌙☀️🌿 3 TEMAS: Oscuro/Claro/Naturaleza\n"
-                "⏱️ TEMPORIZADOR + RECORDATORIOS\n"
-                "🥗 DIETAS: Volumen/Definición/Saludable\n"
-                "📊 PROGRESO CON DELTAS\n\n"
-                "⚡ JMbirner ⚡")
-        messagebox.showinfo("💪 IRON CHAT", info)
+        messagebox.showinfo(lang.tr("info_title"), lang.tr_format("info_body", modelo=modelo))
 
     def show_help(self):
-        ayuda = ("❓ COMANDOS RAPIDOS:\n\n"
-                 "  /ayuda       - Muestra esta ayuda\n"
-                 "  /limpiar     - Limpia el chat\n"
-                 "  /tema        - Cambia de tema (3 disponibles)\n"
-                 "  /exportar    - Exporta el historial\n"
-                 "  /notas       - Abre el bloc de notas\n"
-                 "  /musica      - Activa/desactiva musica\n"
-                 "  /stats       - Muestra estadisticas\n"
-                 "  /dieta       - Plan de dieta (volumen/definicion/saludable)\n"
-                 "  /recordatorio <min> '<msg>' - Programa un aviso\n"
-                 "  /ejercicio   - Guia rapida de ejercicios\n\n"
-                 "⌨️ ATAJOS:\n"
-                 "  Enter        - Enviar mensaje\n"
-                 "  Ctrl+Enter   - Enviar mensaje\n"
-                 "  Ctrl+L       - Limpiar chat\n"
-                 "  Ctrl+D       - Exportar historial\n"
-                 "  Ctrl+T       - Cambiar tema\n\n"
-                 "🎨 DIBUJOS ASCII:\n"
-                 "  Escribe 'dibuja una mancuerna' o similar\n"
-                 "  🏋️ 26 dibujos disponibles!")
-        messagebox.showinfo("❓ AYUDA IRON CHAT", ayuda)
+        messagebox.showinfo(lang.tr("help_title"), lang.tr("help_body"))
 
     def open_notes(self):
         try:
@@ -1296,7 +1263,7 @@ class ChatbotApp:
         self.chat_area.insert(tk.END, f"[{timestamp}] {lang.tr('ai_stream_prefix')}: ")
         self.chat_area.see(tk.END)
         self.chat_area.config(state=tk.DISABLED)
-        self._stream_start_index = self.chat_area.index(tk.END + "-1c")
+        self._stream_start_index = self.chat_area.index(tk.END)
         self.status_label.config(text=lang.tr("status_generating"), fg="#3498DB")
 
     def _update_stream_ui(self, text):
@@ -1614,26 +1581,7 @@ class ChatbotApp:
 
     def show_credits(self):
         modelo = self._modelo_nombre()
-        credits = (
-            "╔════════════════════════════════╗\n"
-            "║    IRON CHAT - LUNA v2.2       ║\n"
-            "╠════════════════════════════════╣\n"
-            "║  👨‍💻 CREADOR: ⚡ JMB ⚡         ║\n"
-            "╠════════════════════════════════╣\n"
-            f"║ 🤖 {modelo:<26}║\n"
-            "║ 📝 Python + Tkinter            ║\n"
-            "║ 🧠 llama-cpp-python (CPU)      ║\n"
-            "╠════════════════════════════════╣\n"
-            "║ 🏋️ Fitness + Nutricion + IA    ║\n"
-            "║ 🎨 ASCII Art + TTS + Animacion ║\n"
-            "║ 🎵 Musica + Temporizador       ║\n"
-            "╠════════════════════════════════╣\n"
-            "║  💻 Python 3.10+               ║\n"
-            "║  🐧 Linux / 🪟 Windows         ║\n"
-            "║  🔥 Hecho con dedicacion       ║\n"
-            "╚════════════════════════════════╝"
-        )
-        messagebox.showinfo("🏆 CREDITOS", credits)
+        messagebox.showinfo(lang.tr("credits_title"), lang.tr_format("credits_body", modelo=modelo))
 
 def main():
     try:

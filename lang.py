@@ -142,7 +142,7 @@ TEXTS = {
                         "⏱️ TEMPORIZADOR + RECORDATORIOS\n"
                         "🥗 DIETAS: Volumen/Definición/Saludable\n"
                         "📊 PROGRESO CON DELTAS\n\n"
-                        "⚡ JMbirner ⚡"),
+                         "⚡ JMB ⚡"),
                   "en": ("💪 IRON CHAT v2.2\n\n"
                         "🤖 MODEL: {modelo}\n"
                         "🔊 TTS: espeak-ng (Linux) / pyttsx3 (Windows)\n"
@@ -155,7 +155,7 @@ TEXTS = {
                         "⏱️ TIMER + REMINDERS\n"
                         "🥗 DIETS: Bulk/Cut/Healthy\n"
                         "📊 PROGRESS WITH DELTAS\n\n"
-                        "⚡ JMbirner ⚡")},
+                        "⚡ JMB ⚡")},
 
     # === HELP DIALOG ===
     "help_title": {"es": "❓ AYUDA IRON CHAT", "en": "❓ IRON CHAT HELP"},
@@ -295,7 +295,7 @@ TEXTS = {
     "credits_body": {"es": ("╔════════════════════════════════╗\n"
                            "║    IRON CHAT - LUNA v2.2       ║\n"
                            "╠════════════════════════════════╣\n"
-                           "║  👨‍💻 CREADOR: ⚡ JMbirner ⚡    ║\n"
+                           "║  👨‍💻 CREADOR: ⚡ JMB ⚡          ║\n"
                            "╠════════════════════════════════╣\n"
                            "║ 🤖 {modelo}                  ║\n"
                            "║ 📝 Python + Tkinter            ║\n"
@@ -312,7 +312,7 @@ TEXTS = {
                      "en": ("╔════════════════════════════════╗\n"
                            "║    IRON CHAT - LUNA v2.2       ║\n"
                            "╠════════════════════════════════╣\n"
-                           "║  👨‍💻 CREATOR: ⚡ JMbirner ⚡     ║\n"
+                           "║  👨‍💻 CREATOR: ⚡ JMB ⚡          ║\n"
                            "╠════════════════════════════════╣\n"
                            "║ 🤖 {modelo}                  ║\n"
                            "║ 📝 Python + Tkinter            ║\n"
@@ -331,7 +331,7 @@ TEXTS = {
     "msg_count": {"es": "💬 {count} msgs", "en": "💬 {count} msgs"},
 
     # === CREDITS FOOTER ===
-    "footer_credits": {"es": "⚡ JMbirner ⚡", "en": "⚡ JMbirner ⚡"},
+    "footer_credits": {"es": "⚡ JMB ⚡", "en": "⚡ JMB ⚡"},
 
     # === EXPORT ===
     "export_header": {"es": "💪 IRON CHAT - HISTORIAL\n", "en": "💪 IRON CHAT - HISTORY\n"},
