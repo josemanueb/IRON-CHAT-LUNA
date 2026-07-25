@@ -69,6 +69,7 @@ class ChatbotApp:
         self.timer_remaining = 0
         self.timer_job = None
         self._sending = False
+        self._animating = False
         self._sending_timeout = None
         self._stream_start_index = "1.0"
         self.FONT_MONO = ("Consolas", 12) if _platform.system() == "Windows" else ("monospace", 12)
@@ -563,6 +564,7 @@ class ChatbotApp:
         self.add_message("system", f"🌐 {lang.tr('menu_lang')}")
 
     def animar_escribiendo(self):
+        self._animating = True
         dots = [".  ", ".. ", "...", " ..", "  .", "   "]
         self.animacion_dots = (self.animacion_dots + 1) % len(dots)
         try:
@@ -570,7 +572,7 @@ class ChatbotApp:
             if label is None:
                 return
             label.config(text=lang.tr("status_writing").replace("...", dots[self.animacion_dots]))
-            if self.ai_loaded:
+            if self.ai_loaded and self._animating:
                 self.root.after(300, self.animar_escribiendo)
         except Exception:
             pass
@@ -1008,14 +1010,14 @@ class ChatbotApp:
             icono = icon_ico if os.path.exists(icon_ico) else target_exe
             with open(vbs, "w", encoding="mbcs") as f:
                 f.write(
-                    f'Set o = WScript.CreateObject("WScript.Shell")\n'
-                    f'Set s = o.CreateShortcut("{lnk_path}")\n'
-                    f's.TargetPath = "{target_exe}"\n'
-                    f's.Arguments = "{main_py}"\n'
-                    f's.WorkingDirectory = "{self.project_dir}"\n'
-                    f's.IconLocation = "{icono}"\n'
+                    'Set o = WScript.CreateObject("WScript.Shell")\n'
+                    f'Set s = o.CreateShortcut("""{lnk_path}""")\n'
+                    f's.TargetPath = """{target_exe}"""\n'
+                    f's.Arguments = """{main_py}"""\n'
+                    f's.WorkingDirectory = """{self.project_dir}"""\n'
+                    f's.IconLocation = """{icono}"""\n'
                     f's.WindowStyle = 7\n'
-                    f's.Description = "{nombre}"\n'
+                    f's.Description = """{nombre}"""\n'
                     f's.Save\n'
                 )
             try:
@@ -1080,11 +1082,8 @@ class ChatbotApp:
         elif sender == "ai":
             if streamed:
                 self.chat_area.delete(self._stream_start_index, tk.END)
-                formatted = f"{message}\n"
-                tag = "ai_msg"
-            else:
-                formatted = f"[{timestamp}] {lang.tr('ai_prefix')}: {message}\n"
-                tag = "ai_msg"
+            formatted = f"[{timestamp}] {lang.tr('ai_prefix')}: {message}\n"
+            tag = "ai_msg"
         else:
             formatted = f">> {message}\n"
             tag = "system_msg"
@@ -1180,8 +1179,10 @@ class ChatbotApp:
         if self.procesar_comando(user_input):
             return
         self._sending = True
+        self._animating = False
         self._last_user_input = user_input
         self.send_button.config(state=tk.DISABLED)
+        self._sending_timeout = self.root.after(180000, self._safety_timeout)
         try:
             Sounds.play_chat()
         except Exception:
@@ -1298,10 +1299,21 @@ class ChatbotApp:
         self.speak_response(response)
         self._recordar_conversacion(self._last_user_input, response)
 
+    def _safety_timeout(self):
+        if self._sending:
+            logging.warning("Safety timeout: sending forzado a finalizar")
+            self._sending = False
+            self._animating = False
+            self._sending_timeout = None
+            self.send_button.config(state=tk.NORMAL)
+            self.status_label.config(text=lang.tr("status_ready_short"), fg="#E74C3C")
+            self.add_message("system", "⏰ Tiempo de seguridad agotado")
+
     def _finish_sending(self):
         if not self._sending:
             return
         self._sending = False
+        self._animating = False
         timeout = getattr(self, '_sending_timeout', None)
         if timeout:
             try:

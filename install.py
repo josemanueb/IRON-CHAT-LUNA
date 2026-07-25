@@ -564,7 +564,7 @@ Categories=Utility;AI;
     if platform.system() == "Windows":
         bat_path = os.path.join(SCRIPT_DIR, "run.bat")
         with open(bat_path, "w") as f:
-            f.write('@echo off\ncd /d "%~dp0"\nstart "" /B venv\\Scripts\\pythonw.exe main.py\nexit\n')
+            f.write('@echo off\ncd /d "%~dp0"\nstart "" /B "venv\\Scripts\\pythonw.exe" "main.py"\nexit\n')
         log("run.bat creado")
 
     # === 7. RESUMEN ===

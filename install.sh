@@ -15,13 +15,40 @@ echo ""
 echo "📂 Directorio: $SCRIPT_DIR"
 echo ""
 
+# === DETECTAR GESTOR DE PAQUETES ===
+if command -v apt &> /dev/null; then
+    PKG="apt"
+    PKG_INSTALL="sudo apt install -y"
+    PYTHON_PKG="python3 python3-venv python3-pip"
+    TK_PKG="python3-tk"
+    ESPEAK_PKG="espeak-ng"
+elif command -v dnf &> /dev/null; then
+    PKG="dnf"
+    PKG_INSTALL="sudo dnf install -y"
+    PYTHON_PKG="python3 python3-virtualenv python3-pip"
+    TK_PKG="python3-tkinter"
+    ESPEAK_PKG="espeak-ng"
+elif command -v pacman &> /dev/null; then
+    PKG="pacman"
+    PKG_INSTALL="sudo pacman -S --noconfirm"
+    PYTHON_PKG="python python-virtualenv python-pip"
+    TK_PKG="tk"
+    ESPEAK_PKG="espeak-ng"
+else
+    PKG="unknown"
+    PKG_INSTALL="echo"
+    PYTHON_PKG="python3 python3-venv python3-pip"
+    TK_PKG="python3-tk"
+    ESPEAK_PKG="espeak-ng"
+fi
+
 # === 1. PYTHON ===
 echo "🔍 Verificando Python..."
 if command -v python3 &> /dev/null; then
     echo "  ✅ Python $(python3 --version)"
 else
     echo "  ❌ Python3 no encontrado. Instálalo con:"
-    echo "     sudo apt install -y python3 python3-venv python3-pip"
+    echo "     $PKG_INSTALL $PYTHON_PKG"
     exit 1
 fi
 
@@ -32,7 +59,7 @@ if python3 -c "import tkinter" 2>/dev/null; then
     echo "  ✅ tkinter disponible"
 else
     echo "  ⚠️ tkinter no encontrado. Instalando..."
-    sudo apt install -y python3-tk 2>/dev/null && echo "  ✅ tkinter instalado" || echo "  ❌ No se pudo instalar tkinter. Ejecutá: sudo apt install python3-tk"
+    $PKG_INSTALL $TK_PKG 2>/dev/null && echo "  ✅ tkinter instalado" || echo "  ❌ No se pudo instalar tkinter. Ejecutá: $PKG_INSTALL $TK_PKG"
 fi
 
 # === 3. espeak-ng (TTS) ===
@@ -41,7 +68,7 @@ echo "🔊 Instalando espeak-ng para TTS..."
 if command -v espeak-ng &> /dev/null; then
     echo "  ✅ espeak-ng ya instalado"
 else
-    sudo apt install -y espeak-ng 2>/dev/null && echo "  ✅ espeak-ng instalado" || echo "  ⚠️ No se pudo instalar espeak-ng (TTS sin voz)"
+    $PKG_INSTALL $ESPEAK_PKG 2>/dev/null && echo "  ✅ espeak-ng instalado" || echo "  ⚠️ No se pudo instalar espeak-ng (TTS sin voz)"
 fi
 
 # === 3. ENTORNO VIRTUAL ===
@@ -56,7 +83,7 @@ if [ ! -d "$SCRIPT_DIR/venv/bin" ] || [ ! -f "$SCRIPT_DIR/venv/bin/activate" ]; 
         curl -sS https://bootstrap.pypa.io/get-pip.py | "$SCRIPT_DIR/venv/bin/python3" > /dev/null 2>&1
     else
         echo "  ❌ No se pudo crear el entorno virtual. Instalá python3-venv:"
-        echo "     sudo apt install -y python3-venv"
+        echo "     $PKG_INSTALL $PYTHON_PKG"
         exit 1
     fi
 else

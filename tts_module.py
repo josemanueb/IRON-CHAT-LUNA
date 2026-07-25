@@ -58,6 +58,7 @@ class TTS:
         self.volume = max(0.0, min(1.0, vol))
 
     def set_speed(self, speed_pct):
+        self._speed_pct = speed_pct
         if self.sistema == "Windows" and self.engine_w:
             rate = int(150 * speed_pct / 100)
             try:
@@ -119,10 +120,11 @@ class TTS:
             wav_file.close()
 
             amp = max(30, int(self.volume * 100))
+            speed_val = int(140 * getattr(self, '_speed_pct', 100) / 100)
             cmd = [
                 self.espeak_bin,
                 '-v', 'es',
-                '-s', '140',
+                '-s', str(speed_val),
                 '-a', str(amp),
                 '-w', wav_path,
                 texto_limpio,
@@ -131,7 +133,15 @@ class TTS:
 
             if os.path.exists(wav_path) and os.path.getsize(wav_path) > 100:
                 Audio.play_wav(wav_path)
-                time.sleep(0.3)
+                try:
+                    import pygame
+                    if pygame.mixer.get_init():
+                        ch = pygame.mixer.find_channel()
+                        if ch:
+                            while ch.get_busy():
+                                time.sleep(0.05)
+                except Exception:
+                    time.sleep(max(0.05, len(text) / 15))
 
             try:
                 if os.path.exists(wav_path):
@@ -144,3 +154,8 @@ class TTS:
     def stop(self):
         Audio.stop_all()
         self.speaking = False
+        if self.sistema == "Windows" and self.engine_w:
+            try:
+                self.engine_w.stop()
+            except Exception:
+                pass

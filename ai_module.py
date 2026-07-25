@@ -41,6 +41,10 @@ class GPT4AllAI:
     def __init__(self):
         print("Inicializando LUNA - Entrenadora personal...")
 
+        self._memorias = []
+        self._memorias_path = os.path.join(_PROJECT_DIR, "memorias.json")
+        self._cargar_memorias()
+
         self.model_path = self._find_model()
         self.is_offline = False
 
@@ -79,9 +83,6 @@ class GPT4AllAI:
             self.is_offline = True
             return
 
-        self._memorias = []
-        self._memorias_path = os.path.join(_PROJECT_DIR, "memorias.json")
-        self._cargar_memorias()
         print("ASCII Art cargado - disponible!")
 
     def _cargar_memorias(self):

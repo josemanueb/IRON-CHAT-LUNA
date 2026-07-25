@@ -31,7 +31,6 @@ ARCHIVOS_FIRMA = [
     "iron-chat.bat", "backup.bat",
     "generar_firma.py", "verificar_firma.py",
     ".gitignore", "requirements.txt",
-    "test_download.py"
 ]
 
 
