@@ -27,9 +27,12 @@ copy "%SCRIPT_DIR%ascii_art.py" "%BACKUP_DIR%\" >nul
 copy "%SCRIPT_DIR%sounds.py" "%BACKUP_DIR%\" >nul
 copy "%SCRIPT_DIR%audio.py" "%BACKUP_DIR%\" >nul
 copy "%SCRIPT_DIR%progress_tracker.py" "%BACKUP_DIR%\" >nul
+copy "%SCRIPT_DIR%hash_utils.py" "%BACKUP_DIR%\" >nul
+copy "%SCRIPT_DIR%themes.py" "%BACKUP_DIR%\" >nul
 copy "%SCRIPT_DIR%lang.py" "%BACKUP_DIR%\" >nul
 copy "%SCRIPT_DIR%check_deps.py" "%BACKUP_DIR%\" >nul
 copy "%SCRIPT_DIR%test_all.py" "%BACKUP_DIR%\" >nul
+copy "%SCRIPT_DIR%test_download.py" "%BACKUP_DIR%\" >nul
 
 REM === Instaladores ===
 copy "%SCRIPT_DIR%install.py" "%BACKUP_DIR%\" >nul
@@ -63,7 +66,7 @@ echo.
 echo ✅ Respaldo completado en:
 echo    %BACKUP_DIR%
 echo.
-echo Archivos: 31
+echo Archivos: 35
 echo Tamaño: ~1 MB (sin modelo ni venv)
 echo.
 echo ⚡ JMbirner ⚡

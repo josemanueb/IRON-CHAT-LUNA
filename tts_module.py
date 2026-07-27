@@ -29,6 +29,7 @@ class TTS:
             return True
         try:
             import pythoncom
+            self._com_initialized = True
             pythoncom.CoInitialize()
             import pyttsx3
             self.engine_w = pyttsx3.init()
@@ -41,6 +42,7 @@ class TTS:
                     break
             return True
         except Exception:
+            self._com_initialized = False
             self.mode = "offline"
             return False
 
@@ -101,14 +103,10 @@ class TTS:
             self.engine_w.runAndWait()
         except Exception:
             self.engine_w = None
-            if self._init_windows_engine():
-                try:
-                    self.engine_w.say(text)
-                    self.engine_w.runAndWait()
-                except Exception:
-                    pass
+            self._speak_windows(text)
 
     def _speak_espeak(self, text):
+        wav_path = None
         try:
             texto_limpio = re.sub(r'[^\w\s,;:.!?¡¿áéíóúüñÁÉÍÓÚÜÑ]', ' ', text)
             texto_limpio = re.sub(r'\s+', ' ', texto_limpio).strip()
@@ -142,14 +140,14 @@ class TTS:
                                 time.sleep(0.05)
                 except Exception:
                     time.sleep(max(0.05, len(text) / 15))
-
-            try:
-                if os.path.exists(wav_path):
-                    os.unlink(wav_path)
-            except Exception:
-                pass
         except Exception as e:
             print(f"Error en espeak-ng TTS: {e}")
+        finally:
+            if wav_path and os.path.exists(wav_path):
+                try:
+                    os.unlink(wav_path)
+                except Exception:
+                    pass
 
     def stop(self):
         Audio.stop_all()

@@ -72,6 +72,7 @@ class ChatbotApp:
         self._animating = False
         self._sending_timeout = None
         self._stream_start_index = "1.0"
+        self._ai_ready = threading.Event()
         self.FONT_MONO = ("Consolas", 12) if _platform.system() == "Windows" else ("monospace", 12)
         self.FONT_MONO_SM = ("Consolas", 10) if _platform.system() == "Windows" else ("monospace", 10)
         self.FONT_MONO_LG = ("Consolas", 14) if _platform.system() == "Windows" else ("monospace", 14)
@@ -675,15 +676,12 @@ class ChatbotApp:
     def load_ai(self):
         try:
             logging.info("Cargando IA...")
-            print("Paso 1: Cargando IA...")
             self.ai = GPT4AllAI()
-            print("Paso 1 completado")
             logging.info("IA cargada")
-            print("Paso 2: Inicializando TTS...")
             self.tts = TTS()
-            print("Paso 2 completado")
             logging.info("TTS inicializado")
             self.ai_loaded = True
+            self._ai_ready.set()
             self.root.after(0, self.on_ai_loaded)
         except Exception as e:
             error_msg = str(e)
@@ -695,6 +693,7 @@ class ChatbotApp:
             except Exception:
                 self.tts = None
             self.ai_loaded = True
+            self._ai_ready.set()
             self.root.after(0, lambda: self.add_message("system", f"⚠️ Error: {error_msg}. Usando modo offline."))
             self.root.after(0, lambda: self.status_label.config(text=">> MODO OFFLINE", fg="#FF6B35"))
             self.root.after(0, self.on_ai_loaded)
@@ -1014,13 +1013,13 @@ class ChatbotApp:
             with open(vbs, "w", encoding="mbcs") as f:
                 f.write(
                     'Set o = WScript.CreateObject("WScript.Shell")\n'
-                    f'Set s = o.CreateShortcut("""{lnk_path}""")\n'
-                    f's.TargetPath = """{target_exe}"""\n'
-                    f's.Arguments = """{main_py}"""\n'
-                    f's.WorkingDirectory = """{self.project_dir}"""\n'
-                    f's.IconLocation = """{icono}"""\n'
+                    f'Set s = o.CreateShortcut("{lnk_path}")\n'
+                    f's.TargetPath = "{target_exe}"\n'
+                    f's.Arguments = "{main_py}"\n'
+                    f's.WorkingDirectory = "{self.project_dir}"\n'
+                    f's.IconLocation = "{icono}"\n'
                     f's.WindowStyle = 7\n'
-                    f's.Description = """{nombre}"""\n'
+                    f's.Description = "{nombre}"\n'
                     f's.Save\n'
                 )
             try:
@@ -1230,7 +1229,9 @@ class ChatbotApp:
             self.root.after(0, self._finish_sending)
 
     def _stream_response(self, user_input, history, ai):
-        self.root.after(0, lambda: self._start_stream_ui())
+        started = threading.Event()
+        self.root.after(0, lambda: self._start_stream_ui(started))
+        started.wait()
         full_text = ""
         last_update = 0.0
         pending_update = None
@@ -1261,7 +1262,7 @@ class ChatbotApp:
             self.root.after(0, lambda: self.status_label.config(text=lang.tr("status_error"), fg="#E74C3C"))
             self.root.after(0, self._finish_sending)
 
-    def _start_stream_ui(self):
+    def _start_stream_ui(self, started=None):
         self.chat_area.config(state=tk.NORMAL)
         timestamp = datetime.now().strftime("%H:%M")
         self.chat_area.insert(tk.END, f"[{timestamp}] {lang.tr('ai_stream_prefix')}: ")
@@ -1269,6 +1270,8 @@ class ChatbotApp:
         self.chat_area.config(state=tk.DISABLED)
         self._stream_start_index = self.chat_area.index(tk.END)
         self.status_label.config(text=lang.tr("status_generating"), fg="#3498DB")
+        if started:
+            started.set()
 
     def _update_stream_ui(self, text):
         self.chat_area.config(state=tk.NORMAL)

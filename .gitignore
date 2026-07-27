@@ -24,3 +24,7 @@ Thumbs.db
 dist/
 build/
 *.egg-info/
+portable_python/
+vc_extract/
+cab_out/
+_crear_lnk_tmp.vbs

@@ -30,6 +30,7 @@ ARCHIVOS_FIRMA = [
     "uninstall.bat", "uninstall.sh",
     "iron-chat.bat", "backup.bat",
     "generar_firma.py", "verificar_firma.py",
+    "test_all.py", "test_download.py",
     ".gitignore", "requirements.txt",
 ]
 

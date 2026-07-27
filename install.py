@@ -214,7 +214,8 @@ def download_model_auto(url, dest, label="Modelo"):
         print(f"     🔄 Intentando: {name}...")
         try:
             if method():
-                if os.path.exists(dest) and os.path.getsize(dest) >= (1024**3):
+                min_size = 100 * 1024 * 1024
+                if os.path.exists(dest) and os.path.getsize(dest) >= min_size:
                     size = os.path.getsize(dest) / (1024**3)
                     print(f"\r     ✅ {label} descargado: {size:.2f} GB".ljust(70))
                     return True

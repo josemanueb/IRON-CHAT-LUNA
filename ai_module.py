@@ -471,10 +471,10 @@ class GPT4AllAI:
                     "Si quieres respuestas más avanzadas, descarga un modelo GGUF en la carpeta 'models/'.\n\n"
                     "💪 Pero mientras tanto, ¡aquí estoy para ti!")
 
-        # === ASCII ART ===
+        # === ASCII ART (solo si pide explícitamente un dibujo) ===
         if any(p in text for p in ["dibuja", "ascii", "dibujo", "arte", "pinta"]):
             for art_name in ASCIIArt.list_arts():
-                if art_name in text:
+                if re.search(r'\b' + re.escape(art_name) + r'\b', text):
                     art = ASCIIArt.get_art(art_name)
                     return f"🎨 Aquí tienes tu {art_name}:\n```\n{art}\n```"
             art_name = random.choice(ASCIIArt.list_arts())
@@ -572,7 +572,11 @@ class GPT4AllAI:
                 repeat_penalty=1.1,
                 stop=self._stop_tokens()
             )
-            text = response['choices'][0]['text'].strip()
+            choices = response.get('choices', [])
+            if choices:
+                text = choices[0].get('text', '').strip()
+            else:
+                text = ""
             return self._post_process(text)
         except Exception as e:
             print("Error al generar respuesta: " + str(e))
@@ -596,7 +600,10 @@ class GPT4AllAI:
                 stop=self._stop_tokens(),
                 stream=True
             ):
-                token = chunk['choices'][0]['text']
+                choices = chunk.get('choices', [])
+                if not choices:
+                    continue
+                token = choices[0].get('text', '')
                 if not token:
                     continue
                 accumulated += token
