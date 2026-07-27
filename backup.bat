@@ -33,7 +33,6 @@ copy "%SCRIPT_DIR%test_all.py" "%BACKUP_DIR%\" >nul
 
 REM === Instaladores ===
 copy "%SCRIPT_DIR%install.py" "%BACKUP_DIR%\" >nul
-copy "%SCRIPT_DIR%install.bat" "%BACKUP_DIR%\" >nul
 copy "%SCRIPT_DIR%install.sh" "%BACKUP_DIR%\" >nul
 copy "%SCRIPT_DIR%install_windows.ps1" "%BACKUP_DIR%\" >nul
 
@@ -64,7 +63,7 @@ echo.
 echo ✅ Respaldo completado en:
 echo    %BACKUP_DIR%
 echo.
-echo Archivos: 32
+echo Archivos: 31
 echo Tamaño: ~1 MB (sin modelo ni venv)
 echo.
 echo ⚡ JMbirner ⚡

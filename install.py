@@ -258,7 +258,7 @@ def main():
             print()
             print("  ✅ Recomendación: Mueve la carpeta a:")
             print("     C:\\IRON-CHAT-LUNA\\")
-            print("     y ejecuta install.bat desde allí.")
+            print("     y ejecuta install_windows.ps1 desde allí.")
             print()
             input("     Presiona Enter para continuar de todas formas...")
             print()
