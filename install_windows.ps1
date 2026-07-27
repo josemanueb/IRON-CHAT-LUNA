@@ -95,7 +95,33 @@ $venvPython = "$SCRIPT_DIR\venv\Scripts\python.exe"
 Write-Host "`n📦 Instalando dependencias Python..." -ForegroundColor Cyan
 & $venvPython -m pip install --upgrade pip -q
 
-# 3a. llama-cpp-python (usar .whl local si existe)
+# 3a. Verificar Visual C++ Redistributable (necesario para llama-cpp-python)
+Write-Host "  🔍 Verificando Visual C++ Redistributable..." -ForegroundColor Yellow
+$vcMissing = $true
+$vcPaths = @("$env:SystemRoot\System32\vcruntime140.dll", "$env:WINDIR\System32\vcruntime140.dll")
+foreach ($p in $vcPaths) { if (Test-Path $p) { $vcMissing = $false; break } }
+if ($vcMissing) {
+    Write-Host "    ⚠️ No se encuentra vcruntime140.dll" -ForegroundColor Yellow
+    Write-Host "    Descargando e instalando VC++ Redistributable..." -ForegroundColor Gray
+    $vcUrl = "https://aka.ms/vs/17/release/vc_redist.x64.exe"
+    $vcTmp = "$env:TEMP\vc_redist.x64.exe"
+    try {
+        [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
+        $wc = New-Object System.Net.WebClient
+        $wc.DownloadFile($vcUrl, $vcTmp)
+        Write-Host "    Instalando..." -ForegroundColor Gray
+        Start-Process -FilePath $vcTmp -ArgumentList "/install", "/quiet", "/norestart" -Wait
+        Write-Host "  ✅ VC++ Redistributable instalado" -ForegroundColor Green
+    } catch {
+        Write-Host "    ⚠️ No se pudo instalar automáticamente." -ForegroundColor Yellow
+        Write-Host "    Descárgalo manualmente: https://aka.ms/vs/17/release/vc_redist.x64.exe" -ForegroundColor Yellow
+    }
+    Remove-Item $vcTmp -Force -ErrorAction SilentlyContinue
+} else {
+    Write-Host "  ✅ VC++ Redistributable presente" -ForegroundColor Green
+}
+
+# 3b. llama-cpp-python (usar .whl local si existe)
 Write-Host "  ⏳ Instalando llama-cpp-python..." -ForegroundColor Yellow
 $llamaOk = $false
 
@@ -134,7 +160,7 @@ if (-not $llamaOk) {
     Write-Host "    La app funciona igual con respuestas limitadas." -ForegroundColor Yellow
 }
 
-# 3b. Dependencias secundarias
+# 3c. Dependencias secundarias
 Write-Host "  ⏳ Instalando Pillow, pyttsx3, pywin32..." -ForegroundColor Yellow
 & $venvPython -m pip install --quiet Pillow pyttsx3 pywin32
 if ($LASTEXITCODE -eq 0) {

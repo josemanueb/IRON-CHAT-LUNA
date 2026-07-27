@@ -716,6 +716,9 @@ class ChatbotApp:
         if modelo_ausente:
             self.status_label.config(text=lang.tr("status_offline_long"), fg="#FF6B35")
             self.add_message("system", lang.tr_format("sys_offline_msg", modelo=modelo))
+            load_error = getattr(self.ai, '_load_error', None) if self.ai else None
+            if load_error:
+                self.add_message("system", f"🔍 Detalle: {load_error}")
             model_dir = os.path.join(self.project_dir, "models")
             has_model = os.path.isdir(model_dir) and any(
                 f.endswith(".gguf") and os.path.getsize(os.path.join(model_dir, f)) > 1000000

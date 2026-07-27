@@ -40,6 +40,7 @@ if _platform.system() != "Windows":
 class GPT4AllAI:
     def __init__(self):
         print("Inicializando LUNA - Entrenadora personal...")
+        self._load_error = None
 
         self._memorias = []
         self._memorias_path = os.path.join(_PROJECT_DIR, "memorias.json")
@@ -49,7 +50,8 @@ class GPT4AllAI:
         self.is_offline = False
 
         if not self.model_path or not os.path.exists(self.model_path):
-            print("⚠️ Modelo no encontrado.")
+            self._load_error = "No se encontró archivo .gguf en la carpeta models/"
+            print("⚠️ " + self._load_error)
             print("⚠️ Modo OFFLINE activado — respuestas basadas en reglas")
             self.is_offline = True
             return
@@ -58,8 +60,9 @@ class GPT4AllAI:
 
         try:
             from llama_cpp import Llama
-        except ImportError:
-            print("⚠️ llama_cpp no instalado. Ejecutá: pip install llama-cpp-python")
+        except ImportError as e:
+            self._load_error = f"llama_cpp no instalado: {e}"
+            print("⚠️ " + self._load_error)
             print("⚠️ Modo OFFLINE activado — respuestas basadas en reglas")
             self.is_offline = True
             return
@@ -78,6 +81,7 @@ class GPT4AllAI:
             )
             print("Modelo cargado correctamente")
         except Exception as e:
+            self._load_error = str(e)
             print(f"⚠️ Error cargando modelo: {e}")
             print("⚠️ Modo OFFLINE activado")
             self.is_offline = True
