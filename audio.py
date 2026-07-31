@@ -40,7 +40,7 @@ class Audio:
             return
         if _system == "Windows":
             import winsound
-            winsound.PlaySound(path, winsound.SND_ASYNC)
+            winsound.PlaySound(path, winsound.SND_FILENAME | winsound.SND_ASYNC)
         else:
             pygame = _get_pygame()
             if pygame:
@@ -88,9 +88,12 @@ class Audio:
                 try:
                     import ctypes
                     winmm = ctypes.windll.winmm
-                    winmm.mciSendStringW('close all', None, 0, 0)
-                    cmd = f'open "{path}" type mpegvideo alias music'
-                    winmm.mciSendStringW(cmd, None, 0, 0)
+                    winmm.mciSendStringW('close music', None, 0, 0)
+                    mci_path = path.replace("\\", "/")
+                    cmd = f'open "{mci_path}" type mpegvideo alias music'
+                    if winmm.mciSendStringW(cmd, None, 0, 0) != 0:
+                        Audio._music_process = None
+                        return
                     vol = int(Audio._music_volume * 1000)
                     winmm.mciSendStringW(f'setaudio music volume to {vol}', None, 0, 0)
                     if loop:
@@ -123,7 +126,7 @@ class Audio:
             elif Audio._music_process == "winsound":
                 try:
                     import winsound
-                    winsound.PlaySound(None, winsound.SND_PURGE)
+                    winsound.PlaySound(None, 0)
                 except Exception:
                     pass
             Audio._music_process = None

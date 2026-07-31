@@ -99,6 +99,7 @@ def check_packages(auto_install=False):
         pkgs.append(("pygame", "pygame"))
     elif platform.system() == "Windows":
         pkgs.append(("pyttsx3", "pyttsx3"))
+        pkgs.append(("pywin32", "pythoncom"))
 
     all_ok = True
     for name, imp in pkgs:
@@ -147,7 +148,10 @@ def check_venv():
         else:
             print(f"            source {venv_dir}/bin/activate")
     elif not in_venv:
-        log("Podés crear uno con: python3 -m venv venv", True)
+        if platform.system() == "Windows":
+            log("Podés crear uno con: py -m venv venv", True)
+        else:
+            log("Podés crear uno con: python3 -m venv venv", True)
     return in_venv
 
 

@@ -6,8 +6,9 @@ llama-cpp-python>=0.2.0
 Pillow>=9.0.0
 ttkbootstrap>=1.10.0
 
-# Audio
-pygame>=2.1.0
+# Audio (Linux)
+pygame>=2.1.0; sys_platform != "win32"
 
-# TTS (Windows)
+# TTS (Windows) - pywin32 provee pythoncom para pyttsx3
 pyttsx3>=2.90
+pywin32>=305; sys_platform == "win32"

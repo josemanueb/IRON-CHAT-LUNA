@@ -12,6 +12,17 @@ import subprocess
 import sys as _sys
 import urllib.request
 import concurrent.futures
+
+# pythonw.exe y PyInstaller --windowed no tienen consola (sys.stdout/stderr = None).
+# Sin esto, print() lanza AttributeError y la app inicia en modo offline.
+if _sys.stdout is None:
+    _sys.stdout = open(os.devnull, "w", encoding="utf-8", errors="replace")
+if _sys.stderr is None:
+    _sys.stderr = open(os.devnull, "w", encoding="utf-8", errors="replace")
+try:
+    _sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+except Exception:
+    pass
 from audio import Audio
 from PIL import Image, ImageTk
 from ai_module import GPT4AllAI
@@ -44,7 +55,8 @@ try:
         filename=log_path,
         level=logging.INFO,
         format="%(asctime)s - %(levelname)s - %(message)s",
-        datefmt="%H:%M:%S"
+        datefmt="%H:%M:%S",
+        encoding="utf-8"
     )
 except Exception:
     print("⚠ No se pudo crear iron_chat.log, se usará salida estándar")
@@ -1007,23 +1019,26 @@ class ChatbotApp:
             lnk_path = os.path.join(desktop, f"{nombre}.lnk")
             bat_path = os.path.join(desktop, f"{nombre}.bat")
 
-            # .lnk via VBS (funciona sin win32com)
+            # .lnk via VBS (funciona sin win32com) - UTF-16 LE para rutas con acentos
             vbs = os.path.join(self.project_dir, "_crear_lnk_tmp.vbs")
             icono = icon_ico if os.path.exists(icon_ico) else target_exe
-            with open(vbs, "w", encoding="mbcs") as f:
-                f.write(
-                    'Set o = WScript.CreateObject("WScript.Shell")\n'
-                    f'Set s = o.CreateShortcut("{lnk_path}")\n'
-                    f's.TargetPath = "{target_exe}"\n'
-                    f's.Arguments = "{main_py}"\n'
-                    f's.WorkingDirectory = "{self.project_dir}"\n'
-                    f's.IconLocation = "{icono}"\n'
-                    f's.WindowStyle = 7\n'
-                    f's.Description = "{nombre}"\n'
-                    f's.Save\n'
-                )
+            script_vbs = (
+                'Set o = WScript.CreateObject("WScript.Shell")\n'
+                f'Set s = o.CreateShortcut("{lnk_path}")\n'
+                f's.TargetPath = "{target_exe}"\n'
+                f's.Arguments = "{main_py}"\n'
+                f's.WorkingDirectory = "{self.project_dir}"\n'
+                f's.IconLocation = "{icono}"\n'
+                f's.WindowStyle = 1\n'
+                f's.Description = "{nombre}"\n'
+                f's.Save\n'
+            )
             try:
-                subprocess.run(["cscript", "/nologo", vbs], capture_output=True, timeout=15)
+                with open(vbs, "w", encoding="utf-16") as f:
+                    f.write(script_vbs)
+                subprocess.run(["cscript", "/nologo", vbs], capture_output=True,
+                               timeout=15,
+                               creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
             except Exception:
                 pass
             finally:
@@ -1032,9 +1047,9 @@ class ChatbotApp:
                 except Exception:
                     pass
 
-            # .bat de respaldo
-            with open(bat_path, "w", encoding="mbcs") as f:
-                f.write(f'@echo off\nstart "" /B "{target_exe}" "{main_py}"\nexit\n')
+            # .bat de respaldo (chcp 65001 para rutas UTF-8 con acentos)
+            with open(bat_path, "w", encoding="utf-8") as f:
+                f.write(f'@echo off\nchcp 65001 >nul\nstart "" /B "{target_exe}" "{main_py}"\nexit\n')
 
             self.add_message("system", "🖥️ Acceso directo creado en el escritorio (.lnk + .bat)")
         else:

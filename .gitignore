@@ -18,6 +18,7 @@ models/
 *.gguf
 run.bat
 vc_redist.*
+vcruntime140*.dll
 backup-*/
 .DS_Store
 Thumbs.db

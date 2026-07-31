@@ -291,14 +291,16 @@ def main():
         """Verifica si el runtime VC++ está instalado en Windows"""
         if platform.system() != "Windows":
             return True
-        # Buscar vcruntime140.dll en rutas típicas
+        # Buscar vcruntime140.dll y vcruntime140_1.dll (ambos los necesita llama-cpp)
         for root in [os.environ.get("SystemRoot", "C:\\Windows"),
                      os.environ.get("WINDIR", "C:\\Windows")]:
-            path = os.path.join(root, "System32", "vcruntime140.dll")
-            if os.path.exists(path):
+            sys32 = os.path.join(root, "System32")
+            if os.path.exists(os.path.join(sys32, "vcruntime140.dll")) and \
+               os.path.exists(os.path.join(sys32, "vcruntime140_1.dll")):
                 return True
         # También buscar en el directorio del proyecto (extracción directa)
-        if os.path.exists(os.path.join(SCRIPT_DIR, "vcruntime140.dll")):
+        if os.path.exists(os.path.join(SCRIPT_DIR, "vcruntime140.dll")) and \
+           os.path.exists(os.path.join(SCRIPT_DIR, "vcruntime140_1.dll")):
             return True
         return False
 
@@ -310,17 +312,18 @@ def main():
         try:
             urllib.request.urlretrieve(url, tmp)
             # Paso 1: intentar instalación silenciosa
+            # 3010 = OK, requiere reinicio; 1638 = ya hay versión más nueva
             print("     🛠️ Instalando...")
             result = subprocess.run([tmp, "/install", "/quiet", "/norestart"],
                                     timeout=120, capture_output=True)
-            if result.returncode == 0:
+            if result.returncode in (0, 3010, 1638):
                 os.unlink(tmp)
                 return _check_vcredist()
             # Paso 2: fallback con interfaz
             print("     ⚠️ Modo silencioso falló, intentando con interfaz...")
             result = subprocess.run([tmp, "/install", "/passive", "/norestart"],
                                     timeout=120)
-            if result.returncode == 0:
+            if result.returncode in (0, 3010, 1638):
                 os.unlink(tmp)
                 return _check_vcredist()
             # Paso 3: extraer DLL directo del instalador
@@ -334,6 +337,11 @@ def main():
                 dest = os.path.join(SCRIPT_DIR, "vcruntime140.dll")
                 shutil.copy2(dll_path, dest)
                 print(f"     ✅ vcruntime140.dll extraído a: {dest}")
+                dll1_path = _find_vcruntime1(extract_dir)
+                if dll1_path:
+                    dest1 = os.path.join(SCRIPT_DIR, "vcruntime140_1.dll")
+                    shutil.copy2(dll1_path, dest1)
+                    print(f"     ✅ vcruntime140_1.dll extraído a: {dest1}")
                 # Agregar directorio actual al PATH del proceso
                 os.environ["PATH"] = SCRIPT_DIR + os.pathsep + os.environ.get("PATH", "")
                 shutil.rmtree(extract_dir, ignore_errors=True)
@@ -347,6 +355,14 @@ def main():
             if os.path.exists(tmp):
                 os.unlink(tmp)
             return False
+
+    def _find_vcruntime1(search_dir):
+        """Busca vcruntime140_1.dll recursivamente en un directorio"""
+        for root, dirs, files in os.walk(search_dir):
+            for f in files:
+                if f.lower() == "vcruntime140_1.dll":
+                    return os.path.join(root, f)
+        return None
 
     def _find_vcruntime(search_dir):
         """Busca vcruntime140.dll recursivamente en un directorio"""

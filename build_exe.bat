@@ -1,23 +1,24 @@
 @echo off
+setlocal EnableDelayedExpansion
 title IRON CHAT - LUNA Builder (EXE)
 cd /d "%~dp0"
 
-echo ╔══════════════════════════════════════╗
-echo ║   CONSTRUIR EJECUTABLE (.exe)        ║
-echo ║   IRON CHAT - LUNA v2.2              ║
-echo ╚══════════════════════════════════════╝
+echo ==================================
+echo   CONSTRUIR EJECUTABLE (.exe)
+echo   IRON CHAT - LUNA v2.2
+echo ==================================
 echo.
 
 :: Buscar Python
 set PYTHON=
 where py >nul 2>nul
-if %errorlevel% equ 0 set PYTHON=py
+if !errorlevel! equ 0 set PYTHON=py
 if not defined PYTHON (
     where python >nul 2>nul
-    if %errorlevel% equ 0 set PYTHON=python
+    if !errorlevel! equ 0 set PYTHON=python
 )
 if not defined PYTHON (
-    echo ❌ Python no encontrado.
+    echo [ERROR] Python no encontrado.
     pause
     exit /b 1
 )
@@ -26,13 +27,13 @@ if not defined PYTHON (
 %PYTHON% -m pip install pyinstaller --quiet 2>nul
 
 :: Construir el .exe
-echo ⏳ Construyendo ejecutable (puede tardar varios minutos)...
+echo Construyendo ejecutable (puede tardar varios minutos)...
 echo.
-%PYTHON% -m PyInstaller --onefile --windowed --icon=robot-icon.ico --name "IRON-CHAT-LUNA" --add-data "robot-icon.png;." --add-data "robot.jpeg;." --add-data "gymp.jpeg;." --add-data "iniciodesesion.wav;." --add-data "icon-jmb.png;." --add-data "rutinas.json;." --add-data "SIGNATURE.md;." main.py
+%PYTHON% -m PyInstaller --onefile --windowed --icon=robot-icon.ico --name "IRON-CHAT-LUNA" --add-data "robot-icon.png;." --add-data "robot-icon.ico;." --add-data "robot.jpeg;." --add-data "gymp.jpeg;." --add-data "iniciodesesion.wav;." --add-data "icon-jmb.png;." --add-data "rutinas.json;." --add-data "SIGNATURE.md;." --hidden-import pyttsx3.drivers.sapi5 --collect-submodules pyttsx3 main.py
 
 if exist "dist\IRON-CHAT-LUNA.exe" (
     echo.
-    echo ✅ Ejecutable creado: dist\IRON-CHAT-LUNA.exe
+    echo OK Ejecutable creado: dist\IRON-CHAT-LUNA.exe
     echo.
     echo NOTA: Windows mostrara la misma advertencia de seguridad
     echo porque el .exe no tiene firma digital.
@@ -40,7 +41,8 @@ if exist "dist\IRON-CHAT-LUNA.exe" (
     echo.
 ) else (
     echo.
-    echo ❌ Error al construir el ejecutable.
+    echo [ERROR] Error al construir el ejecutable.
 )
 
+endlocal
 pause

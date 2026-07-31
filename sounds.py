@@ -78,7 +78,7 @@ class Sounds:
                 import platform
                 if platform.system() == "Windows":
                     import winsound
-                    winsound.PlaySound(wav_data, winsound.SND_ASYNC | winsound.SND_MEMORY)
+                    winsound.PlaySound(wav_data, winsound.SND_MEMORY)
                 else:
                     pg = _get_pygame()
                     if pg:
