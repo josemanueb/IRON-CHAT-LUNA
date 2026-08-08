@@ -132,6 +132,32 @@ if ($vcMissing) {
 Write-Host "  Instalando llama-cpp-python..." -ForegroundColor Yellow
 $llamaOk = $false
 
+# Detectar soporte AVX de la CPU (los wheels precompilados lo requieren)
+function Test-CpuHasAvx {
+    try {
+        $src = @"
+using System;
+using System.Runtime.InteropServices;
+public static class CpuInfo {
+    [DllImport("kernel32.dll")]
+    public static extern bool GetIsProcessorFeaturePresent(int feature);
+    public static bool HasAvx() { return GetIsProcessorFeaturePresent(39); }
+    public static bool HasAvx2() { return GetIsProcessorFeaturePresent(40); }
+}
+"@
+        Add-Type -TypeDefinition $src -ErrorAction Stop
+        return ([CpuInfo]::HasAvx() -and [CpuInfo]::HasAvx2())
+    } catch {
+        return $false  # si no podemos detectarlo, asumimos que NO tiene AVX2
+    }
+}
+$hasAvx = Test-CpuHasAvx
+if ($hasAvx) {
+    Write-Host "    CPU compatible con AVX2: se usan wheels precompilados" -ForegroundColor Gray
+} else {
+    Write-Host "    CPU SIN AVX2: se compilara llama-cpp-python sin AVX" -ForegroundColor Yellow
+}
+
 # Buscar cualquier .whl local de llama_cpp en el directorio del proyecto
 $whlFile = Get-ChildItem "$SCRIPT_DIR\*.whl" -ErrorAction SilentlyContinue | Where-Object { $_.Name -match 'llama' } | Select-Object -First 1
 if ($whlFile) {
@@ -145,19 +171,83 @@ if ($whlFile) {
     }
 }
 
+# Comprobar que el wheel instalado realmente funcione (sin SIGILL)
+function Test-LlamaCppImport {
+    & $venvPython -c "import llama_cpp" 2>&1 | Out-Null
+    return $LASTEXITCODE -eq 0
+}
+
+# Compilar desde fuente SIN AVX (para CPUs antiguas) usando w64devkit
+function Install-LlamaNoAvx {
+    Write-Host "    Compilando llama-cpp-python SIN AVX (puede tardar varios minutos)..." -ForegroundColor Yellow
+    $toolVer = "2.8.0"
+    $toolDir = "$env:LOCALAPPDATA\w64devkit"
+    $gccPath = "$toolDir\bin\gcc.exe"
+    if (-not (Test-Path "$toolDir\bin\gcc.exe")) {
+        $url = "https://github.com/skeeto/w64devkit/releases/download/v$toolVer/w64devkit-x64-$toolVer.7z.exe"
+        $tmp = "$env:TEMP\w64devkit-$toolVer.7z.exe"
+        Write-Host "      Descargando w64devkit $toolVer (compilador portable)..." -ForegroundColor Gray
+        try {
+            [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
+            $wc = New-Object System.Net.WebClient
+            $wc.DownloadFile($url, $tmp)
+            Write-Host "      Extrayendo..." -ForegroundColor Gray
+            if (Test-Path $toolDir) { Remove-Item $toolDir -Recurse -Force -ErrorAction SilentlyContinue }
+            New-Item -ItemType Directory -Path $toolDir -Force | Out-Null
+            & $tmp -y "-o$toolDir" | Out-Null
+            Remove-Item $tmp -Force -ErrorAction SilentlyContinue
+        } catch {
+            Write-Host "      ERROR descargando w64devkit: $($_.Exception.Message)" -ForegroundColor Red
+            return $false
+        }
+    }
+    $gccPath = Get-ChildItem "$toolDir" -Recurse -Filter "gcc.exe" -ErrorAction SilentlyContinue | Where-Object { $_.FullName -match '\\bin\\gcc\.exe$' } | Select-Object -First 1
+    if (-not $gccPath) {
+        Write-Host "      ERROR no se encontro gcc.exe en w64devkit" -ForegroundColor Red
+        return $false
+    }
+    $w64bin = Split-Path -Parent $gccPath.FullName
+    $env:PATH = "$w64bin;$env:PATH"
+    $env:CMAKE_ARGS = "-DGGML_NATIVE=OFF -DGGML_AVX=OFF -DGGML_AVX2=OFF -DGGML_BMI2=OFF -DGGML_FMA=OFF -DGGML_F16C=OFF"
+    Write-Host "      Instalando cmake y ninja..." -ForegroundColor Gray
+    & $venvPython -m pip install --quiet cmake ninja
+    if ($LASTEXITCODE -ne 0) { Write-Host "      ERROR instalando cmake/ninja" -ForegroundColor Red; return $false }
+    Write-Host "      Compilando (sin AVX)... esto puede tardar 5-15 minutos" -ForegroundColor Gray
+    & $venvPython -m pip install --no-cache-dir llama-cpp-python --no-binary :all:
+    if ($LASTEXITCODE -ne 0) { return $false }
+    Remove-Item Env:CMAKE_ARGS -ErrorAction SilentlyContinue
+    return (Test-LlamaCppImport)
+}
+
 if (-not $llamaOk) {
-    # Intentar desde internet (args como array para que pip los reciba separados)
-    $methods = @(
-        @("PyPI (solo binario)", @("--only-binary", ":all:", "llama-cpp-python")),
-        @("abetlen.github.io", @("--only-binary", ":all:", "--extra-index-url", "https://abetlen.github.io/llama-cpp-python/whl/cpu", "llama-cpp-python"))
-    )
-    foreach ($m in $methods) {
-        Write-Host "    Intentando $($m[0])..." -ForegroundColor Gray
-        & $venvPython -m pip install @($m[1])
-        if ($LASTEXITCODE -eq 0) {
+    if (-not $hasAvx) {
+        # CPU sin AVX2: compilar directamente SIN AVX (los wheels precompilados crashearian con SIGILL)
+        if (Install-LlamaNoAvx) {
             $llamaOk = $true
-            Write-Host "  OK llama-cpp-python instalado" -ForegroundColor Green
-            break
+            Write-Host "  OK llama-cpp-python compilado SIN AVX" -ForegroundColor Green
+        }
+    } else {
+        # CPU con AVX2: intentar wheels precompilados desde internet
+        $methods = @(
+            @("PyPI (solo binario)", @("--only-binary", ":all:", "llama-cpp-python")),
+            @("abetlen.github.io", @("--only-binary", ":all:", "--extra-index-url", "https://abetlen.github.io/llama-cpp-python/whl/cpu", "llama-cpp-python"))
+        )
+        foreach ($m in $methods) {
+            Write-Host "    Intentando $($m[0])..." -ForegroundColor Gray
+            & $venvPython -m pip install @($m[1])
+            if ($LASTEXITCODE -eq 0) {
+                $llamaOk = $true
+                Write-Host "  OK llama-cpp-python instalado" -ForegroundColor Green
+                break
+            }
+        }
+        if (-not $llamaOk -and -not (Test-LlamaCppImport)) {
+            # El wheel precompilado pudo instalarse pero requerir AVX2; compilar sin AVX como respaldo
+            Write-Host "    Wheel precompilado no compatible, compilando SIN AVX..." -ForegroundColor Yellow
+            if (Install-LlamaNoAvx) {
+                $llamaOk = $true
+                Write-Host "  OK llama-cpp-python compilado SIN AVX (respaldo)" -ForegroundColor Green
+            }
         }
     }
 }

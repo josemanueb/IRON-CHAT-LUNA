@@ -12,6 +12,7 @@ import subprocess
 import urllib.request
 import platform
 import shutil
+import tempfile
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 
@@ -414,6 +415,64 @@ def main():
                     os.unlink(tmp)
         return None
 
+    def _cpu_has_avx2():
+        """Detecta soporte AVX2 de la CPU (necesario para los wheels precompilados)."""
+        try:
+            import ctypes
+            if platform.system() == "Windows":
+                libc = ctypes.windll.kernel32
+                # PF_AVX2_INSTRUCTIONS_AVAILABLE = 40
+                return bool(libc.GetIsProcessorFeaturePresent(40))
+            with open("/proc/cpuinfo") as f:
+                for line in f:
+                    if line.startswith("flags") and "avx2" in line:
+                        return True
+            return False
+        except Exception:
+            return False
+
+    def _install_w64devkit():
+        """Descarga y extrae w64devkit (toolchain MinGW portable) para compilar sin AVX."""
+        tool_ver = "2.8.0"
+        tool_dir = os.path.join(os.environ.get("LOCALAPPDATA", os.path.expanduser("~")), "w64devkit")
+        gcc = os.path.join(tool_dir, "bin", "gcc.exe")
+        if os.path.exists(gcc):
+            return tool_dir
+        exe = os.path.join(tempfile.gettempdir(), f"w64devkit-x64-{tool_ver}.7z.exe")
+        url = (f"https://github.com/skeeto/w64devkit/releases/download/"
+               f"v{tool_ver}/w64devkit-x64-{tool_ver}.7z.exe")
+        print(f"     ⬇️ Descargando w64devkit {tool_ver} (compilador portable)...")
+        try:
+            urllib.request.urlretrieve(url, exe)
+            os.makedirs(tool_dir, exist_ok=True)
+            print("     🛠️ Extrayendo...")
+            subprocess.run([exe, "-y", f"-o{tool_dir}"], timeout=120, capture_output=True)
+            os.unlink(exe)
+        except Exception as e:
+            print(f"     ⚠️ Error con w64devkit: {e}")
+            if os.path.exists(exe):
+                os.unlink(exe)
+            return None
+        for root, dirs, files in os.walk(tool_dir):
+            if os.path.exists(os.path.join(root, "bin", "gcc.exe")):
+                return root
+        return None
+
+    def _build_llama_no_avx():
+        """Compila llama-cpp-python desde fuente SIN AVX (para CPUs antiguas)."""
+        tool_dir = _install_w64devkit()
+        if not tool_dir:
+            print("     ⚠️ No se pudo obtener el toolchain de compilacion.")
+            return False
+        bin_dir = os.path.join(tool_dir, "bin")
+        os.environ["PATH"] = bin_dir + os.pathsep + os.environ.get("PATH", "")
+        os.environ["CMAKE_ARGS"] = ("-DGGML_NATIVE=OFF -DGGML_AVX=OFF -DGGML_AVX2=OFF "
+                                    "-DGGML_BMI2=OFF -DGGML_FMA=OFF -DGGML_F16C=OFF")
+        print("     ⚠️ Compilando desde fuente SIN AVX (puede tardar 5-15 min)...")
+        ok = _pip_llama(["install", "--no-cache-dir", "llama-cpp-python", "--no-binary", ":all:"])
+        os.environ.pop("CMAKE_ARGS", None)
+        return ok
+
     def _install_llama():
         print("  ⏳ Instalando llama-cpp-python...")
 
@@ -429,25 +488,37 @@ def main():
                     print("     https://aka.ms/vs/17/release/vc_redist.x64.exe")
                     input("     Presiona Enter después de instalarlo...")
 
-            # Paso 2: instalar solo con wheels (NUNCA compilar)
-            print("     Buscando wheel pre-compilado en PyPI...")
-            if _pip_llama(["install", "llama-cpp-python", "--only-binary", ":all:"]):
-                return True
-            print("     Buscando en abetlen.github.io...")
-            if _pip_llama(["install", "llama-cpp-python", "--only-binary", ":all:",
-                           "--extra-index-url", "https://abetlen.github.io/llama-cpp-python/whl/cpu"]):
-                return True
-            # Paso 3: descargar el .whl directamente
-            print("     Descargando wheel directamente...")
-            whl = _download_wheel_direct()
-            if whl:
-                if _pip_llama(["install", whl]):
-                    os.unlink(whl)
+            # Paso 2: detectar AVX2. Sin AVX2 los wheels precompilados crashean (SIGILL).
+            has_avx2 = _cpu_has_avx2()
+            if has_avx2:
+                print("     Buscando wheel pre-compilado en PyPI...")
+                if _pip_llama(["install", "llama-cpp-python", "--only-binary", ":all:"]):
                     return True
-                try:
-                    os.unlink(whl)
-                except Exception:
-                    pass
+                print("     Buscando en abetlen.github.io...")
+                if _pip_llama(["install", "llama-cpp-python", "--only-binary", ":all:",
+                               "--extra-index-url", "https://abetlen.github.io/llama-cpp-python/whl/cpu"]):
+                    return True
+                # Paso 3: descargar el .whl directamente
+                print("     Descargando wheel directamente...")
+                whl = _download_wheel_direct()
+                if whl:
+                    if _pip_llama(["install", whl]):
+                        os.unlink(whl)
+                        return True
+                    try:
+                        os.unlink(whl)
+                    except Exception:
+                        pass
+            else:
+                print("     CPU SIN AVX2: los wheels precompilados no son compatibles.")
+                if _build_llama_no_avx():
+                    return True
+                print("     ⚠️ Compilacion sin AVX fallida, intentando wheels por si acaso...")
+                if _pip_llama(["install", "llama-cpp-python", "--only-binary", ":all:"]):
+                    return True
+                if _pip_llama(["install", "llama-cpp-python", "--only-binary", ":all:",
+                               "--extra-index-url", "https://abetlen.github.io/llama-cpp-python/whl/cpu"]):
+                    return True
             return False
 
         # Linux: puede compilar si no hay wheel

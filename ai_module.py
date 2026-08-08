@@ -3,7 +3,6 @@ import sys
 import random
 import signal
 import json
-import platform as _platform
 from ascii_art import ASCIIArt
 
 def _project_dir():
@@ -30,11 +29,10 @@ def _sigill_handler(signum, frame):
     raise RuntimeError("SIGILL: instrucción no soportada por la CPU (probablemente AVX/AVX2 requerido)")
 
 
-if _platform.system() != "Windows":
-    try:
-        signal.signal(signal.SIGILL, _sigill_handler)
-    except Exception:
-        pass
+try:
+    signal.signal(signal.SIGILL, _sigill_handler)
+except Exception:
+    pass
 
 
 class GPT4AllAI:
