@@ -15,37 +15,32 @@ Write-Host "======================================" -ForegroundColor Cyan
 Write-Host ""
 Write-Host "Directorio: $SCRIPT_DIR" -ForegroundColor Cyan
 
-# === 1. DETECTAR O DESCARGAR PYTHON ===
+# === 1. DETECTAR O DESCARGAR PYTHON (portable 3.12.5) ===
 Write-Host ""
 Write-Host "Detectando Python..." -ForegroundColor Cyan
 $portableDir = "$SCRIPT_DIR\portable_python"
 $pythonExe = $null
 
-# Si ya hay venv, usarlo directamente
-if (Test-Path "$SCRIPT_DIR\venv\Scripts\python.exe") {
-    $pythonExe = "$SCRIPT_DIR\venv\Scripts\python.exe"
-    Write-Host "  OK Entorno virtual ya existe" -ForegroundColor Green
-} else {
-    # Buscar Python del sistema
-    foreach ($cmd in @("py", "python", "python3")) {
-        try {
-            $v = & $cmd --version 2>&1
-            if ($LASTEXITCODE -eq 0 -and $v -match 'Python 3\.(1[0-9]|[2-9][0-9])') {
-                $pythonExe = (Get-Command $cmd).Source
-                Write-Host "  OK Python del sistema: $($v.Trim())" -ForegroundColor Green
-                break
-            }
-        } catch {}
+# Si ya hay venv, comprobar que su Python sea 3.12.x (version probada con llama-cpp-python)
+$venvPy = "$SCRIPT_DIR\venv\Scripts\python.exe"
+if (Test-Path $venvPy) {
+    $venvVer = (& $venvPy -c "import sys; print(sys.version_info[:2])" 2>$null)
+    if ($venvVer -eq "(3, 12)") {
+        $pythonExe = $venvPy
+        Write-Host "  OK Entorno virtual ya existe (Python 3.12)" -ForegroundColor Green
+    } else {
+        Write-Host "  AVISO El venv existente usa Python $venvVer (se requiere 3.12)." -ForegroundColor Yellow
+        Write-Host "  Se eliminara y se recreara con Python portable 3.12.5." -ForegroundColor Yellow
+        Remove-Item "$SCRIPT_DIR\venv" -Recurse -Force -ErrorAction SilentlyContinue
     }
+}
 
-    # Buscar Python portable ya instalado
-    if (-not $pythonExe -and (Test-Path "$portableDir\python.exe")) {
+# Preferir Python portable 3.12.5 (el probado); el del sistema 3.12 queda como respaldo
+if (-not $pythonExe) {
+    if (Test-Path "$portableDir\python.exe") {
         $pythonExe = "$portableDir\python.exe"
-        Write-Host "  OK Python portable encontrado" -ForegroundColor Green
-    }
-
-    # Descargar instalador completo de Python (tiene venv, pip y tkinter)
-    if (-not $pythonExe) {
+        Write-Host "  OK Python portable 3.12.5 encontrado" -ForegroundColor Green
+    } else {
         Write-Host "  Bajando instalador completo de Python $PYTHON_VERSION..." -ForegroundColor Yellow
         $installer = "$env:TEMP\python-installer.exe"
         try {
@@ -60,19 +55,33 @@ if (Test-Path "$SCRIPT_DIR\venv\Scripts\python.exe") {
                 Write-Host "  OK Python portable listo" -ForegroundColor Green
             } else {
                 Write-Host "  ERROR No se pudo instalar Python portable (codigo: $($p.ExitCode))" -ForegroundColor Red
-                Write-Host "  Descarga Python manual desde: https://www.python.org/downloads/" -ForegroundColor Yellow
+                Write-Host "  Descarga Python 3.12 manual desde: https://www.python.org/downloads/" -ForegroundColor Yellow
                 Write-Host "  y vuelve a ejecutar este instalador." -ForegroundColor Yellow
                 pause
                 exit 1
             }
         } catch {
             Write-Host "  ERROR No se pudo descargar Python portable" -ForegroundColor Red
-            Write-Host "  Descarga Python manual desde: https://www.python.org/downloads/" -ForegroundColor Yellow
+            Write-Host "  Descarga Python 3.12 manual desde: https://www.python.org/downloads/" -ForegroundColor Yellow
             Write-Host "  y vuelve a ejecutar este instalador." -ForegroundColor Yellow
             pause
             exit 1
         }
         Remove-Item $installer -Force -ErrorAction SilentlyContinue
+    }
+}
+
+# Respaldo: Python del sistema SOLO si es 3.12.x
+if (-not $pythonExe) {
+    foreach ($cmd in @("py", "python", "python3")) {
+        try {
+            $v = & $cmd --version 2>&1
+            if ($LASTEXITCODE -eq 0 -and $v -match 'Python 3\.12') {
+                $pythonExe = (Get-Command $cmd).Source
+                Write-Host "  OK Python del sistema: $($v.Trim())" -ForegroundColor Green
+                break
+            }
+        } catch {}
     }
 }
 
@@ -209,15 +218,26 @@ function Install-LlamaNoAvx {
     }
     $w64bin = Split-Path -Parent $gccPath.FullName
     $env:PATH = "$w64bin;$env:PATH"
-    $env:CMAKE_ARGS = "-DGGML_NATIVE=OFF -DGGML_AVX=OFF -DGGML_AVX2=OFF -DGGML_BMI2=OFF -DGGML_FMA=OFF -DGGML_F16C=OFF"
+    # Generador MinGW y compiladores explícitos (documentado en llama-cpp-python para Windows)
+    $env:CMAKE_GENERATOR = "MinGW Makefiles"
+    $gccForCmake = $gccPath.FullName -replace '\\', '/'
+    $gppPath = Join-Path $w64bin "g++.exe"
+    $gppForCmake = $gppPath -replace '\\', '/'
+    $env:CMAKE_ARGS = "-DGGML_NATIVE=OFF -DGGML_AVX=OFF -DGGML_AVX2=OFF -DGGML_BMI2=OFF -DGGML_FMA=OFF -DGGML_F16C=OFF -DCMAKE_C_COMPILER=$gccForCmake -DCMAKE_CXX_COMPILER=$gppForCmake"
     Write-Host "      Instalando cmake y ninja..." -ForegroundColor Gray
     & $venvPython -m pip install --quiet cmake ninja
     if ($LASTEXITCODE -ne 0) { Write-Host "      ERROR instalando cmake/ninja" -ForegroundColor Red; return $false }
     Write-Host "      Compilando (sin AVX)... esto puede tardar 5-15 minutos" -ForegroundColor Gray
     # NOTA: --no-binary llama-cpp-python (NO :all:) para no forzar a compilar cmake/ninja desde fuente
-    & $venvPython -m pip install --no-cache-dir llama-cpp-python --no-binary llama-cpp-python
-    if ($LASTEXITCODE -ne 0) { return $false }
+    $logFile = "$SCRIPT_DIR\llama_install.log"
+    & $venvPython -m pip install --no-cache-dir llama-cpp-python --no-binary llama-cpp-python *> $logFile
+    if ($LASTEXITCODE -ne 0) {
+        Write-Host "      ERROR compilando llama-cpp-python. Ultimas lineas del log:" -ForegroundColor Red
+        Get-Content $logFile -Tail 30 | ForEach-Object { Write-Host "        $_" -ForegroundColor Gray }
+        return $false
+    }
     Remove-Item Env:CMAKE_ARGS -ErrorAction SilentlyContinue
+    Remove-Item Env:CMAKE_GENERATOR -ErrorAction SilentlyContinue
     return (Test-LlamaCppImport)
 }
 

@@ -272,11 +272,30 @@ def main():
     # === 2. ENTORNO VIRTUAL ===
     section("🔧 Entorno virtual")
     venv_dir = os.path.join(SCRIPT_DIR, "venv")
+    venv_py = os.path.join(venv_dir, "Scripts", "python.exe") if platform.system() == "Windows" else os.path.join(venv_dir, "bin", "python")
+    # En Windows preferir el Python portable 3.12.5 para crear el venv
+    base_python = sys.executable
+    if platform.system() == "Windows":
+        portable_py = os.path.join(SCRIPT_DIR, "portable_python", "python.exe")
+        if os.path.exists(portable_py):
+            base_python = portable_py
+    if os.path.exists(venv_py):
+        # Si el venv ya existe, comprobar su version de Python (debe ser 3.12.x)
+        try:
+            r = subprocess.run([venv_py, "-c", "import sys; print(sys.version_info[:2])"],
+                               capture_output=True, text=True, timeout=30)
+            ver = r.stdout.strip()
+            if ver != "(3, 12)":
+                log(f"El venv usa Python {ver}, se requiere 3.12. Recreando...", False)
+                shutil.rmtree(venv_dir, ignore_errors=True)
+            else:
+                log("Entorno virtual ya existe")
+        except Exception:
+            log("No se pudo verificar la version del venv. Recreando...", False)
+            shutil.rmtree(venv_dir, ignore_errors=True)
     if not os.path.exists(venv_dir):
-        subprocess.run([sys.executable, "-m", "venv", venv_dir], check=True)
+        subprocess.run([base_python, "-m", "venv", venv_dir], check=True)
         log("Entorno virtual creado")
-    else:
-        log("Entorno virtual ya existe")
 
     # === 3. DEPENDENCIAS ===
     section("📦 Dependencias Python")
@@ -471,12 +490,35 @@ def main():
             return False
         bin_dir = os.path.join(tool_dir, "bin")
         os.environ["PATH"] = bin_dir + os.pathsep + os.environ.get("PATH", "")
-        os.environ["CMAKE_ARGS"] = ("-DGGML_NATIVE=OFF -DGGML_AVX=OFF -DGGML_AVX2=OFF "
-                                    "-DGGML_BMI2=OFF -DGGML_FMA=OFF -DGGML_F16C=OFF")
+        gcc_exe = os.path.join(bin_dir, "gcc.exe")
+        gpp_exe = os.path.join(bin_dir, "g++.exe")
+        gcc_for_cmake = gcc_exe.replace("\\", "/")
+        gpp_for_cmake = gpp_exe.replace("\\", "/")
+        # Generador MinGW y compiladores explicitos (documentado en llama-cpp-python para Windows)
+        os.environ["CMAKE_GENERATOR"] = "MinGW Makefiles"
+        os.environ["CMAKE_ARGS"] = (f"-DGGML_NATIVE=OFF -DGGML_AVX=OFF -DGGML_AVX2=OFF "
+                                    f"-DGGML_BMI2=OFF -DGGML_FMA=OFF -DGGML_F16C=OFF "
+                                    f"-DCMAKE_C_COMPILER={gcc_for_cmake} "
+                                    f"-DCMAKE_CXX_COMPILER={gpp_for_cmake}")
         print("     ⚠️ Compilando desde fuente SIN AVX (puede tardar 5-15 min)...")
         # NOTA: --no-binary llama-cpp-python (NO :all:) para no forzar a compilar cmake/ninja desde fuente
-        ok = _pip_llama(["install", "--no-cache-dir", "llama-cpp-python", "--no-binary", "llama-cpp-python"])
+        log_path = os.path.join(SCRIPT_DIR, "llama_install.log")
+        with open(log_path, "w", encoding="utf-8") as lf:
+            result = subprocess.run(
+                [pip, "install", "--no-cache-dir", "llama-cpp-python",
+                 "--no-binary", "llama-cpp-python"],
+                stdout=lf, stderr=lf)
+        ok = result.returncode == 0
+        if not ok:
+            print(f"     ❌ Error compilando llama-cpp-python. Ultimas lineas del log:")
+            try:
+                with open(log_path, encoding="utf-8") as lf:
+                    for line in lf.readlines()[-30:]:
+                        print("        " + line.rstrip())
+            except Exception:
+                pass
         os.environ.pop("CMAKE_ARGS", None)
+        os.environ.pop("CMAKE_GENERATOR", None)
         return ok
 
     def _install_llama():
