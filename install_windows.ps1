@@ -182,8 +182,9 @@ function Install-LlamaNoAvx {
     Write-Host "    Compilando llama-cpp-python SIN AVX (puede tardar varios minutos)..." -ForegroundColor Yellow
     $toolVer = "2.8.0"
     $toolDir = "$env:LOCALAPPDATA\w64devkit"
-    $gccPath = "$toolDir\bin\gcc.exe"
-    if (-not (Test-Path "$toolDir\bin\gcc.exe")) {
+    # El archivo extrae dentro de una subcarpeta w64devkit\w64devkit\bin; buscar recursivo
+    $gccPath = Get-ChildItem "$toolDir" -Recurse -Filter "gcc.exe" -ErrorAction SilentlyContinue | Where-Object { $_.FullName -match '\\bin\\gcc\.exe$' } | Select-Object -First 1
+    if (-not $gccPath) {
         $url = "https://github.com/skeeto/w64devkit/releases/download/v$toolVer/w64devkit-x64-$toolVer.7z.exe"
         $tmp = "$env:TEMP\w64devkit-$toolVer.7z.exe"
         Write-Host "      Descargando w64devkit $toolVer (compilador portable)..." -ForegroundColor Gray
@@ -213,7 +214,8 @@ function Install-LlamaNoAvx {
     & $venvPython -m pip install --quiet cmake ninja
     if ($LASTEXITCODE -ne 0) { Write-Host "      ERROR instalando cmake/ninja" -ForegroundColor Red; return $false }
     Write-Host "      Compilando (sin AVX)... esto puede tardar 5-15 minutos" -ForegroundColor Gray
-    & $venvPython -m pip install --no-cache-dir llama-cpp-python --no-binary :all:
+    # NOTA: --no-binary llama-cpp-python (NO :all:) para no forzar a compilar cmake/ninja desde fuente
+    & $venvPython -m pip install --no-cache-dir llama-cpp-python --no-binary llama-cpp-python
     if ($LASTEXITCODE -ne 0) { return $false }
     Remove-Item Env:CMAKE_ARGS -ErrorAction SilentlyContinue
     return (Test-LlamaCppImport)

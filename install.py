@@ -435,9 +435,14 @@ def main():
         """Descarga y extrae w64devkit (toolchain MinGW portable) para compilar sin AVX."""
         tool_ver = "2.8.0"
         tool_dir = os.path.join(os.environ.get("LOCALAPPDATA", os.path.expanduser("~")), "w64devkit")
-        gcc = os.path.join(tool_dir, "bin", "gcc.exe")
-        if os.path.exists(gcc):
-            return tool_dir
+        # El archivo extrae dentro de una subcarpeta w64devkit\w64devkit\bin; buscar recursivo
+        existing = None
+        for root, dirs, files in os.walk(tool_dir):
+            if os.path.exists(os.path.join(root, "bin", "gcc.exe")):
+                existing = root
+                break
+        if existing:
+            return existing
         exe = os.path.join(tempfile.gettempdir(), f"w64devkit-x64-{tool_ver}.7z.exe")
         url = (f"https://github.com/skeeto/w64devkit/releases/download/"
                f"v{tool_ver}/w64devkit-x64-{tool_ver}.7z.exe")
@@ -469,7 +474,8 @@ def main():
         os.environ["CMAKE_ARGS"] = ("-DGGML_NATIVE=OFF -DGGML_AVX=OFF -DGGML_AVX2=OFF "
                                     "-DGGML_BMI2=OFF -DGGML_FMA=OFF -DGGML_F16C=OFF")
         print("     ⚠️ Compilando desde fuente SIN AVX (puede tardar 5-15 min)...")
-        ok = _pip_llama(["install", "--no-cache-dir", "llama-cpp-python", "--no-binary", ":all:"])
+        # NOTA: --no-binary llama-cpp-python (NO :all:) para no forzar a compilar cmake/ninja desde fuente
+        ok = _pip_llama(["install", "--no-cache-dir", "llama-cpp-python", "--no-binary", "llama-cpp-python"])
         os.environ.pop("CMAKE_ARGS", None)
         return ok
 
