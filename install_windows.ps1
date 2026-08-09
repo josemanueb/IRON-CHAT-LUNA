@@ -229,8 +229,15 @@ function Install-LlamaNoAvx {
     if ($LASTEXITCODE -ne 0) { Write-Host "      ERROR instalando cmake/ninja" -ForegroundColor Red; return $false }
     Write-Host "      Compilando (sin AVX)... esto puede tardar 5-15 minutos" -ForegroundColor Gray
     # NOTA: --no-binary llama-cpp-python (NO :all:) para no forzar a compilar cmake/ninja desde fuente
+    # Fijar 0.3.19: las versiones >= 0.3.22 traen rutas >260 chars (web UI de llama.cpp)
+    # que superan MAX_PATH de Windows y rompen la extraccion del sdist (OSError Errno 2).
+    # Temp corto para dar margen adicional a la longitud de rutas.
+    $shortTmp = "C:\pip-tmp"
+    New-Item -ItemType Directory -Path $shortTmp -Force -ErrorAction SilentlyContinue | Out-Null
+    $env:TMP = $shortTmp
+    $env:TEMP = $shortTmp
     $logFile = "$SCRIPT_DIR\llama_install.log"
-    & $venvPython -m pip install --no-cache-dir llama-cpp-python --no-binary llama-cpp-python *> $logFile
+    & $venvPython -m pip install --no-cache-dir llama-cpp-python==0.3.19 --no-binary llama-cpp-python *> $logFile
     if ($LASTEXITCODE -ne 0) {
         Write-Host "      ERROR compilando llama-cpp-python. Ultimas lineas del log:" -ForegroundColor Red
         Get-Content $logFile -Tail 30 | ForEach-Object { Write-Host "        $_" -ForegroundColor Gray }
@@ -238,6 +245,8 @@ function Install-LlamaNoAvx {
     }
     Remove-Item Env:CMAKE_ARGS -ErrorAction SilentlyContinue
     Remove-Item Env:CMAKE_GENERATOR -ErrorAction SilentlyContinue
+    Remove-Item Env:TMP -ErrorAction SilentlyContinue
+    Remove-Item Env:TEMP -ErrorAction SilentlyContinue
     return (Test-LlamaCppImport)
 }
 

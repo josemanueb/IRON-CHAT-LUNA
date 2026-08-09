@@ -502,10 +502,22 @@ def main():
                                     f"-DCMAKE_CXX_COMPILER={gpp_for_cmake}")
         print("     ⚠️ Compilando desde fuente SIN AVX (puede tardar 5-15 min)...")
         # NOTA: --no-binary llama-cpp-python (NO :all:) para no forzar a compilar cmake/ninja desde fuente
+        # Fijar 0.3.19: las versiones >= 0.3.22 traen rutas >260 chars (web UI de llama.cpp)
+        # que superan MAX_PATH de Windows y rompen la extraccion del sdist (OSError Errno 2).
+        # Temp corto para dar margen adicional a la longitud de rutas.
+        old_tmp = os.environ.get("TMP")
+        old_temp = os.environ.get("TEMP")
+        short_tmp = os.path.join(os.path.splitdrive(SCRIPT_DIR)[0] or "C:", "pip-tmp")
+        try:
+            os.makedirs(short_tmp, exist_ok=True)
+            os.environ["TMP"] = short_tmp
+            os.environ["TEMP"] = short_tmp
+        except Exception:
+            pass
         log_path = os.path.join(SCRIPT_DIR, "llama_install.log")
         with open(log_path, "w", encoding="utf-8") as lf:
             result = subprocess.run(
-                [pip, "install", "--no-cache-dir", "llama-cpp-python",
+                [pip, "install", "--no-cache-dir", "llama-cpp-python==0.3.19",
                  "--no-binary", "llama-cpp-python"],
                 stdout=lf, stderr=lf)
         ok = result.returncode == 0
@@ -517,6 +529,11 @@ def main():
                         print("        " + line.rstrip())
             except Exception:
                 pass
+        for var, val in (("TMP", old_tmp), ("TEMP", old_temp)):
+            if val is None:
+                os.environ.pop(var, None)
+            else:
+                os.environ[var] = val
         os.environ.pop("CMAKE_ARGS", None)
         os.environ.pop("CMAKE_GENERATOR", None)
         return ok
