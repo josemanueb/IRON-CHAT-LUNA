@@ -6,7 +6,7 @@
 $SCRIPT_DIR = Split-Path -Parent $MyInvocation.MyCommand.Path
 $ErrorActionPreference = "Continue"
 $PYTHON_VERSION = "3.12.5"
-$PYTHON_INSTALLER_URL = "https://www.python.org/ftp/python/$PYTHON_VERSION/python-$PYTHON_VERSION-amd64.exe"
+$PYTHON_INSTALLER_URL = "https://www.nuget.org/api/v2/package/python/$PYTHON_VERSION"
 
 Write-Host "======================================" -ForegroundColor Cyan
 Write-Host "  INSTALADOR IRON CHAT - LUNA v2.2" -ForegroundColor Cyan
@@ -41,33 +41,49 @@ if (-not $pythonExe) {
         $pythonExe = "$portableDir\python.exe"
         Write-Host "  OK Python portable 3.12.5 encontrado" -ForegroundColor Green
     } else {
-        Write-Host "  Bajando instalador completo de Python $PYTHON_VERSION..." -ForegroundColor Yellow
-        $installer = "$env:TEMP\python-installer.exe"
+        Write-Host "  Bajando Python portable $PYTHON_VERSION (zip, sin instalador)..." -ForegroundColor Yellow
+        # Paquete oficial NuGet: es un zip sin instalador (no requiere admin ni UAC,
+        # evita fallos silenciosos del python.org installer). Trae venv + ensurepip,
+        # con lo que pip se autoinstala al crear el entorno virtual.
+        $package = "$env:TEMP\python-portable.zip"
         try {
             [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
             $wc = New-Object System.Net.WebClient
-            $wc.DownloadFile($PYTHON_INSTALLER_URL, $installer)
+            $wc.DownloadFile($PYTHON_INSTALLER_URL, $package)
 
-            Write-Host "  Instalando Python en $portableDir (sin admin)..." -ForegroundColor Yellow
-            $p = Start-Process -FilePath $installer -ArgumentList "/quiet","InstallAllUsers=0","PrependPath=0","Include_test=0","Include_tcltk=1","Include_launcher=0","Include_pip=1","TargetDir=$portableDir" -Wait -PassThru
-            if ($p.ExitCode -eq 0 -and (Test-Path "$portableDir\python.exe")) {
+            if ((Get-Item $package).Length -lt 10000000) {
+                Write-Host "  ERROR La descarga de Python portable no es valida (archivo demasiado pequeno)." -ForegroundColor Red
+                pause
+                exit 1
+            }
+
+            Write-Host "  Extrayendo Python en $portableDir..." -ForegroundColor Yellow
+            New-Item -ItemType Directory -Path $portableDir -Force | Out-Null
+            $tmpExtract = "$env:TEMP\python-portable-extract"
+            if (Test-Path $tmpExtract) { Remove-Item $tmpExtract -Recurse -Force }
+            Add-Type -AssemblyName System.IO.Compression.FileSystem
+            [System.IO.Compression.ZipFile]::ExtractToDirectory($package, $tmpExtract)
+
+            # El contenido del paquete esta en tools/ (python.exe, Lib, DLLs, ...)
+            Get-ChildItem -Path "$tmpExtract\tools" -Force | Copy-Item -Destination $portableDir -Recurse -Force
+            Remove-Item $tmpExtract -Recurse -Force
+
+            if (Test-Path "$portableDir\python.exe") {
                 $pythonExe = "$portableDir\python.exe"
                 Write-Host "  OK Python portable listo" -ForegroundColor Green
             } else {
-                Write-Host "  ERROR No se pudo instalar Python portable (codigo: $($p.ExitCode))" -ForegroundColor Red
-                Write-Host "  Descarga Python 3.12 manual desde: https://www.python.org/downloads/" -ForegroundColor Yellow
-                Write-Host "  y vuelve a ejecutar este instalador." -ForegroundColor Yellow
+                Write-Host "  ERROR No se pudo extraer Python portable." -ForegroundColor Red
                 pause
                 exit 1
             }
         } catch {
-            Write-Host "  ERROR No se pudo descargar Python portable" -ForegroundColor Red
+            Write-Host "  ERROR No se pudo descargar Python portable: $($_.Exception.Message)" -ForegroundColor Red
             Write-Host "  Descarga Python 3.12 manual desde: https://www.python.org/downloads/" -ForegroundColor Yellow
             Write-Host "  y vuelve a ejecutar este instalador." -ForegroundColor Yellow
             pause
             exit 1
         }
-        Remove-Item $installer -Force -ErrorAction SilentlyContinue
+        Remove-Item $package -Force -ErrorAction SilentlyContinue
     }
 }
 
