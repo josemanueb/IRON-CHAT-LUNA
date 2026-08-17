@@ -125,8 +125,11 @@ Write-Host "Instalando dependencias Python..." -ForegroundColor Cyan
 # 3a. Verificar Visual C++ Redistributable (necesario para llama-cpp-python)
 Write-Host "  Verificando Visual C++ Redistributable..." -ForegroundColor Yellow
 $vcMissing = $true
-$vcPaths = @("$env:SystemRoot\System32\vcruntime140.dll", "$env:WINDIR\System32\vcruntime140.dll", "$env:SystemRoot\System32\vcruntime140_1.dll")
-foreach ($p in $vcPaths) { if (Test-Path $p) { $vcMissing = $false; break } }
+# llama-cpp-python necesita AMBOS: vcruntime140.dll y vcruntime140_1.dll
+$sysRoot = $env:SystemRoot
+$has140 = (Test-Path "$sysRoot\System32\vcruntime140.dll")
+$has140_1 = (Test-Path "$sysRoot\System32\vcruntime140_1.dll")
+if ($has140 -and $has140_1) { $vcMissing = $false }
 if ($vcMissing) {
     Write-Host "    AVISO No se encuentra vcruntime140.dll" -ForegroundColor Yellow
     Write-Host "    Descargando e instalando VC++ Redistributable..." -ForegroundColor Gray
