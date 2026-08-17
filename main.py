@@ -84,6 +84,7 @@ class ChatbotApp:
         self._animating = False
         self._sending_timeout = None
         self._stream_start_index = "1.0"
+        self._stream_ui_start = "1.0"
         self._ai_ready = threading.Event()
         self.FONT_MONO = ("Consolas", 12) if _platform.system() == "Windows" else ("monospace", 12)
         self.FONT_MONO_SM = ("Consolas", 10) if _platform.system() == "Windows" else ("monospace", 10)
@@ -1098,7 +1099,8 @@ class ChatbotApp:
             tag = "user_msg"
         elif sender == "ai":
             if streamed:
-                self.chat_area.delete(self._stream_start_index, tk.END)
+                start = getattr(self, '_stream_ui_start', self._stream_start_index)
+                self.chat_area.delete(start, tk.END)
             formatted = f"[{timestamp}] {lang.tr('ai_prefix')}: {message}\n"
             tag = "ai_msg"
         else:
@@ -1279,6 +1281,7 @@ class ChatbotApp:
 
     def _start_stream_ui(self, started=None):
         self.chat_area.config(state=tk.NORMAL)
+        self._stream_ui_start = self.chat_area.index(tk.END)
         timestamp = datetime.now().strftime("%H:%M")
         self.chat_area.insert(tk.END, f"[{timestamp}] {lang.tr('ai_stream_prefix')}: ")
         self.chat_area.see(tk.END)
