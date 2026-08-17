@@ -101,12 +101,50 @@ echo ""
 echo "📦 Instalando dependencias Python..."
 $PYTHON_VENV -m pip install --upgrade pip -q
 
-echo "  ⏳ Instalando llama-cpp-python (sin AVX)..."
-if $PYTHON_VENV -m pip install llama-cpp-python --prefer-binary -q; then
+# Detectar soporte AVX2 (los wheels precompilados de llama-cpp-python lo requieren)
+if grep -q '^flags.*avx2' /proc/cpuinfo 2>/dev/null; then
+    HAS_AVX2="yes"
+    echo "  ✅ CPU compatible con AVX2: se usarán wheels precompilados"
+else
+    HAS_AVX2="no"
+    echo "  ⚠️ CPU SIN AVX2: los wheels precompilados crashean (SIGILL)."
+    echo "     Se compilará llama-cpp-python desde fuente sin AVX/AVX2."
+fi
+
+# Asegurar herramientas de compilación (gcc/g++/make) si faltan
+ensure_build_tools() {
+    local missing=""
+    for t in gcc g++ make; do
+        command -v "$t" >/dev/null 2>&1 || missing="$missing $t"
+    done
+    if [ -n "$missing" ]; then
+        echo "  ⚠️ Faltan herramientas de compilación:$missing. Instalando..."
+        $PKG_INSTALL $missing 2>&1 | tail -5
+    fi
+}
+
+echo "  ⏳ Instalando llama-cpp-python..."
+if [ "$HAS_AVX2" = "no" ]; then
+    ensure_build_tools
+    if command -v g++ >/dev/null 2>&1 && command -v make >/dev/null 2>&1; then
+        echo "     Compilando desde fuente (puede tardar 5-15 min)..."
+        CMAKE_ARGS="-DGGML_NATIVE=OFF -DGGML_AVX=OFF -DGGML_AVX2=OFF -DGGML_BMI2=OFF -DGGML_FMA=OFF -DGGML_F16C=OFF" \
+        $PYTHON_VENV -m pip install --no-cache-dir --no-binary llama-cpp-python llama-cpp-python 2>&1 | tail -15
+    else
+        echo "  ⚠️ No se pudo instalar gcc/g++/make. Probando wheels por si acaso..."
+        $PYTHON_VENV -m pip install llama-cpp-python --prefer-binary -q 2>&1 | tail -5
+    fi
+else
+    $PYTHON_VENV -m pip install llama-cpp-python --prefer-binary -q 2>&1 | tail -5
+fi
+
+if $PYTHON_VENV -c "import llama_cpp" 2>/dev/null; then
     echo "  ✅ llama-cpp-python instalado"
 else
     echo "  ❌ Error instalando llama-cpp-python"
-    echo "     Prueba: pip install llama-cpp-python"
+    echo "     En CPUs sin AVX2 ejecuta manualmente:"
+    echo "        sudo apt install -y g++ make"
+    echo "        CMAKE_ARGS='-DGGML_AVX2=OFF -DGGML_AVX=OFF' $PYTHON_VENV -m pip install --no-binary llama-cpp-python llama-cpp-python"
     echo "     Ver documentación si el error persiste"
     exit 1
 fi
