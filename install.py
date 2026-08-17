@@ -116,7 +116,16 @@ def _download_chunked(url, dest, verified=True, timeout=120):
                 return True
         except urllib.request.HTTPError as e:
             if e.code == 416 and resume_bytes > 0:
-                os.replace(tmp, dest)
+                # 416 = el rango ya no aplica: la descarga ya está completa
+                try:
+                    if os.path.exists(dest):
+                        os.remove(dest)
+                    os.replace(tmp, dest)
+                except OSError:
+                    try:
+                        shutil.move(tmp, dest)
+                    except OSError:
+                        return False
                 return True
             return False
         except Exception as e:
@@ -538,6 +547,71 @@ def main():
         os.environ.pop("CMAKE_GENERATOR", None)
         return ok
 
+    def _linux_pkg_manager():
+        for pm in ("apt-get", "dnf", "pacman"):
+            if shutil.which(pm):
+                return pm
+        return None
+
+    def _ensure_linux_build_tools():
+        """Asegura que existan gcc, g++ y make para compilar llama-cpp-python."""
+        missing = []
+        for tool in ("gcc", "g++", "make"):
+            if not shutil.which(tool):
+                missing.append(tool)
+        if not missing:
+            return True
+        print(f"     ⚠️ Faltan herramientas de compilación: {', '.join(missing)}")
+        pm = _linux_pkg_manager()
+        if pm == "apt-get":
+            args = ["sudo", "apt-get", "install", "-y"] + missing
+        elif pm == "dnf":
+            args = ["sudo", "dnf", "install", "-y"] + missing
+        elif pm == "pacman":
+            args = ["sudo", "pacman", "-S", "--noconfirm"] + missing
+        else:
+            print(f"     ❌ No se pudo detectar el gestor de paquetes.")
+            print(f"     Instala manualmente: sudo apt install {' '.join(missing)}")
+            return False
+        print(f"     🛠️ Ejecutando: {' '.join(args)}")
+        print("     (puede pedir tu contraseña de sudo)")
+        result = subprocess.run(args, capture_output=True, text=True)
+        if result.returncode != 0:
+            print("     ❌ No se pudo instalar automáticamente (¿sin permisos sudo?).")
+            print(f"     Ejecuta manualmente: sudo apt install {' '.join(missing)}")
+            print("     y vuelve a ejecutar este instalador.")
+            return False
+        return all(shutil.which(t) for t in missing)
+
+    def _build_llama_linux_no_avx():
+        """Compila llama-cpp-python desde fuente SIN AVX/AVX2 (Linux, CPUs antiguas)."""
+        if not _ensure_linux_build_tools():
+            return False
+        print("     ⚠️ Compilando desde fuente SIN AVX/AVX2 (puede tardar 5-15 min)...")
+        old_cmake = os.environ.get("CMAKE_ARGS")
+        os.environ["CMAKE_ARGS"] = ("-DGGML_NATIVE=OFF -DGGML_AVX=OFF -DGGML_AVX2=OFF "
+                                    "-DGGML_BMI2=OFF -DGGML_FMA=OFF -DGGML_F16C=OFF")
+        log_path = os.path.join(SCRIPT_DIR, "llama_install.log")
+        with open(log_path, "w", encoding="utf-8") as lf:
+            result = subprocess.run(
+                [pip, "install", "--no-cache-dir", "llama-cpp-python",
+                 "--no-binary", "llama-cpp-python"],
+                stdout=lf, stderr=lf)
+        if old_cmake is None:
+            os.environ.pop("CMAKE_ARGS", None)
+        else:
+            os.environ["CMAKE_ARGS"] = old_cmake
+        ok = result.returncode == 0
+        if not ok:
+            print("     ❌ Error compilando llama-cpp-python. Ultimas lineas del log:")
+            try:
+                with open(log_path, encoding="utf-8") as lf:
+                    for line in lf.readlines()[-20:]:
+                        print("        " + line.rstrip())
+            except Exception:
+                pass
+        return ok
+
     def _install_llama():
         print("  ⏳ Instalando llama-cpp-python...")
 
@@ -586,7 +660,14 @@ def main():
                     return True
             return False
 
-        # Linux: puede compilar si no hay wheel
+        # Linux: los wheels precompilados requieren AVX2. En CPUs sin AVX2
+        # crashean con SIGILL, así que primero compilar desde fuente.
+        has_avx2 = _cpu_has_avx2()
+        if not has_avx2:
+            print("     CPU SIN AVX2: los wheels precompilados no son compatibles.")
+            if _build_llama_linux_no_avx():
+                return True
+            print("     ⚠️ Compilacion sin AVX fallida, intentando wheels por si acaso...")
         if _pip_llama(["install", "llama-cpp-python", "--prefer-binary"]):
             return True
         print("  ⚠️ Reintentando con --no-cache-dir...")
@@ -597,10 +678,16 @@ def main():
     result_ok = _install_llama()
 
     if result_ok:
-        log("llama-cpp-python instalado")
-        if not verify_import(venv_dir, "llama_cpp"):
+        if verify_import(venv_dir, "llama_cpp"):
+            log("llama-cpp-python instalado")
+        else:
             log("No se pudo importar. Forzando reinstall...", False)
-            _pip_llama(["install", "--force-reinstall", "--no-cache-dir", "llama-cpp-python"])
+            if _pip_llama(["install", "--force-reinstall", "--no-cache-dir", "llama-cpp-python"]) \
+               and verify_import(venv_dir, "llama_cpp"):
+                log("llama-cpp-python reinstalado y verificado")
+            else:
+                log("Error CRITICO: llama-cpp-python no funciona", False)
+                fatal_error = True
     else:
         log("Error CRITICO: no se pudo instalar llama-cpp-python", False)
         fatal_error = True
