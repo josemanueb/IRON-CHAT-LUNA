@@ -62,6 +62,41 @@ except Exception:
     print("⚠ No se pudo crear iron_chat.log, se usará salida estándar")
 logging.info("🚀 IRON CHAT iniciado")
 
+# Sistema de persistencia de configuraciones
+CONFIG_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "config.json")
+DEFAULT_CONFIG = {
+    "theme": 0,
+    "tts_enabled": True,
+    "music_volume": 50,
+    "tts_volume": 70,
+    "tts_speed": 100,
+    "sidebar_collapsed": False,
+    "last_window_geometry": None,
+}
+
+def cargar_configuracion():
+    """Carga la configuración guardada desde config.json."""
+    global CONFIG
+    if os.path.exists(CONFIG_FILE):
+        try:
+            with open(CONFIG_FILE, "r", encoding="utf-8") as f:
+                CONFIG = json.load(f)
+        except Exception:
+            CONFIG = DEFAULT_CONFIG.copy()
+    else:
+        CONFIG = DEFAULT_CONFIG.copy()
+    # Aplicar configuración guardada
+    if "theme" in CONFIG:
+        CONFIG["theme"] = CONFIG["theme"] % len(COLORES)
+
+def guardar_configuracion():
+    """Guarda la configuración actual en config.json."""
+    try:
+        with open(CONFIG_FILE, "w", encoding="utf-8") as f:
+            json.dump(CONFIG, f, ensure_ascii=False, indent=2)
+    except Exception:
+        pass
+
 class ChatbotApp:
     def __init__(self, root):
         self.root = root
@@ -93,7 +128,8 @@ class ChatbotApp:
             self.progress = ProgressTracker(os.path.join(self.project_dir, "progreso.db"))
         except Exception:
             logging.warning("No se pudo inicializar ProgressTracker, progreso deshabilitado")
-            self.progress = None
+        cargar_configuracion()
+        self.progress = None
         self.init_ui()
         self.ai = None
         self.ai_loaded = False
