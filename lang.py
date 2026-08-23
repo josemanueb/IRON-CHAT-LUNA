@@ -364,3 +364,25 @@ def tr_format(key, *args, **kwargs):
         except KeyError:
             pass
     return text
+
+
+# Sistema de internacionalización
+AVAILABLE_LANGS = ["es", "en"]  # Español, English
+LANG = "es"  # Idioma por defecto
+
+def set_language(lang_code):
+    """Cambia el idioma activo."""
+    global LANG
+    if lang_code in AVAILABLE_LANGS:
+        LANG = lang_code
+
+def get_available_languages():
+    """Retorna los idiomas disponibles con sus nombres."""
+    return {code: name for code, name in [("es", "Español"), ("en", "English")]}.get(lang_code, {})
+
+
+# Mapeo de idiomas para interfaz
+LANG_NAMES = {
+    "es": "Español",
+    "en": "English",
+}
