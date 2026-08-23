@@ -37,7 +37,12 @@ def imports_ok():
     from datetime import datetime
     from tkinter import messagebox, ttk
     import tkinter as tk
-    # Pillow test
+    # Pillow test (opcional)
+    try:
+        from PIL import Image, ImageTk
+        PIL_AVAILABLE = True
+    except ImportError:
+        PIL_AVAILABLE = False
     from PIL import Image, ImageTk
     # Project modules (except ai_module which needs model file)
     from ascii_art import ASCIIArt
