@@ -41,7 +41,7 @@ def verify_import(venv_dir, module_name):
     result = subprocess.run([python_exe, "-c", f"import {module_name}; print('OK')"], capture_output=True, text=True)
     return result.returncode == 0
 
-def _download_chunked(url, dest, verified=True, timeout=120):
+def _download_chunked(url, dest, verified=True, timeout=120, show_progress=False):
     """Descarga por chunks con resume, timeout por chunk, y SSL configurable"""
     import ssl
     import urllib.request
@@ -51,11 +51,13 @@ def _download_chunked(url, dest, verified=True, timeout=120):
     ctx = ssl.create_default_context() if verified else ssl._create_unverified_context()
     resume_bytes = 0
     total = 0
+    downloaded = 0
 
     if os.path.exists(tmp):
         resume_bytes = os.path.getsize(tmp)
         if resume_bytes > 0:
-            print(f"     🔄 Reanudando desde {resume_bytes/(1024**3):.2f} GB...")
+            if show_progress:
+                print(f"     🔄 Reanudando desde {resume_bytes/(1024**3):.2f} GB...", end="\r")
 
     CHUNK = 1024 * 1024
     max_retries = 5
@@ -443,21 +445,38 @@ def main():
                     os.unlink(tmp)
         return None
 
-    def _cpu_has_avx2():
-        """Detecta soporte AVX2 de la CPU (necesario para los wheels precompilados)."""
+    def _detect_cpu_capabilities():
+        """Detecta capacidades completas del procesador."""
+        caps = {"avx": False, "avx2": False, "avx512f": False, "model": "desconocido"}
         try:
-            import ctypes
-            if platform.system() == "Windows":
-                libc = ctypes.windll.kernel32
-                # PF_AVX2_INSTRUCTIONS_AVAILABLE = 40
-                return bool(libc.GetIsProcessorFeaturePresent(40))
             with open("/proc/cpuinfo") as f:
+                model_line = ""
+                flags_line = ""
                 for line in f:
-                    if line.startswith("flags") and "avx2" in line:
-                        return True
-            return False
+                    if line.startswith("model name"):
+                        model_line = line
+                    if line.startswith("flags"):
+                        flags_line = line
+                if model_line:
+                    caps["model"] = model_line.split(":")[1].strip().split("@")[0].strip()
+                if flags_line:
+                    flags = flags_line.split(":")[1].lower().split()
+                    caps["avx"] = "avx" in flags
+                    caps["avx2"] = "avx2" in flags
+                    caps["avx512f"] = "fma" in flags
         except Exception:
-            return False
+            pass
+        return caps
+
+    def _cpu_has_avx2():
+        """Detecta soporte AVX2 de la CPU."""
+        caps = _detect_cpu_capabilities()
+        return caps["avx2"]
+    
+    def _cpu_has_avx():
+        """Detecta soporte AVX de la CPU."""
+        caps = _detect_cpu_capabilities()
+        return caps["avx"]
 
     def _install_w64devkit():
         """Descarga y extrae w64devkit (toolchain MinGW portable) para compilar sin AVX."""
