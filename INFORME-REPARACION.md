@@ -23,7 +23,7 @@ Verificación de esa fase:
 2. **`test_all.py` se rompía en Windows (UnicodeEncodeError con cp1252)**
 
 3. **`test_download.py`: orden de `except` incorrecto**
-   - `except HTTPError`必须 ir antes de `except URLError`, porque `HTTPError`
+   - `except HTTPError` debe ir antes de `except URLError`, porque `HTTPError`
      hereda de `URLError` y la rama de red nunca se alcanzaba.
 
 4. **`face_animation.py` / `main.py`: Pillow obligatorio**
@@ -112,14 +112,19 @@ y `journal_mode=WAL`. Además se añadió `get_latest()` y `delete_entry()`.
 
 ## Media prioridad
 
-### 6. `main.py` reducido y con módulos extraídos
-| Antes | Ahora |
+### 6. `main.py` con la lógica pesada extraída
+El objetivo no era reducir el fichero, sino **sacar lo testeable**: la
+configuración, el logging, la descarga y la base de conocimiento tienen
+ahora sus propios tests, que corren sin levantar Tkinter. `main.py` queda en
+1743 líneas y su mayor parte sigue siendo UI, pero lo que sí se puede testear
+ya se testea.
+
+| Módulo nuevo | Qué hace |
 |---|---|
-| `main.py` 1746 líneas, config y logging dentro | `main.py` **1609 líneas** |
-| — | `config_store.py` (config validada, testeable sin Tkinter) |
-| — | `logging_setup.py` (logging con rotación) |
-| — | `download_worker.py` (descargas cancelables) |
-| — | `knowledge.py` (base de conocimiento) |
+| `config_store.py` | Config validada por tipo y rango |
+| `logging_setup.py` | Logging con rotación |
+| `download_worker.py` | Descargas cancelables |
+| `knowledge.py` | Base de conocimiento |
 
 ### 7. La base de conocimiento es ahora dato, no código
 `ai_module._offline_response` eran **~334 líneas de `if any(p in text ...)`**.
@@ -131,7 +136,8 @@ Ahora:
 El orden de prioridad se conservó a propósito, porque es comportamiento
 observable: "hola, dame rutina de pecho" debe saludar primero.
 
-`ai_module.py` pasó de 614 a **422 líneas**.
+`ai_module.py` pasó de 614 a **485 líneas**, y los ~334 de
+`_offline_response` viven ahora en `knowledge.py` como datos.
 
 ### 8. El modelo real ya no pierde las rutinas
 Con un GGUF cargado, `_system_prompt()` no incluía los textos de rutinas y
@@ -142,7 +148,7 @@ inyecta un resumen de la base de conocimiento en el prompt.
 Los `except` críticos ahora registran con `logging` en vez de tragarse el
 error (p. ej. el del reloj, que ocultaba fallos de Tkinter).
 
-### 10. Tests de lógica real (19 → 40)
+### 10. Tests de lógica real (19 → 41)
 Antes se comprobaba que los métodos **existieran**. Ahora se prueba que
 **funcionen**: config corrupta, rangos, template de chat, truncado de
 contexto, detección de GPU, orden de prioridad del offline, cancelación de
