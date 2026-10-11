@@ -99,7 +99,16 @@ except urllib.error.HTTPError as e:
     sys.exit(1)
 
 except urllib.error.URLError as e:
-    
+    # Sin red, DNS, o el servidor caido. Antes este bloque estaba vacio, asi
+    # que el script terminaba con codigo 0 y daba por buena una descarga que
+    # nunca ocurrio. Ahora falla como debe.
+    print(f"\n\n   ❌ No se pudo conectar: {e.reason}")
+    print("   Revisa tu conexión a internet y vuelve a intentarlo.")
+    if os.path.exists(DEST + ".tmp"):
+        try: os.remove(DEST + ".tmp")
+        except: pass
+    sys.exit(1)
+
 except Exception as e:
     print(f"\n\n   ❌ Error inesperado: {e}")
     # Limpiar tmp

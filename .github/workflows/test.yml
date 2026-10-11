@@ -45,21 +45,10 @@ jobs:
       run: python verificar_firma.py
 
     - name: Syntax check
+      # Todos los .py del proyecto, no una lista que se queda corta:
+      # test_download.py se rompió asi y el CI no lo veía.
       run: |
-        python -m py_compile main.py
-        python -m py_compile ai_module.py
-        python -m py_compile tts_module.py
-        python -m py_compile audio.py
-        python -m py_compile sounds.py
-        python -m py_compile face_animation.py
-        python -m py_compile ascii_art.py
-        python -m py_compile progress_tracker.py
-        python -m py_compile check_deps.py
-        python -m py_compile install.py
-        python -m py_compile knowledge.py
-        python -m py_compile config_store.py
-        python -m py_compile download_worker.py
-        python -m py_compile logging_setup.py
+        python -c "import compileall, sys; sys.exit(0 if compileall.compile_dir('.', quiet=2, rx=__import__('re').compile(r'__pycache__')) else 1)"
 
     - name: Run tests (xvfb)
       if: runner.os == 'Linux'
