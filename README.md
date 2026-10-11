@@ -258,18 +258,70 @@ Dibujos disponibles: `mancuerna`, `pesa`, `musculo`, `trofeo`, `fuego`, `corazon
 
 ---
 
+## 📚 Ampliar lo que LUNA sabe (sin tocar código)
+
+Todo el conocimiento de LUNA vive en **`conocimiento.json`**. Añadir un
+consejo, una dieta nueva o un ejercicio es editar un JSON:
+
+```json
+"dieta_vegana": {
+  "keywords": ["dieta vegana", "vegano", "vegetariano"],
+  "response": "🥗 DIETA VEGANA:\n\nDesayuno: Batido de proteína vegetal..."
+}
+```
+
+- `keywords` — palabras que activan la respuesta.
+- `response` — un texto, o una **lista** de textos para que elija al azar
+  (añade `"random": true`).
+- `ejercicios` — guías técnicas (`"sentadilla"`, `"peso muerto"`, …).
+- `respuestas_genericas` — lo que dice cuando no entiende.
+
+Las rutinas de entrenamiento viven aparte en **`rutinas.json`**, con el mismo
+formato.
+
+Comprueba que el JSON sigue siendo válido antes de usarlo:
+
+```bash
+python knowledge.py
+```
+
+Y verifica los tests: `python test_all.py`
+
+---
+
 ## 🧠 Modelo de IA
 
 **Qwen2.5 1.5B** (~900 MB) — español nativo, se descarga desde la app: ☰ Menú → Descargar Modelo
 
 También puedes colocar cualquier archivo `.gguf` en `models/` y la app lo detecta solo.
 
-**Configuración actual:**
+**Configuración por defecto:**
 - Contexto: 2048 tokens
 - Temperatura: 0.7
 - Top-p: 0.9
-- Hilos: 4
-- GPU: deshabilitada (CPU sin AVX)
+- Hilos: nº de núcleos
+- GPU: autodetección (si `llama-cpp-python` trae CUDA/Metal/Vulkan)
+
+### Ajustes avanzados: `config.json`
+
+Todo se puede cambiar desde `config.json`, sin tocar código. Los valores
+inválidos se ignoran y se vuelve al valor por defecto, así que un archivo
+corrupto nunca impide que la app arranque.
+
+| Clave | Por defecto | Qué hace |
+|---|---|---|
+| `n_ctx` | `2048` | Tamaño del contexto (512–32768) |
+| `max_tokens` | `500` | Tokens máximos por respuesta (64–4096) |
+| `n_threads` | núcleos | Hilos de CPU |
+| `n_gpu_layers` | autodetectado | `-1` = todas las que quepan, `0` = forzar CPU, `n` = n capas |
+| `chat_template` | según modelo | `chatml`, `llama3` o `plain` |
+| `theme`, `tts_*`, `music_volume` | — | Preferencias de la interfaz |
+
+Ejemplo para forzar CPU en un equipo con GPU mal detectada:
+
+```json
+{ "n_gpu_layers": 0 }
+```
 
 ---
 
