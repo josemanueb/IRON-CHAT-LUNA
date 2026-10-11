@@ -378,7 +378,7 @@ def set_language(lang_code):
 
 def get_available_languages():
     """Retorna los idiomas disponibles con sus nombres."""
-    return {code: name for code, name in [("es", "Español"), ("en", "English")]}.get(lang_code, {})
+    return dict(LANG_NAMES)
 
 
 # Mapeo de idiomas para interfaz

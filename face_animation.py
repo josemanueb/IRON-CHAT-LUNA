@@ -1,5 +1,11 @@
 import tkinter as tk
-from PIL import Image, ImageTk
+try:
+    from PIL import Image, ImageTk
+    _HAS_PIL = True
+except ImportError:
+    Image = None
+    ImageTk = None
+    _HAS_PIL = False
 import os
 import glob
 
@@ -47,7 +53,7 @@ class AnimatedFace:
         self.tk_image = None
         self.image_id = None
 
-        if image_path and os.path.exists(image_path):
+        if image_path and os.path.exists(image_path) and _HAS_PIL:
             try:
                 self.original_image = Image.open(image_path)
                 self.original_image = self.original_image.resize((size, size), Image.LANCZOS)

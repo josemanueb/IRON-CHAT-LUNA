@@ -1,6 +1,10 @@
 #!/usr/bin/env python3
 import sys
 import os
+try:
+    sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+except Exception:
+    pass
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from hash_utils import verify_project_integrity
 

@@ -92,18 +92,13 @@ except ssl.SSLCertVerificationError as e:
     print("   Solución: pip install --upgrade certifi")
     sys.exit(1)
     
-except urllib.error.URLError as e:
-    err = str(e.reason) if hasattr(e, 'reason') else str(e)
-    print(f"\n\n   ❌ Error de red: {err}")
-    if "timed out" in err.lower():
-        print("   Tu conexión a internet está lenta. Intentá de nuevo en unos minutos.")
-    sys.exit(1)
-    
 except urllib.error.HTTPError as e:
     print(f"\n\n   ❌ HTTP Error {e.code}: {e.reason}")
     if e.code in (401, 403):
         print("   Acceso denegado. El archivo puede haber sido movido.")
     sys.exit(1)
+
+except urllib.error.URLError as e:
     
 except Exception as e:
     print(f"\n\n   ❌ Error inesperado: {e}")

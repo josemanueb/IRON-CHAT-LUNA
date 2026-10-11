@@ -6,6 +6,14 @@ Uso:  python3 check_deps.py
 
 import os
 import sys
+try:
+    sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+except Exception:
+    pass
+try:
+    sys.stderr.reconfigure(encoding="utf-8", errors="replace")
+except Exception:
+    pass
 import subprocess
 import platform
 import shutil
@@ -74,7 +82,7 @@ def check_package(name, import_name=None):
         log(f"{name}", True)
         return True
     except ImportError:
-        log(f"{name} — NO INSTALADO", False)
+        log(f"{name} - NO INSTALADO", False)
         return False
 
 
@@ -127,7 +135,7 @@ def check_models():
             log(f"{f} ({sz:.2f} GB)", True)
         return True
 
-    log("Sin modelo — modo offline activo", True)
+    log("Sin modelo - modo offline activo", True)
     print(f"     {INFO} LUNA funciona offline con respuestas completas.")
     print(f"     {INFO} Para IA avanzada, coloca un .gguf en models/")
     return True
@@ -192,9 +200,9 @@ def main(auto_install=False):
             all_ok = False
 
     if all_ok:
-        print(f"\n  {OK} TODO LISTO — podés ejecutar main.py")
+        print(f"\n  {OK} TODO LISTO - podes ejecutar main.py")
     else:
-        print(f"\n  {WARN} Algunas cosas faltan, revisá los mensajes de arriba")
+        print(f"\n  {WARN} Algunas cosas faltan, revisa los mensajes de arriba")
     print()
 
     return all_ok

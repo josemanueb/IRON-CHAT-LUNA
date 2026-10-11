@@ -4,6 +4,10 @@ import os
 import re
 from datetime import datetime
 import sys
+try:
+    sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+except Exception:
+    pass
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from hash_utils import ARCHIVOS_FIRMA
 

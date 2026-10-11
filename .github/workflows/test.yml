@@ -32,7 +32,7 @@ jobs:
         pip install Pillow ttkbootstrap
 
     - name: Verify signature
-      run: python generar_firma.py
+      run: python verificar_firma.py
 
     - name: Syntax check
       run: |

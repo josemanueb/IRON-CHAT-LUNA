@@ -3,6 +3,14 @@
 import sys
 import os
 import tempfile
+try:
+    sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+except Exception:
+    pass
+try:
+    sys.stderr.reconfigure(encoding="utf-8", errors="replace")
+except Exception:
+    pass
 
 DIR = os.path.dirname(os.path.abspath(__file__))
 os.chdir(DIR)
@@ -14,10 +22,10 @@ def test(name, fn):
     global PASS, FAIL
     try:
         fn()
-        print(f"  ✅ {name}")
+        print(f"  [OK] {name}")
         PASS += 1
     except Exception as e:
-        print(f"  ❌ {name}: {e}")
+        print(f"  [FAIL] {name}: {e}")
         FAIL += 1
 
 
@@ -43,7 +51,7 @@ def imports_ok():
         PIL_AVAILABLE = True
     except ImportError:
         PIL_AVAILABLE = False
-    from PIL import Image, ImageTk
+        raise RuntimeError("Falta Pillow: pip install Pillow")
     # Project modules (except ai_module which needs model file)
     from ascii_art import ASCIIArt
     from audio import Audio
@@ -233,31 +241,31 @@ if __name__ == "__main__":
     print("  PRUEBAS DE ESTABILIDAD - IRON CHAT LUNA")
     print(f"{'='*50}\n")
 
-    test("Todos los imports estándar y del proyecto", imports_ok)
+    test("Todos los imports estandar y del proyecto", imports_ok)
     test("ASCII Art: lista y obtiene arte", ascii_art_ok)
     test("Progress Tracker: crear entrada y leer", progress_tracker_ok)
-    test("Sounds: métodos existen", sounds_imports_ok)
-    test("Audio: métodos existen", audio_imports_ok)
-    test("TTS: métodos existen", tts_imports_ok)
-    test("FaceAnimation: métodos existen", face_animation_import)
+    test("Sounds: metodos existen", sounds_imports_ok)
+    test("Audio: metodos existen", audio_imports_ok)
+    test("TTS: metodos existen", tts_imports_ok)
+    test("FaceAnimation: metodos existen", face_animation_import)
     test("generar_firma == verificar_firma (mismos archivos)", signature_files_match)
-    test("Install: módulo se importa", install_imports_ok)
-    test("check_deps: módulo se importa", check_deps_imports_ok)
-    test("Verificar firma: módulo se importa", verificar_firma_syntax)
-    test("Sounds: _gen_wav genera RIFF válido", sounds_generate_wav)
-    test("Main: métodos nuevos existen", main_methods_exist)
-    test("luna.sh: sintaxis válida", luna_sh_syntax)
+    test("Install: modulo se importa", install_imports_ok)
+    test("check_deps: modulo se importa", check_deps_imports_ok)
+    test("Verificar firma: modulo se importa", verificar_firma_syntax)
+    test("Sounds: _gen_wav genera RIFF valido", sounds_generate_wav)
+    test("Main: metodos nuevos existen", main_methods_exist)
+    test("luna.sh: sintaxis valida", luna_sh_syntax)
     test("Themes: 3 temas con keys correctas", themes_module_ok)
-    test("Hash utils: SHA256 y verificación", hash_utils_ok)
-    test("Rutinas JSON: 10+ rutinas válidas", rutinas_json_ok)
+    test("Hash utils: SHA256 y verificacion", hash_utils_ok)
+    test("Rutinas JSON: 10+ rutinas validas", rutinas_json_ok)
     test("AI module: rutinas desde JSON funcionan", ai_module_rutinas_ok)
     test("Progress Tracker: context manager funciona", progress_tracker_context_manager_ok)
 
     print(f"\n{'='*50}")
     print(f"  RESULTADO: {PASS} pasaron, {FAIL} fallaron")
     if FAIL == 0:
-        print("  ✅ TODO OK")
+        print("  [OK] TODO OK")
     else:
-        print("  ❌ HAY FALLOS")
+        print("  [FAIL] HAY FALLOS")
     print(f"{'='*50}\n")
     sys.exit(FAIL)

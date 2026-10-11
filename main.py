@@ -24,7 +24,13 @@ try:
 except Exception:
     pass
 from audio import Audio
-from PIL import Image, ImageTk
+try:
+    from PIL import Image, ImageTk
+    _HAS_PIL = True
+except ImportError:
+    Image = None
+    ImageTk = None
+    _HAS_PIL = False
 from ai_module import GPT4AllAI
 from tts_module import TTS
 from face_animation import AnimatedFace
@@ -77,17 +83,29 @@ DEFAULT_CONFIG = {
 def cargar_configuracion():
     """Carga la configuración guardada desde config.json."""
     global CONFIG
+    CONFIG = DEFAULT_CONFIG.copy()
     if os.path.exists(CONFIG_FILE):
         try:
             with open(CONFIG_FILE, "r", encoding="utf-8") as f:
-                CONFIG = json.load(f)
+                data = json.load(f)
+            if isinstance(data, dict):
+                for k, v in data.items():
+                    if k in DEFAULT_CONFIG:
+                        CONFIG[k] = v
         except Exception:
-            CONFIG = DEFAULT_CONFIG.copy()
-    else:
-        CONFIG = DEFAULT_CONFIG.copy()
+            pass
     # Aplicar configuración guardada
-    if "theme" in CONFIG:
-        CONFIG["theme"] = CONFIG["theme"] % len(COLORES)
+    try:
+        CONFIG["theme"] = int(CONFIG.get("theme", 0)) % len(COLORES)
+    except Exception:
+        CONFIG["theme"] = 0
+    try:
+        CONFIG["tts_enabled"] = bool(CONFIG.get("tts_enabled", True))
+        CONFIG["music_volume"] = max(0, min(100, int(CONFIG.get("music_volume", 50))))
+        CONFIG["tts_volume"] = max(0, min(100, int(CONFIG.get("tts_volume", 70))))
+        CONFIG["tts_speed"] = max(50, min(200, int(CONFIG.get("tts_speed", 100))))
+    except Exception:
+        pass
 
 def guardar_configuracion():
     """Guarda la configuración actual en config.json."""
@@ -128,8 +146,11 @@ class ChatbotApp:
             self.progress = ProgressTracker(os.path.join(self.project_dir, "progreso.db"))
         except Exception:
             logging.warning("No se pudo inicializar ProgressTracker, progreso deshabilitado")
+            self.progress = None
         cargar_configuracion()
-        self.progress = None
+        self.tts_enabled = CONFIG.get("tts_enabled", True)
+        self.lang = "es"
+        lang.set_language(self.lang)
         self.init_ui()
         self.ai = None
         self.ai_loaded = False
@@ -290,7 +311,7 @@ class ChatbotApp:
         bg_image_path = self._find_image("gymp.jpeg", "gym.jpg", "fondo.jpeg", "bg.jpeg", "background.jpeg")
         self.bg_photo = None
         self.canvas_has_bg = False
-        if bg_image_path:
+        if bg_image_path and _HAS_PIL:
             try:
                 bg_img = Image.open(bg_image_path)
                 bg_img = bg_img.resize((450, 500), Image.LANCZOS)
@@ -390,8 +411,8 @@ class ChatbotApp:
         self._build_menu()
 
         # === 5. COLORES ===
-        self.tema_actual = 0
         self.colores = COLORES
+        self.tema_actual = CONFIG.get("theme", 0) % len(COLORES)
 
         # === 6. VOLUMEN ===
         self.vol_frame = tk.Frame(self.tools_frame, bg="#1a1a2e")
@@ -399,23 +420,23 @@ class ChatbotApp:
         self.vol_label = tk.Label(self.vol_frame, text="🔊", font=("Helvetica", 8, "bold"), bg="#1a1a2e", fg="#ECF0F1")
         self.vol_label.pack(side=tk.LEFT, padx=(0, 2))
         self.vol_slider = tk.Scale(self.vol_frame, from_=0, to=100, orient=tk.HORIZONTAL, bg="#2C3E50", fg="#FFD700", troughcolor="#1a1a2e", highlightthickness=0, bd=0, length=70, font=("Helvetica", 8), showvalue=False, command=self.cambiar_volumen)
-        self.vol_slider.set(70)
+        self.vol_slider.set(CONFIG.get("tts_volume", 70))
         self.vol_slider.pack(side=tk.LEFT)
-        self.vol_num_label = tk.Label(self.vol_frame, text="70%", font=("Helvetica", 7, "bold"), bg="#1a1a2e", fg="#FFD700")
+        self.vol_num_label = tk.Label(self.vol_frame, text=f"{CONFIG.get('tts_volume', 70)}%", font=("Helvetica", 7, "bold"), bg="#1a1a2e", fg="#FFD700")
         self.vol_num_label.pack(side=tk.LEFT, padx=(1, 3))
         self.vol_label_music = tk.Label(self.vol_frame, text="🎵", font=("Helvetica", 8, "bold"), bg="#1a1a2e", fg="#ECF0F1")
         self.vol_label_music.pack(side=tk.LEFT, padx=(3, 2))
         self.vol_music_slider = tk.Scale(self.vol_frame, from_=0, to=100, orient=tk.HORIZONTAL, bg="#2C3E50", fg="#FFD700", troughcolor="#1a1a2e", highlightthickness=0, bd=0, length=55, font=("Helvetica", 8), showvalue=False, command=self.cambiar_volumen_musica)
-        self.vol_music_slider.set(50)
+        self.vol_music_slider.set(CONFIG.get("music_volume", 50))
         self.vol_music_slider.pack(side=tk.LEFT)
-        self.vol_music_num_label = tk.Label(self.vol_frame, text="50%", font=("Helvetica", 7, "bold"), bg="#1a1a2e", fg="#FFD700")
+        self.vol_music_num_label = tk.Label(self.vol_frame, text=f"{CONFIG.get('music_volume', 50)}%", font=("Helvetica", 7, "bold"), bg="#1a1a2e", fg="#FFD700")
         self.vol_music_num_label.pack(side=tk.LEFT, padx=(1, 3))
         self.vol_label_speed = tk.Label(self.vol_frame, text="⚡", font=("Helvetica", 8, "bold"), bg="#1a1a2e", fg="#ECF0F1")
         self.vol_label_speed.pack(side=tk.LEFT, padx=(3, 2))
         self.vol_speed_slider = tk.Scale(self.vol_frame, from_=50, to=200, orient=tk.HORIZONTAL, bg="#2C3E50", fg="#FFD700", troughcolor="#1a1a2e", highlightthickness=0, bd=0, length=55, font=("Helvetica", 8), showvalue=False, command=self.cambiar_velocidad_tts)
-        self.vol_speed_slider.set(100)
+        self.vol_speed_slider.set(CONFIG.get("tts_speed", 100))
         self.vol_speed_slider.pack(side=tk.LEFT)
-        self.vol_speed_num_label = tk.Label(self.vol_frame, text="1.0x", font=("Helvetica", 7, "bold"), bg="#1a1a2e", fg="#FFD700")
+        self.vol_speed_num_label = tk.Label(self.vol_frame, text=f"{CONFIG.get('tts_speed', 100)/100:.1f}x", font=("Helvetica", 7, "bold"), bg="#1a1a2e", fg="#FFD700")
         self.vol_speed_num_label.pack(side=tk.LEFT, padx=(1, 0))
 
         # === 7. TEMPORIZADOR ===
@@ -453,7 +474,7 @@ class ChatbotApp:
         jmb_path = self._find_image("icon-jmb.png", "robot-icon.png")
         self.jmb_photo = None
         self.jmb_label = None
-        if jmb_path:
+        if jmb_path and _HAS_PIL:
             try:
                 jmb_img = Image.open(jmb_path)
                 jmb_img = jmb_img.resize((20, 20), Image.LANCZOS)
@@ -513,16 +534,22 @@ class ChatbotApp:
                 self.face.set_speaking(False)
             self.menu_audio.entryconfig(0, label=lang.tr("menu_tts_off"))
             self.add_message("system", lang.tr("sys_tts_off"))
+        CONFIG["tts_enabled"] = self.tts_enabled
+        guardar_configuracion()
 
     def cambiar_volumen(self, val):
         vol = int(val) / 100.0
         self.vol_num_label.config(text=f"{int(val)}%")
         if hasattr(self, 'tts'):
             self.tts.set_volume(vol)
+        CONFIG["tts_volume"] = int(val)
+        guardar_configuracion()
 
     def cambiar_volumen_musica(self, val):
         self.vol_music_num_label.config(text=f"{int(val)}%")
         Audio.set_music_volume(int(val) / 100.0)
+        CONFIG["music_volume"] = int(val)
+        guardar_configuracion()
 
     def cambiar_velocidad_tts(self, val):
         speed = int(val)
@@ -530,6 +557,8 @@ class ChatbotApp:
         self.vol_speed_num_label.config(text=display)
         if hasattr(self, 'tts'):
             self.tts.set_speed(speed)
+        CONFIG["tts_speed"] = speed
+        guardar_configuracion()
 
     def _abrir_menu(self):
         x = self.menubtn.winfo_rootx()
@@ -581,10 +610,12 @@ class ChatbotApp:
         nombre = theme_names[self.tema_actual]
         self.menu_app.entryconfig(1, label=nombre)
         self.add_message("system", lang.tr_format("theme_activated", nombre=nombre))
+        CONFIG["theme"] = self.tema_actual
+        guardar_configuracion()
 
     def _toggle_lang(self):
         self.lang = "en" if self.lang == "es" else "es"
-        lang.LANG = self.lang
+        lang.set_language(self.lang)
         # Update window and header
         self.root.title(lang.tr("window_title"))
         self.title_label.config(text=lang.tr("header_title"))
@@ -1284,7 +1315,10 @@ class ChatbotApp:
     def _stream_response(self, user_input, history, ai):
         started = threading.Event()
         self.root.after(0, lambda: self._start_stream_ui(started))
-        started.wait()
+        if not started.wait(timeout=10):
+            logging.error("Timeout esperando UI de stream")
+            self.root.after(0, self._finish_sending)
+            return
         full_text = ""
         last_update = 0.0
         pending_update = None
@@ -1602,27 +1636,34 @@ class ChatbotApp:
         text_area.config(yscrollcommand=scroll.set)
         text_area.insert(tk.END, f"{'FECHA':<16} {'PESO':<9} {'BÍCEPS':<9} {'PECHO':<9} {'CINTURA':<9} {'PIERNA':<9}\n")
         text_area.insert(tk.END, "-"*65 + "\n")
+        # entries viene newest-first; para deltas hay que comparar
+        # cada fila con la medicion ANTERIOR en el tiempo (la siguiente
+        # en la lista). Recorremos en orden cronologico y luego invertimos.
+        chronological = list(reversed(entries))
+        rows = []
         prev = None
-        for entry in entries:
+        for entry in chronological:
             date, weight, bicep, chest, waist, thigh, notes = entry
             def fmt(v, pv):
-                s = f"{v:.1f}" if v else "-"
+                s = f"{v:.1f}" if v is not None else "-"
                 if v is not None and pv is not None:
                     delta = v - pv
                     if delta > 0:
-                        s += f" ▲{delta:.1f}"
+                        s += f" +{delta:.1f}"
                     elif delta < 0:
-                        s += f" ▼{abs(delta):.1f}"
+                        s += f" {delta:.1f}"
                     else:
-                        s += f"  ="
+                        s += "  ="
                 return s.center(9)
             w = fmt(weight, prev[1] if prev else None)
             b = fmt(bicep, prev[2] if prev else None)
             c = fmt(chest, prev[3] if prev else None)
             wa = fmt(waist, prev[4] if prev else None)
             t = fmt(thigh, prev[5] if prev else None)
-            text_area.insert(tk.END, f"{date:<16} {w} {b} {c} {wa} {t}\n")
+            rows.append(f"{date:<16} {w} {b} {c} {wa} {t}\n")
             prev = (date, weight, bicep, chest, waist, thigh, notes)
+        for row in reversed(rows):
+            text_area.insert(tk.END, row)
         text_area.config(state=tk.DISABLED)
         btn_frame = tk.Frame(dialog, bg="#1a1a2e")
         btn_frame.pack(pady=5)
@@ -1662,6 +1703,35 @@ def main():
         else:
             root = tk.Tk()
         app = ChatbotApp(root)
+
+        def _on_close():
+            try:
+                app.timer_stop()
+            except Exception:
+                pass
+            try:
+                if getattr(app, 'tts', None):
+                    app.tts.stop()
+            except Exception:
+                pass
+            try:
+                Audio.stop_all()
+            except Exception:
+                pass
+            try:
+                app.guardar_historial()
+            except Exception:
+                pass
+            try:
+                guardar_configuracion()
+            except Exception:
+                pass
+            try:
+                root.destroy()
+            except Exception:
+                pass
+
+        root.protocol("WM_DELETE_WINDOW", _on_close)
         root.mainloop()
     except Exception as e:
         import traceback

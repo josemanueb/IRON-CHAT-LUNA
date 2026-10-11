@@ -95,7 +95,7 @@ class TTS:
                 except Exception:
                     pass
 
-    def _speak_windows(self, text):
+    def _speak_windows(self, text, _retried=False):
         if not self._init_windows_engine():
             return
         try:
@@ -103,7 +103,8 @@ class TTS:
             self.engine_w.runAndWait()
         except Exception:
             self.engine_w = None
-            self._speak_windows(text)
+            if not _retried:
+                self._speak_windows(text, _retried=True)
 
     def _speak_espeak(self, text):
         wav_path = None
