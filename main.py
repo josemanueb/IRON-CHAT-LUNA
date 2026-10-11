@@ -132,20 +132,33 @@ class ChatbotApp:
         self.init_ui()
         self.ai = None
         self.ai_loaded = False
-        threading.Thread(target=self._verificar_integridad, daemon=True).start()
-        threading.Thread(target=self.load_ai, daemon=True).start()
+        self._hilos_iniciados = False
         self.root.bind("<Control-l>", lambda e: self.clear_chat())
         self.root.bind("<Control-d>", lambda e: self.export_chat())
         self.root.bind("<Control-t>", lambda e: self.toggle_theme())
         self.actualizar_reloj()
 
+    def iniciar_hilos(self):
+        """Arranca los hilos de carga DESDE el mainloop de Tk.
+
+        Antes se lanzaban en __init__, es decir antes de root.mainloop().
+        Tkinter rechaza after() desde un hilo secundario mientras el
+        mainloop no esta corriendo ("main thread is not in main loop"), de
+        modo que una carga rapida (modelo ya en disco) podia caer a modo
+        offline por un fallo de Tkinter en vez de por falta de modelo.
+        Programando este arranque con after(0) el mainloop ya esta activo.
+        """
+        if self._hilos_iniciados:
+            return
+        self._hilos_iniciados = True
+        threading.Thread(target=self._verificar_integridad, daemon=True).start()
+        threading.Thread(target=self.load_ai, daemon=True).start()
+
     def _en_hilo_principal(self, fn, *args):
         """Programa `fn` en el hilo principal de Tk.
 
-        Tkinter solo admite `after()` desde el hilo principal: llamarlo desde
-        un hilo secundario lanza "RuntimeError: main thread is not in main
-        loop". Cuando el mainloop aun no ha arrancado (tests, arranque
-        temprano) no hay nada que programar y se ejecuta directamente.
+        Red de seguridad: si alguien llama desde un hilo antes de que el
+        mainloop arranque, ejecuta en linea en lugar de perder la llamada.
         """
         try:
             self.root.after(0, fn, *args)
@@ -1746,6 +1759,9 @@ def main():
                 pass
 
         root.protocol("WM_DELETE_WINDOW", _on_close)
+        # after(0) se ejecuta ya dentro del mainloop: los hilos de carga
+        # arrancan con Tkinter activo y sus after() funcionan siempre.
+        root.after(0, app.iniciar_hilos)
         root.mainloop()
     except Exception as e:
         import traceback

@@ -63,13 +63,24 @@ def main():
 
         app = m.ChatbotApp(ventana)
         ventana.withdraw()
-        _bomba(ventana, 1.5)
+
+        # main() arranca estos hilos con after(0), ya dentro del mainloop.
+        # El test reproduce ese orden exacto: si se arrancaran antes, el
+        # fallo de after() desde hilo pasaria desapercibido.
+        ventana.after(0, app.iniciar_hilos)
+        _bomba(ventana, 3.0)
 
         assert ventana.winfo_exists(), "la ventana no se creo"
         assert app.root is ventana, "la app no guardo su ventana"
         assert getattr(app, "tts_enabled", None) is not None, \
             "no se cargo la configuracion"
         assert app.lang == "es", f"idioma inesperado: {app.lang!r}"
+        assert app._ai_ready.wait(timeout=15), \
+            "load_ai no termino: la IA no llego a cargarse"
+        assert app.ai_loaded, "la app no marco la IA como cargada"
+        # Sin modelo en disco la app cae a modo offline a proposito: lo que
+        # no puede pasar es que load_ai quede a medias o lance.
+        assert app._hilos_iniciados, "los hilos de arranque no llegaron a lanzarse"
 
         print("  [OK] La app arranca y procesa eventos")
 
