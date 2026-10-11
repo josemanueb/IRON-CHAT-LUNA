@@ -139,6 +139,23 @@ class ChatbotApp:
         self.root.bind("<Control-t>", lambda e: self.toggle_theme())
         self.actualizar_reloj()
 
+    def _en_hilo_principal(self, fn, *args):
+        """Programa `fn` en el hilo principal de Tk.
+
+        Tkinter solo admite `after()` desde el hilo principal: llamarlo desde
+        un hilo secundario lanza "RuntimeError: main thread is not in main
+        loop". Cuando el mainloop aun no ha arrancado (tests, arranque
+        temprano) no hay nada que programar y se ejecuta directamente.
+        """
+        try:
+            self.root.after(0, fn, *args)
+        except (RuntimeError, TclError):
+            # Sin mainloop activo: no hay cola de eventos, ejecutar ya.
+            try:
+                fn(*args)
+            except Exception as e:
+                logging.warning(f"Error en callback programado: {e}")
+
     def _verificar_integridad(self):
         try:
             from hash_utils import verify_project_integrity
@@ -740,10 +757,9 @@ class ChatbotApp:
             logging.info("TTS inicializado")
             self.ai_loaded = True
             self._ai_ready.set()
-            self.root.after(0, self.on_ai_loaded)
+            self._en_hilo_principal(self.on_ai_loaded)
         except Exception as e:
             error_msg = str(e)
-            print("Error: " + error_msg)
             logging.error(f"Error cargando IA: {error_msg}")
             self.ai = None
             try:
@@ -752,7 +768,9 @@ class ChatbotApp:
                 self.tts = None
             self.ai_loaded = True
             self._ai_ready.set()
-            self.root.after(0, lambda: self.add_message("system", f"⚠️ Error: {error_msg}. Usando modo offline."))
+            self._en_hilo_principal(
+                self.add_message, "system",
+                f"⚠️ Error: {error_msg}. Usando modo offline.")
             self.root.after(0, lambda: self.status_label.config(text=">> MODO OFFLINE", fg="#FF6B35"))
             self.root.after(0, self.on_ai_loaded)
 

@@ -51,7 +51,7 @@ ARCHIVOS_FIRMA = [
     "uninstall.bat", "uninstall.sh",
     "iron-chat.bat", "backup.bat",
     "generar_firma.py", "verificar_firma.py",
-    "test_all.py", "test_download.py",
+    "test_all.py", "test_download.py", "test_smoke_gui.py",
     ".gitignore", "requirements.txt",
     # Nucleo extraido de main.py en la v2.3.
     "knowledge.py", "config_store.py", "download_worker.py", "logging_setup.py",

@@ -58,6 +58,17 @@ jobs:
       if: runner.os == 'Windows'
       run: python test_all.py
 
+    - name: La app arranca de verdad (xvfb)
+      # test_all.py solo comprueba que los metodos EXISTEN. Aqui se construye
+      # la ventana real y se procesa la cola de eventos, que es lo que
+      # revienta cuando un widget o una preferencia estan rotos.
+      if: runner.os == 'Linux'
+      run: xvfb-run python test_smoke_gui.py
+
+    - name: La app arranca de verdad (Windows)
+      if: runner.os == 'Windows'
+      run: python test_smoke_gui.py
+
     - name: Shell syntax check
       if: runner.os == 'Linux'
       run: |
