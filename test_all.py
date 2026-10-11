@@ -554,16 +554,22 @@ def logging_setup_no_lanza():
 
 
 def firma_independiente_del_fin_de_linea():
-    """La firma debe ser la misma con CRLF (Windows) y con LF (CI/Linux).
+    """La firma debe salir igual con CRLF (Windows) y con LF (CI/Linux).
 
-    Regresion real: hash_utils hasheaba los bytes tal cual, asi que el mismo
-    contenido daba distinto en cada plataforma y el CI fallaba siempre en
-    "Verify signature" aunque nadie hubiera tocado nada.
+    Regresion real: hash_utils hasheaba los bytes tal cual. Git guarda LF en
+    el indice y un checkout en Windows escribe CRLF, asi que los mismos
+    bytes logicos daban un hash distinto en cada plataforma: el CI fallaba
+    en "Verify signature" sin que nadie hubiera modificado nada.
+
+    Se prueban las DOS direcciones (a LF y a CRLF) para que el test sea
+    significativo igual en Windows que en Linux, donde Git ya entrega LF.
     """
     import hashlib
     import shutil
     import tempfile
     from hash_utils import ARCHIVOS_FIRMA, sha256_source_file
+
+    TEXTO = (".py", ".json", ".md", ".sh", ".bat", ".ps1", ".yml", ".txt")
 
     def hash_de(directorio):
         h = hashlib.sha256()
@@ -573,31 +579,45 @@ def firma_independiente_del_fin_de_linea():
                 h.update(bytes.fromhex(sha256_source_file(ruta)))
         return h.hexdigest()
 
-    original = hash_de(DIR)
-    copia = tempfile.mkdtemp()
-    destino = os.path.join(copia, "lf")
-    try:
-        shutil.copytree(DIR, destino,
-                        ignore=shutil.ignore_patterns("__pycache__", "*.pyc", ".git"))
-        convertidos = 0
-        for root, _, files in os.walk(destino):
-            for f in files:
-                p = os.path.join(root, f)
-                if f.endswith((".py", ".json", ".md", ".sh", ".bat", ".ps1")) \
-                        or f == ".gitignore":
-                    with open(p, "rb") as fh:
-                        b = fh.read()
-                    nuevo = b.replace(b"\r\n", b"\n").replace(b"\r", b"\n")
-                    if nuevo != b:
-                        with open(p, "wb") as fh:
-                            fh.write(nuevo)
-                        convertidos += 1
-        assert convertidos > 0, "no se convertio nada: el test no probaria nada"
-        assert hash_de(destino) == original, \
-            "la firma cambia entre CRLF y LF: el CI volveria a fallar"
-    finally:
-        shutil.rmtree(copia, ignore_errors=True)
+    def en_fin_de_linea(directorio, nuevo):
+        """Reescribe en `nuevo` los ficheros de texto de la firma y devuelve
+        cuantos han cambiado de verdad."""
+        cambiados = 0
+        for a in ARCHIVOS_FIRMA:
+            ruta = os.path.join(directorio, a)
+            if not os.path.exists(ruta):
+                continue
+            if not (a.endswith(TEXTO) or a == ".gitignore"):
+                continue
+            with open(ruta, "rb") as fh:
+                datos = fh.read()
+            if b"\x00" in datos[:8000]:
+                continue  # binario: no se toca
+            # Normaliza primero a LF y luego aplica el fin de linea
+            # pedido. Si no, convertir a CRLF ampliaria cada
+            # "\r\n" ya existente a "\r\r\n".
+            datos = datos.replace(b"\r\n", b"\n").replace(b"\r", b"\n")
+            if nuevo != b"\n":
+                datos = datos.replace(b"\n", nuevo)
+            with open(ruta, "wb") as fh:
+                fh.write(datos)
+            cambiados += 1
+        return cambiados
 
+    original = hash_de(DIR)
+    tmp = tempfile.mkdtemp()
+    try:
+        for etiqueta, fin_de_linea in (("lf", b"\n"), ("crlf", b"\r\n")):
+            destino = os.path.join(tmp, etiqueta)
+            shutil.copytree(DIR, destino,
+                            ignore=shutil.ignore_patterns(
+                                "__pycache__", "*.pyc", ".git"))
+            assert en_fin_de_linea(destino, fin_de_linea) > 0, \
+                f"no se reescribio ningun archivo para la variante {etiqueta}"
+            assert hash_de(destino) == original, \
+                f"la firma cambia al pasar a {etiqueta}: el CI volveria a fallar"
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
 
 
 if __name__ == "__main__":
