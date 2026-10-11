@@ -169,6 +169,21 @@ ramas por SO en TTS/audio. Ahora corre en `ubuntu-latest` **y**
 `windows-latest`, compila los módulos nuevos y valida
 `install_windows.ps1` con el parser de PowerShell.
 
+### 15. La firma de integridad era frágil ante el fin de línea
+Este lo encontró el propio CI nuevo: los 5 jobs fallaron en *Verify signature*.
+
+**Causa**: `hash_utils` hasheaba los bytes tal cual. Git guarda LF en el
+índice, un checkout en Windows escribe CRLF, así que **los mismos bytes
+lógicos daban un hash distinto en cada plataforma**. Localmente daba
+`✅` y en CI `❌`, sin que nadie hubiera modificado nada.
+
+**Fix**: `sha256_source_file()` normaliza CRLF/CR a LF antes de hashear.
+`sha256_file()` se mantiene en bruto para binarios (los modelos GGUF deben
+verificarse byte a byte, sin normalizar).
+
+Hay un test que lo blinda: convierte una copia entera del proyecto a LF y
+comprueba que la firma no cambia.
+
 ---
 
 ## Archivos nuevos
@@ -185,7 +200,8 @@ ramas por SO en TTS/audio. Ahora corre en `ubuntu-latest` **y**
 ## Verificación final de la v2.3
 
 ```
-test_all.py:  40 pasaron, 0 fallaron
+test_all.py:  41 pasaron, 0 fallaron
 verificar_firma.py:  Firma válida (32 archivos)
 py_compile:  18 módulos OK
+firma estable entre CRLF y LF:  OK
 ```
