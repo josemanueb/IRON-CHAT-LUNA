@@ -187,8 +187,28 @@ lógicos daban un hash distinto en cada plataforma**. Localmente daba
 `sha256_file()` se mantiene en bruto para binarios (los modelos GGUF deben
 verificarse byte a byte, sin normalizar).
 
-Hay un test que lo blinda: convierte una copia entera del proyecto a LF y
-comprueba que la firma no cambia.
+Hay un test que lo blinda: comprueba la firma en las **dos** direcciones (a
+LF y a CRLF), porque si solo prueba una el test no significa nada en la otra
+plataforma.
+
+### 16. `test_download.py`: descarga fallida con resultado "correcto"
+Otro que salió al ampliar el CI. El bloque estaba así:
+
+```python
+except urllib.error.URLError as e:
+
+except Exception as e:
+```
+
+Sin red, sin DNS o con el servidor caído, la excepción se consumía y el
+script **terminaba con código 0**, dando por buena una descarga que nunca
+había ocurrido. Ahora informa del fallo, borra el `.tmp` y sale con código 1.
+
+### 17. El CI compilaba una lista de ficheros a mano
+El paso *Syntax check* hacía `py_compile` de 14 ficheros escritos a mano, y
+`test_download.py` no estaba en la lista, así que su error de sintaxis era
+invisible. Ahora compila **todos** los `.py` del proyecto con `compileall`,
+así que el próximo fichero roto no puede colarse por la lista.
 
 ---
 
