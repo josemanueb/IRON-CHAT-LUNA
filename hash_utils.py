@@ -4,10 +4,31 @@ import re
 
 
 def sha256_file(filepath):
+    """SHA256 de un fichero tal cual (binario: modelo GGUF, etc.)."""
     h = hashlib.sha256()
     with open(filepath, "rb") as f:
         for chunk in iter(lambda: f.read(8192), b""):
             h.update(chunk)
+    return h.hexdigest()
+
+
+def sha256_source_file(filepath):
+    """SHA256 de un fichero de TEXTO normalizando los finales de linea.
+
+    Necesario para la firma del proyecto: Git guarda LF en el indice y
+    checkout en Windows escribe CRLF, asi que el hash de los mismos bytes
+    logicos daba distinto en cada plataforma y el CI siempre fallaba.
+    Normalizar CRLF/CR a LF hace que la firma dependa del contenido, no de
+    como lo guardo cada sistema operativo.
+    """
+    h = hashlib.sha256()
+    try:
+        with open(filepath, "rb") as f:
+            datos = f.read()
+    except OSError:
+        raise
+    datos = datos.replace(b"\r\n", b"\n").replace(b"\r", b"\n")
+    h.update(datos)
     return h.hexdigest()
 
 
@@ -39,6 +60,11 @@ ARCHIVOS_FIRMA = [
 ]
 
 
+def _hash_firmado(archivo):
+    """Hash de un archivo de la firma, normalizando finales de linea."""
+    return sha256_source_file(archivo)
+
+
 def verify_project_integrity(project_dir):
     sig_file = os.path.join(project_dir, "SIGNATURE.md")
     if not os.path.exists(sig_file):
@@ -56,8 +82,8 @@ def verify_project_integrity(project_dir):
     for archivo in ARCHIVOS_FIRMA:
         ruta = os.path.join(project_dir, archivo)
         if os.path.exists(ruta):
-            with open(ruta, 'rb') as f:
-                hash_total.update(f.read())
+            # Normalizado: la firma no puede depender de CRLF vs LF.
+            hash_total.update(bytes.fromhex(_hash_firmado(ruta)))
         else:
             missing.append(archivo)
 

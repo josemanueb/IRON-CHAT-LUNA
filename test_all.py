@@ -552,6 +552,54 @@ def logging_setup_no_lanza():
 
 
 
+
+def firma_independiente_del_fin_de_linea():
+    """La firma debe ser la misma con CRLF (Windows) y con LF (CI/Linux).
+
+    Regresion real: hash_utils hasheaba los bytes tal cual, asi que el mismo
+    contenido daba distinto en cada plataforma y el CI fallaba siempre en
+    "Verify signature" aunque nadie hubiera tocado nada.
+    """
+    import hashlib
+    import shutil
+    import tempfile
+    from hash_utils import ARCHIVOS_FIRMA, sha256_source_file
+
+    def hash_de(directorio):
+        h = hashlib.sha256()
+        for a in ARCHIVOS_FIRMA:
+            ruta = os.path.join(directorio, a)
+            if os.path.exists(ruta):
+                h.update(bytes.fromhex(sha256_source_file(ruta)))
+        return h.hexdigest()
+
+    original = hash_de(DIR)
+    copia = tempfile.mkdtemp()
+    destino = os.path.join(copia, "lf")
+    try:
+        shutil.copytree(DIR, destino,
+                        ignore=shutil.ignore_patterns("__pycache__", "*.pyc", ".git"))
+        convertidos = 0
+        for root, _, files in os.walk(destino):
+            for f in files:
+                p = os.path.join(root, f)
+                if f.endswith((".py", ".json", ".md", ".sh", ".bat", ".ps1")) \
+                        or f == ".gitignore":
+                    with open(p, "rb") as fh:
+                        b = fh.read()
+                    nuevo = b.replace(b"\r\n", b"\n").replace(b"\r", b"\n")
+                    if nuevo != b:
+                        with open(p, "wb") as fh:
+                            fh.write(nuevo)
+                        convertidos += 1
+        assert convertidos > 0, "no se convertio nada: el test no probaria nada"
+        assert hash_de(destino) == original, \
+            "la firma cambia entre CRLF y LF: el CI volveria a fallar"
+    finally:
+        shutil.rmtree(copia, ignore_errors=True)
+
+
+
 if __name__ == "__main__":
     print(f"\n{'='*50}")
     print("  PRUEBAS DE ESTABILIDAD - IRON CHAT LUNA")
@@ -597,6 +645,7 @@ if __name__ == "__main__":
     test("Download: cancelar detiene y borra .tmp", download_worker_cancela)
     test("Download: API segura sin conexion", download_worker_siempre_responde)
     test("Logging: rotacion no lanza", logging_setup_no_lanza)
+    test("Firma: independiente de CRLF/LF", firma_independiente_del_fin_de_linea)
 
     print(f"\n{'='*50}")
     print(f"  RESULTADO: {PASS} pasaron, {FAIL} fallaron")

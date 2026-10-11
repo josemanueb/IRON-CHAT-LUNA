@@ -9,7 +9,7 @@ try:
 except Exception:
     pass
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from hash_utils import ARCHIVOS_FIRMA
+from hash_utils import ARCHIVOS_FIRMA, sha256_source_file
 
 project_dir = os.path.dirname(os.path.abspath(__file__))
 hash_total = hashlib.sha256()
@@ -17,10 +17,10 @@ hash_total = hashlib.sha256()
 for archivo in ARCHIVOS_FIRMA:
     ruta = os.path.join(project_dir, archivo)
     if os.path.exists(ruta):
-        with open(ruta, 'rb') as f:
-            contenido = f.read()
-            hash_total.update(contenido)
-            print(f"✅ {archivo} - OK")
+        # Normalizado CRLF/CR -> LF: la firma debe ser identica en
+        # Windows, Linux y en el CI, donde Git siempre entrega LF.
+        hash_total.update(bytes.fromhex(sha256_source_file(ruta)))
+        print(f"✅ {archivo} - OK")
     else:
         print(f"⚠️ {archivo} - NO ENCONTRADO")
 
