@@ -9,10 +9,14 @@ __pycache__/
 *.backup
 *.whl
 *.db
+*.db-wal
+*.db-shm
 historial.json
 memorias.json
 notas_entreno.txt
 progreso.db
+# Preferencias locales del usuario: tema, volumenes, GPU, contexto.
+config.json
 musica/
 models/
 *.gguf
@@ -29,3 +33,11 @@ portable_python/
 vc_extract/
 cab_out/
 _crear_lnk_tmp.vbs
+
+# Scripts de parche temporales del desarrollo
+_patch_*.py
+_fix_*.py
+_inspect*.py
+_check_ai*.py
+_diag*.py
+_repro*.py

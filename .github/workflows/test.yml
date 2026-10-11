@@ -8,10 +8,19 @@ on:
 
 jobs:
   test:
-    runs-on: ubuntu-latest
+    # La app es multiplataforma y TTS/audio tienen ramas por SO: correr solo
+    # en Linux se deixaba pasar justo los bugs de encoding (cp1252) y de
+    # emojis en consola, que son justo los que rompian en Windows.
+    runs-on: ${{ matrix.os }}
     strategy:
+      fail-fast: false
       matrix:
+        os: [ubuntu-latest, windows-latest]
         python-version: ["3.10", "3.11", "3.12"]
+        exclude:
+          # 3.12 en Linux es lo mas pesado; el resto se cubre igual en CI.
+          - os: ubuntu-latest
+            python-version: "3.12"
 
     steps:
     - uses: actions/checkout@v4
@@ -21,7 +30,8 @@ jobs:
       with:
         python-version: ${{ matrix.python-version }}
 
-    - name: Install system dependencies
+    - name: Install system dependencies (Linux)
+      if: runner.os == 'Linux'
       run: |
         sudo apt-get update
         sudo apt-get install -y python3-tk xvfb
@@ -46,13 +56,35 @@ jobs:
         python -m py_compile progress_tracker.py
         python -m py_compile check_deps.py
         python -m py_compile install.py
+        python -m py_compile knowledge.py
+        python -m py_compile config_store.py
+        python -m py_compile download_worker.py
+        python -m py_compile logging_setup.py
 
-    - name: Run tests
-      run: |
-        xvfb-run python test_all.py
+    - name: Run tests (xvfb)
+      if: runner.os == 'Linux'
+      run: xvfb-run python test_all.py
+
+    - name: Run tests (Windows)
+      if: runner.os == 'Windows'
+      run: python test_all.py
 
     - name: Shell syntax check
+      if: runner.os == 'Linux'
       run: |
         bash -n luna.sh
         bash -n install.sh
         bash -n uninstall.sh
+
+    - name: PowerShell syntax check (Windows)
+      if: runner.os == 'Windows'
+      shell: pwsh
+      run: |
+        $errors = $null
+        [System.Management.Automation.Language.Parser]::ParseFile(
+          (Resolve-Path install_windows.ps1), [ref]$null, [ref]$errors) | Out-Null
+        if ($errors -and $errors.Count -gt 0) {
+          $errors | ForEach-Object { Write-Error $_.Message }
+          exit 1
+        }
+        Write-Output "install_windows.ps1 OK"

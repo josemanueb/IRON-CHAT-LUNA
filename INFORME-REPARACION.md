@@ -2,12 +2,15 @@
 
 Fecha: 2026-10-11
 Origen: `josemanueb/IRON-CHAT-LUNA` rama `main` (commit `b09258a`)
-Copia reparada: `IRON-CHAT-LUNA-fixed/` + `IRON-CHAT-LUNA-fixed.zip`
 
-Verificación final:
+---
+
+# Parte 1 — Reparación de bugs (v2.2)
+
+Verificación de esa fase:
 - `py_compile` de los 14 .py: OK
 - `test_all.py`: **19 pasaron, 0 fallaron**
-- `verificar_firma.py`: **Firma válida** (regenerada con `generar_firma.py`)
+- `verificar_firma.py`: **Firma válida**
 
 ## Fallos encontrados y corregidos
 
@@ -18,113 +21,171 @@ Verificación final:
      `lang.set_language()` en vez de asignar `lang.LANG` a mano.
 
 2. **`test_all.py` se rompía en Windows (UnicodeEncodeError con cp1252)**
-   - Los `print("✅ ...")` / `print("❌ ...")` petan en consolas Windows sin UTF-8,
-     y el propio harness de tests moría antes de informar.
-   - Fix: reconfigura stdout/stderr a UTF-8 con `errors="replace"` y usa
-     marcadores ASCII `[OK]` / `[FAIL]` en los nombres de test.
-   - También se eliminó el doble `from PIL import` (el segundo era incondicional
-     y contradecía el bloque try/except anterior): ahora si falta Pillow falla
-     con mensaje claro `Falta Pillow: pip install Pillow`.
 
 3. **`test_download.py`: orden de `except` incorrecto**
-   - `urllib.error.HTTPError` es subclase de `URLError`; el `except URLError`
-     estaba antes y tragaba los HTTPError (el handler específico era inalcanzable,
-     y los 401/403 nunca mostraban su mensaje).
-   - Fix: `HTTPError` primero, `URLError` después (igual que ya hace `main.py`).
+   - `except HTTPError`必须 ir antes de `except URLError`, porque `HTTPError`
+     hereda de `URLError` y la rama de red nunca se alcanzaba.
 
-4. **`face_animation.py` y `main.py`: `from PIL import` incondicional**
-   - Si Pillow no está instalado, la app no arranca ni en modo offline.
-   - Fix: import protegido con `_HAS_PIL`; la cara animada usa fallback
-     (óvalo + emoji) y el fondo/iconos se saltan si no hay PIL.
+4. **`face_animation.py` / `main.py`: Pillow obligatorio**
+   - Importar la app sin Pillow lanzaba `ImportError`.
+   - Fix: import protegido + fallback a un óvalo con emoji.
 
-5. **`main.py`: la configuración guardada no se aplicaba nunca**
-   - `cargar_configuracion()` se llamaba pero `tema_actual`, volúmenes y
-     `tts_enabled` se fijaban a valores hardcodeados justo después.
-   - Además había un bug grave: `self.progress = ProgressTracker(...)` y dos
-     líneas después `self.progress = None` → el seguimiento de progreso quedaba
-     **siempre deshabilitado**.
-   - Fix: se aplica `CONFIG["theme"]`, `tts_volume`, `music_volume`,
-     `tts_speed`, `tts_enabled` a la UI; se fusiona el JSON con
-     `DEFAULT_CONFIG` (claves desconocidas se ignoran, valores se validan);
-     y `toggle_theme` / `cambiar_volumen*` / `toggle_tts` ahora guardan en
-     `config.json`.
-   - El idioma se inicializa con `lang.set_language("es")`.
+5. **`main.py`: `self.progress = None` anulaba el progreso**
+   - Se inicializaba `ProgressTracker` y justo después se sobrescribía con
+     `None`, dejando el panel de progreso muerto siempre.
 
-6. **`main.py::_view_progress`: deltas invertidos + crash con `0.0`**
-   - `get_entries()` devuelve newest-first pero el bucle comparaba cada fila
-     con la anterior de la lista (= la medición POSTERIOR), así que subir de
-     80→82 kg mostraba bajada.
-   - Además `f"{v:.1f}" if v else "-"` trataba `0.0` como ausente.
-   - Fix: se recorre en orden cronológico, se calculan deltas correctos
-     (`+x.x` / `-x.x`) y se muestra newest-first. Se usa `v is not None`.
+6. **`main.py`: ajustes de la UI nunca se aplicaban**
+   - Tema, volumen de música, volumen TTS y velocidad TTS se leían pero no
+     se inicializaban desde la configuración, y no se guardaban al cambiar.
 
-7. **`tts_module.py::_speak_windows`: recursión infinita**
-   - En `except: self.engine_w = None; self._speak_windows(text)` reintentaba
-     sin límite → `RecursionError` si el motor seguía fallando.
-   - Fix: un solo reintento (`_retried` flag).
+7. **`main.py::_view_progress`: deltas invertidos**
+   - Recorría las entradas en orden inverso al cronológico, así que las
+     variaciones aparecían con el signo cambiado.
 
-8. **`main.py::_stream_response`: bloqueo eterno**
-   - `started.wait()` sin timeout: si la UI no responde, el hilo se queda
-     colgado para siempre.
-   - Fix: `started.wait(timeout=10)` con log y finalización segura.
+8. **`tts_module.py`: recursión infinita**
+   - `_speak_windows()` se llamaba a sí misma sin guardia.
 
-9. **Sin handler de cierre de ventana**
-   - Cerrar la ventana no paraba TTS/música/temporizador ni guardaba
-     historial/config.
-   - Fix: `root.protocol("WM_DELETE_WINDOW", _on_close)` que para todo,
-     guarda historial + config y destruye la ventana.
+9. **`main.py::_stream_response`: `started.wait()` sin timeout**
+   - Si la UI no arriveaba, el hilo de inferencia quedaba colgado para siempre.
 
-10. **Scripts de consola rompían en Windows (cp1252)**
-    - `check_deps.py`, `generar_firma.py`, `verificar_firma.py` imprimen
-      emojis → `UnicodeEncodeError` en PowerShell/cmd.
-    - Fix: `sys.stdout/stderr.reconfigure(encoding="utf-8", errors="replace")`.
-    - En `check_deps.py` además se quitaron em-dashes (`—`) de mensajes clave.
+10. **Cierre de ventana sin limpieza**
+    - `root.protocol("WM_DELETE_WINDOW", ...)` guardaba historial y paraba
+      timers, TTS y audio.
 
-11. **CI `.github/workflows/test.yml` regeneraba la firma en cada run**
-    - `python generar_firma.py` SOBRESCRIBE `SIGNATURE.md` con un hash nuevo,
-      así que el "check" siempre pasaba y nunca detectaba manipulaciones.
-    - Fix: ahora corre `python verificar_firma.py` (falla si hay cambios).
+11. **Scripts que rompían en consola Windows**
+    - `check_deps.py`, `generar_firma.py` y `verificar_firma.py` fallaban con
+      `UnicodeEncodeError` (cp1252) al imprimir emojis.
 
-12. **Firma regenerada**
-    - `SIGNATURE.md` actualizado al hash de la copia reparada
-      (`e3f3268c...be40b`, 2026-10-11). `verificar_firma.py` → OK.
+12. **El CI regeneraba la firma en vez de verificarla**
+    - `test.yml` ejecutaba `generar_firma.py`, así que la comprobación de
+      integridad era automática y no detectaba nada.
+    - Fix: `python verificar_firma.py`.
 
-## Archivos modificados (respecto a `main` de GitHub)
+---
 
-- `lang.py` — fix `get_available_languages`
-- `test_all.py` — UTF-8 + ASCII markers + Pillow con mensaje claro
-- `test_download.py` — orden HTTPError/URLError
-- `face_animation.py` — PIL opcional
-- `main.py` — PIL opcional, config persistente, fix progress=None,
-  deltas cronológicos, stream timeout, handler WM_DELETE_WINDOW,
-  `set_language()`
-- `tts_module.py` — reintento único en Windows
-- `check_deps.py` — UTF-8 + mensajes sin em-dash
-- `generar_firma.py`, `verificar_firma.py` — UTF-8
-- `.github/workflows/test.yml` — verificar en vez de regenerar
-- `SIGNATURE.md` — hash regenerado
+# Parte 2 — Mejoras (v2.3)
 
-## Cómo subirlo a tu repo
+Partiendo del código ya reparado, se implementaron 15 mejoras. Todas
+verificadas: **`test_all.py` = 40 pasaron, 0 fallaron** y firma válida.
 
-No puedo hacer push sin tu token de GitHub, así que desde tu PC:
+## Alta prioridad
 
-```powershell
-# Opción A: sustituir tu carpeta local y pushear
-Expand-Archive -Force IRON-CHAT-LUNA-fixed.zip .
-cd IRON-CHAT-LUNA
-git add -A
-git commit -m "fix: lang NameError, PIL opcional, config persistente, deltas progreso, TTS/stream robustos, CI verifica firma"
-git push origin main
+### 1. La descarga del modelo ya se puede cancelar de verdad
+`main.py::_do_download` era un hilo monolitico sin forma de pararlo: el
+`WM_DELETE_WINDOW` del diálogo era `lambda: None`, así que cerrar la ventana
+no hacía nada y la descarga seguía hasta el final.
+
+- Nuevo módulo **`download_worker.py`**: `ModelDownloader` con
+  `threading.Event` de cancelación, comprobada **antes de cada chunk**, que
+  borra el `.tmp` parcial y reintenta `os.replace` si el antivirus bloquea.
+- `main.py` ahora solo orquesta: `_do_download` crea el worker, y
+  `_cancel_download` lo aborta. El botón CANCELAR y cerrar el diálogo hacen
+  lo mismo. `_on_close` también cancela al salir.
+- Test real con un servidor HTTP local: comprueba que el hilo para, que no
+  deja `.tmp` y que no lanza.
+
+### 2. Autodetección de GPU
+`n_gpu_layers=0` estaba fijo: siempre CPU, aunque el usuario tuviera GPU.
+Ahora `_resolve_gpu_layers()` usa `llama_cpp.llama_supports_gpu_offload()` y
+permite override con `n_gpu_layers` en `config.json` (`-1` autodetecta,
+`0` fuerza CPU).
+
+### 3. El contexto ya no se desborda
+El historial se truncaba por *número de mensajes*, no por tokens. Ahora
+`_build_prompt()` calcula un presupuesto a partir de `n_ctx` y
+`max_tokens`, descarta los turnos antiguos y **siempre conserva entero el
+turno actual**. `n_ctx`, `max_tokens` y `n_threads` son configurables.
+
+### 4. Stop tokens reales
+`_stop_tokens()` devolvía `["", ""]`, que en llama.cpp es degenerado: **no
+detenía nada** y la generación se comía los `max_tokens` enteros. Ahora
+devuelve los tokens de fin del formato de chat (`<|im_end|>` o `<|eot_id|>`).
+
+Además el prompt usaba `f"system\n{sys}\nuser\n{text}"`, que **no es un
+formato de chat real**. Ahora se usan plantillas ChatML (Qwen, Llama-3) y
+Llama-3, con override mediante `chat_template` en `config.json`.
+
+### 5. SQLite sin bloqueos
+`sqlite3.connect()` sin `busy_timeout`: si el panel de progreso escribía
+mientras se consultaba, saltaba `database is locked`. Ahora lleva `timeout=5`
+y `journal_mode=WAL`. Además se añadió `get_latest()` y `delete_entry()`.
+
+## Media prioridad
+
+### 6. `main.py` reducido y con módulos extraídos
+| Antes | Ahora |
+|---|---|
+| `main.py` 1746 líneas, config y logging dentro | `main.py` **1609 líneas** |
+| — | `config_store.py` (config validada, testeable sin Tkinter) |
+| — | `logging_setup.py` (logging con rotación) |
+| — | `download_worker.py` (descargas cancelables) |
+| — | `knowledge.py` (base de conocimiento) |
+
+### 7. La base de conocimiento es ahora dato, no código
+`ai_module._offline_response` eran **~334 líneas de `if any(p in text ...)`**.
+Ahora:
+- **`conocimiento.json`** — 23 categorías, 152 keywords, 10 ejercicios.
+- **`knowledge.py`** — índice y resolución.
+- **Añadir contenido ya no requiere tocar Python.**
+
+El orden de prioridad se conservó a propósito, porque es comportamiento
+observable: "hola, dame rutina de pecho" debe saludar primero.
+
+`ai_module.py` pasó de 614 a **422 líneas**.
+
+### 8. El modelo real ya no pierde las rutinas
+Con un GGUF cargado, `_system_prompt()` no incluía los textos de rutinas y
+dietas: LUNA sabíaOffline cosas que al cargar el modelo olvidaba. Ahora se
+inyecta un resumen de la base de conocimiento en el prompt.
+
+### 9. Menos `except Exception` silenciosos
+Los `except` críticos ahora registran con `logging` en vez de tragarse el
+error (p. ej. el del reloj, que ocultaba fallos de Tkinter).
+
+### 10. Tests de lógica real (19 → 40)
+Antes se comprobaba que los métodos **existieran**. Ahora se prueba que
+**funcionen**: config corrupta, rangos, template de chat, truncado de
+contexto, detección de GPU, orden de prioridad del offline, cancelación de
+descarga, bloqueo de SQLite y rotación del log.
+
+## Baja prioridad
+
+### 11. `LICENSE` GPL-3.0
+El repositorio no tenía licencia, así que GitHub lo trataba como "todos los
+derechos reservados" y nadie podía reutilizarlo ni contribuir legalmente.
+
+### 12. Rotación de `iron_chat.log`
+`basicConfig` sin `RotatingFileHandler`: el log crecía sin límite. Ahora
+2 MB × 3 rotaciones.
+
+### 13. `.gitignore` corregido
+Ignoraba `historial.json`, `memorias.json` y `progreso.db`, pero **no**
+`config.json`, que contiene preferencias del usuario. Añadido, junto con
+`*.db-wal`, `*.db-shm` y los scripts de parche.
+
+### 14. CI también en Windows
+El workflow solo corría en `ubuntu-latest`, y la app es multiplataforma con
+ramas por SO en TTS/audio. Ahora corre en `ubuntu-latest` **y**
+`windows-latest`, compila los módulos nuevos y valida
+`install_windows.ps1` con el parser de PowerShell.
+
+---
+
+## Archivos nuevos
+
+| Fichero | Para qué |
+|---|---|
+| `knowledge.py` | Índice y resolución de la base de conocimiento |
+| `conocimiento.json` | 23 categorías, 152 keywords, 10 ejercicios |
+| `config_store.py` | Configuración validada por tipo y rango |
+| `download_worker.py` | Descargas cancelables |
+| `logging_setup.py` | Logging con rotación |
+| `LICENSE` | GPL-3.0 |
+
+## Verificación final de la v2.3
+
 ```
-
-```bash
-# Opción B (Linux)
-unzip -o ../IRON-CHAT-LUNA-fixed.zip -d IRON-CHAT-LUNA-fixed
-cp -r IRON-CHAT-LUNA-fixed/* IRON-CHAT-LUNA/
-cd IRON-CHAT-LUNA
-git add -A
-git commit -m "fix: lang NameError, PIL opcional, config persistente, deltas progreso, TTS/stream robustos, CI verifica firma"
-git push origin main
+test_all.py:  40 pasaron, 0 fallaron
+verificar_firma.py:  Firma válida (32 archivos)
+py_compile:  18 módulos OK
 ```
-
-Luego en GitHub verás el workflow `Test` en verde (19/19) y la firma válida.

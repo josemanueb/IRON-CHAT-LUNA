@@ -32,6 +32,10 @@ ARCHIVOS_FIRMA = [
     "generar_firma.py", "verificar_firma.py",
     "test_all.py", "test_download.py",
     ".gitignore", "requirements.txt",
+    # Nucleo extraido de main.py en la v2.3.
+    "knowledge.py", "config_store.py", "download_worker.py", "logging_setup.py",
+    # Datos de la base de conocimiento.
+    "rutinas.json", "conocimiento.json",
 ]
 
 

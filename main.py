@@ -40,6 +40,9 @@ from hash_utils import sha256_file, verify_file
 from themes import COLORES
 import glob
 import lang
+import config_store
+import logging_setup
+from download_worker import ModelDownloader, DownloadCancelled
 
 try:
     import ttkbootstrap as tb
@@ -55,65 +58,40 @@ else:
     from tkinter import ttk
 
 # === LOGGING ===
-log_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "iron_chat.log")
-try:
-    logging.basicConfig(
-        filename=log_path,
-        level=logging.INFO,
-        format="%(asctime)s - %(levelname)s - %(message)s",
-        datefmt="%H:%M:%S",
-        encoding="utf-8"
-    )
-except Exception:
-    print("⚠ No se pudo crear iron_chat.log, se usará salida estándar")
-logging.info("🚀 IRON CHAT iniciado")
+# Rotacion automatica: el log antes crecia sin limite (logging_setup.py).
+_project_dir = os.path.dirname(os.path.abspath(__file__))
+log_path = logging_setup.setup_logging(_project_dir)
+if log_path is None:
+    print("⚠ No se pudo crear iron_chat.log, se usara salida estandar")
+    logging.basicConfig(level=logging.INFO,
+                        format="%(asctime)s - %(levelname)s - %(message)s",
+                        datefmt="%H:%M:%S")
+else:
+    logging.info("🚀 IRON CHAT iniciado")
 
-# Sistema de persistencia de configuraciones
-CONFIG_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "config.json")
-DEFAULT_CONFIG = {
-    "theme": 0,
-    "tts_enabled": True,
-    "music_volume": 50,
-    "tts_volume": 70,
-    "tts_speed": 100,
-    "sidebar_collapsed": False,
-    "last_window_geometry": None,
-}
+
+# Sistema de persistencia de configuraciones.
+# La validacion vive en config_store.py (testeable sin Tkinter); aqui solo
+# se mantiene el dict en memoria para que la UI lo lea de forma sincrona.
+CONFIG_FILE = os.path.join(_project_dir, "config.json")
+DEFAULT_CONFIG = config_store.default_config()
+CONFIG = DEFAULT_CONFIG.copy()
+
 
 def cargar_configuracion():
-    """Carga la configuración guardada desde config.json."""
+    """Carga config.json ya validado por config_store."""
     global CONFIG
-    CONFIG = DEFAULT_CONFIG.copy()
-    if os.path.exists(CONFIG_FILE):
-        try:
-            with open(CONFIG_FILE, "r", encoding="utf-8") as f:
-                data = json.load(f)
-            if isinstance(data, dict):
-                for k, v in data.items():
-                    if k in DEFAULT_CONFIG:
-                        CONFIG[k] = v
-        except Exception:
-            pass
-    # Aplicar configuración guardada
-    try:
-        CONFIG["theme"] = int(CONFIG.get("theme", 0)) % len(COLORES)
-    except Exception:
-        CONFIG["theme"] = 0
-    try:
-        CONFIG["tts_enabled"] = bool(CONFIG.get("tts_enabled", True))
-        CONFIG["music_volume"] = max(0, min(100, int(CONFIG.get("music_volume", 50))))
-        CONFIG["tts_volume"] = max(0, min(100, int(CONFIG.get("tts_volume", 70))))
-        CONFIG["tts_speed"] = max(50, min(200, int(CONFIG.get("tts_speed", 100))))
-    except Exception:
-        pass
+    CONFIG = config_store.load_config(_project_dir)
+    return CONFIG
+
 
 def guardar_configuracion():
-    """Guarda la configuración actual en config.json."""
-    try:
-        with open(CONFIG_FILE, "w", encoding="utf-8") as f:
-            json.dump(CONFIG, f, ensure_ascii=False, indent=2)
-    except Exception:
-        pass
+    """Guarda la configuracion actual en config.json."""
+    ok = config_store.save_config(_project_dir, CONFIG)
+    if not ok:
+        logging.warning("No se pudo guardar config.json")
+    return ok
+
 
 class ChatbotApp:
     def __init__(self, root):
@@ -904,110 +882,112 @@ class ChatbotApp:
                   bg="#2C3E50", fg="white", relief=tk.FLAT, padx=15, pady=5, command=dialog.destroy).pack(side=tk.LEFT, padx=5)
 
     def _do_download(self, model_dir, model_name, model_size):
+        """Arranca la descarga con download_worker (cancelable)."""
         repo, name = self._download_model_url()
         path = os.path.join(model_dir, name)
         if os.path.exists(path) and os.path.getsize(path) > 1000000:
             self.add_message("system", lang.tr("sys_model_exists"))
             threading.Thread(target=self._reload_ai_after_download, daemon=True).start()
             return
-        self.add_message("system", lang.tr_format("sys_model_downloading", name=model_name, size=model_size))
+
+        self.add_message("system", lang.tr_format("sys_model_downloading",
+                                                  name=model_name, size=model_size))
         self.menu_sistema.entryconfig(self.menu_download_idx, state='disabled')
         self._last_pct = -1
         self._show_dl_ui(model_name)
+
         download_url = f"https://huggingface.co/{repo}/resolve/main/{name}"
         manual_url = f"https://huggingface.co/{repo}/tree/main"
 
-        def _do():
-            import ssl
-            success = False
-            tmp = path + ".tmp"
-            logging.info(f"Iniciando descarga: {download_url}")
-            try:
-                ctx = ssl.create_default_context()
-                req = urllib.request.Request(download_url)
-                req.add_header("User-Agent", "IRON-CHAT-LUNA/2.2")
-                resp = urllib.request.urlopen(req, context=ctx, timeout=120)
-                total = int(resp.headers.get("Content-Length", 0))
-                logging.info(f"Content-Length: {total} bytes")
-                sent = 0
-                chunk_size = 65536
-                last_ui_time = time.time()
-                ui_interval = 0.5
-                with open(tmp, "wb") as f:
-                    while True:
-                        chunk = resp.read(chunk_size)
-                        if not chunk:
-                            break
-                        f.write(chunk)
-                        sent += len(chunk)
-                        now = time.time()
-                        if total > 0:
-                            pct = int(sent * 100 / total)
-                            last = getattr(self, '_last_pct', -1)
-                            if pct >= last + 2 or pct == 100:
-                                self._last_pct = pct
-                                self.root.after(0, lambda p=pct, s=sent, t=total: self._update_dl_ui(p, s, t))
-                        elif now - last_ui_time >= ui_interval:
-                            last_ui_time = now
-                            self.root.after(0, lambda s=sent: self._update_dl_ui(None, s, None))
-                resp.close()
-                self.root.after(0, lambda s=sent, t=total: self._update_dl_ui(100, s, t))
-                sz = os.path.getsize(tmp)
-                if sz < 1000000:
-                    raise RuntimeError(f"Archivo corrupto: solo {sz} bytes")
-                file_hash = sha256_file(tmp)
-                logging.info(f"SHA256 del modelo descargado: {file_hash}")
-                expected = getattr(self, '_dl_sha256', None)
-                if expected and not verify_file(tmp, expected):
-                    os.remove(tmp)
-                    raise RuntimeError(f"SHA256 no coincide: esperado {expected[:16]}..., obtenido {file_hash[:16]}...")
-                for _ in range(3):
-                    try:
-                        os.replace(tmp, path)
-                        break
-                    except OSError as e:
-                        if _ == 2:
-                            raise
-                        logging.warning(f"os.replace falló (intento {_+1}/3): {e}")
-                        time.sleep(1)
-                success = True
-                logging.info(f"Descarga completada: {path} ({sz} bytes)")
-                self.root.after(0, self._model_downloaded)
-            except urllib.error.HTTPError as e:
-                logging.error(f"HTTP Error {e.code}: {e.reason}")
-                msg = lang.tr("sys_http_error", code=e.code)
-                if e.code in (401, 403):
-                    msg += lang.tr("sys_access_denied")
-                self.root.after(0, lambda m=msg: self.add_message("system", m))
-            except urllib.error.URLError as e:
-                err = str(e.reason) if hasattr(e, 'reason') else str(e)
-                logging.error(f"URL Error: {err}")
-                if "certificate" in err.lower() or "ssl" in err.lower():
-                    self.root.after(0, lambda: self.add_message("system", lang.tr("sys_ssl_error")))
-                elif "timed out" in err.lower():
-                    self.root.after(0, lambda: self.add_message("system", lang.tr("sys_timeout_error")))
-                else:
-                    self.root.after(0, lambda m=err: self.add_message("system", lang.tr("sys_network_error", err=m)))
-            except OSError as e:
-                self.root.after(0, lambda m=str(e): self.add_message("system", lang.tr("sys_disk_error", e=m)))
-            except Exception as e:
-                logging.error(f"Download error: {e}")
-                self.root.after(0, lambda m=str(e): self.add_message("system", lang.tr("sys_download_error", e=m)))
-            finally:
-                self._dl_in_progress = False
-                self.root.after(0, lambda: self.menu_sistema.entryconfig(
-                    self.menu_download_idx, state='normal'))
-                if not success:
-                    self.root.after(0, self._hide_dl_ui)
-                if os.path.exists(tmp):
-                    try: os.remove(tmp)
-                    except Exception as e: logging.warning(f"No se pudo eliminar {tmp}: {e}")
-                if not os.path.exists(path):
-                    self.root.after(0, lambda: self.add_message("system",
-                        lang.tr_format("sys_download_manual", url=manual_url, model_dir=model_dir)))
+        def _on_progress(sent, total):
+            pct = int(sent * 100 / total) if total else None
+            if pct is None:
+                self.root.after(0, lambda s=sent: self._update_dl_ui(None, s, None))
+            elif pct >= getattr(self, '_last_pct', -1) + 2 or pct == 100:
+                self._last_pct = pct
+                self.root.after(0, lambda p=pct, s=sent, t=total: self._update_dl_ui(p, s, t))
+
+        def _on_done(_path):
+            logging.info("Descarga completada: %s", _path)
+            self.root.after(0, self._model_downloaded)
+
+        def _on_error(e):
+            logging.error("Error de descarga: %s", e)
+            self._dl_error = e
+            self.root.after(0, lambda err=e: self._dl_failed(err))
 
         self._dl_in_progress = True
-        threading.Thread(target=_do, daemon=True).start()
+        self._dl_error = None
+        self._dl_worker = ModelDownloader(
+            download_url, path,
+            expected_sha256=getattr(self, '_dl_sha256', None),
+            on_progress=_on_progress,
+            on_done=_on_done,
+            on_error=_on_error,
+        )
+        self._dl_manual_url = manual_url
+        self._dl_model_dir = model_dir
+        self._dl_model_name = model_name
+        self._dl_worker.start()
+
+    def _dl_finished(self, cancelled, error):
+        """Limpia el estado de descarga y avisa al usuario (en hilo UI)."""
+        self._dl_in_progress = False
+        self._dl_worker = None
+        self.menu_sistema.entryconfig(self.menu_download_idx, state='normal')
+        if cancelled:
+            self._hide_dl_ui()
+            self.add_message("system", "⛔ Descarga cancelada")
+        elif error is not None:
+            self._hide_dl_ui()
+            self._dl_report_error(error)
+        self.status_label.config(text=lang.tr("status_ready_short"), fg="#27AE60")
+
+    def _dl_failed(self, error):
+        self._dl_finished(False, error)
+
+    def _dl_report_error(self, error):
+        """Traduce el error de red a un mensaje util."""
+        msg = str(error)
+        if isinstance(error, urllib.error.HTTPError):
+            base = lang.tr("sys_http_error", code=error.code)
+            if error.code in (401, 403):
+                base += lang.tr("sys_access_denied")
+            self.add_message("system", base)
+            return
+        if isinstance(error, urllib.error.URLError):
+            reason = str(getattr(error, "reason", error))
+            low = reason.lower()
+            if "certificate" in low or "ssl" in low:
+                self.add_message("system", lang.tr("sys_ssl_error"))
+            elif "timed out" in low:
+                self.add_message("system", lang.tr("sys_timeout_error"))
+            else:
+                self.add_message("system", lang.tr("sys_network_error", err=reason))
+            return
+        if isinstance(error, OSError):
+            self.add_message("system", lang.tr("sys_disk_error", e=msg))
+            return
+        self.add_message("system", lang.tr("sys_download_error", e=msg))
+        # Si no hay nada en disco, ofrecemos la descarga manual.
+        model_dir = getattr(self, '_dl_model_dir', None)
+        if model_dir and not os.path.exists(os.path.join(model_dir, "")):
+            self.add_message("system", lang.tr_format(
+                "sys_download_manual",
+                url=getattr(self, '_dl_manual_url', ""), model_dir=model_dir))
+
+    def _cancel_download(self):
+        """Boton cancelar / cerrar el dialogo de descarga."""
+        worker = getattr(self, '_dl_worker', None)
+        if worker and worker.is_alive():
+            worker.cancel()
+            if self.dl_status_label:
+                self.dl_status_label.config(text=lang.tr("dl_cancelling"))
+            logging.info("Cancelacion de descarga solicitada")
+            return
+        # No hay descarga viva: cerrar el dialogo es seguro.
+        self._dl_finished(False, None)
+        self._hide_dl_ui()
 
     def _show_dl_ui(self, model_name=""):
         self.dl_dialog = tk.Toplevel(self.root)
@@ -1017,7 +997,6 @@ class ChatbotApp:
         self.dl_dialog.resizable(False, False)
         self.dl_dialog.transient(self.root)
         self.dl_dialog.grab_set()
-        self.dl_dialog.protocol("WM_DELETE_WINDOW", lambda: None)
         self.dl_dialog.focus_set()
         tk.Label(self.dl_dialog, text=lang.tr_format("dl_downloading", name=model_name or ""),
                  font=("Helvetica", 12, "bold"), bg="#1a1a2e", fg="#FFD700").pack(pady=(20, 10))
@@ -1029,6 +1008,14 @@ class ChatbotApp:
         self.dl_status_label = tk.Label(self.dl_dialog, text=lang.tr("dl_init"), font=("Helvetica", 9),
                                         bg="#1a1a2e", fg="#7F8C8D")
         self.dl_status_label.pack(pady=5)
+        # Boton de cancelar: antes el dialogo no se podia cerrar ni abortar,
+        # y el hilo seguía descargando hasta el final.
+        tk.Button(self.dl_dialog, text=lang.tr("dl_cancel_btn"),
+                  font=("Helvetica", 9), bg="#C0392B", fg="white",
+                  relief=tk.FLAT, padx=12, pady=4,
+                  command=self._cancel_download).pack(pady=(8, 0))
+        # Cerrar el dialogo tambien cancela, en vez de ignorarse.
+        self.dl_dialog.protocol("WM_DELETE_WINDOW", self._cancel_download)
         self.status_label.config(text=lang.tr("status_downloading"), fg="#FFD700")
         logging.info(f"Mostrando diálogo de descarga para: {model_name}")
 
@@ -1709,6 +1696,15 @@ def main():
                 app.timer_stop()
             except Exception:
                 pass
+            # Cancela la descarga en curso: si no, el worker seguiría
+            # descargando el modelo con la ventana ya cerrada.
+            worker = getattr(app, '_dl_worker', None)
+            if worker:
+                try:
+                    worker.cancel()
+                    worker.join(timeout=3)
+                except Exception:
+                    pass
             try:
                 if getattr(app, 'tts', None):
                     app.tts.stop()
